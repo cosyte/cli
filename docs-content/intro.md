@@ -6,34 +6,40 @@ sidebar_position: 1
 
 # @cosyte/cli
 
-Parse real-world, vendor-quirky CLI and pull fields out in one line — without reading the spec.
-`@cosyte/cli` is a zero-dependency TypeScript toolkit following the cosyte parser archetype: a lenient
-parser, an immutable model, a spec-clean serializer, and a profile system for vendor quirks. It
-mirrors the API shape of the reference parser, `@cosyte/hl7`.
-
-> **Status:** pre-alpha (`0.0.x`), not yet published to npm. This page describes the scaffold; the
-> real parser lands in subsequent phases.
-
-## Install
+`cosyte` is a **PHI-safe developer CLI** over the `@cosyte/*` healthcare parsers. Pipe a raw message
+from a hospital feed into the terminal and get typed, structured JSON back in one line — without
+writing code, without reading the spec, and **without ever being handed a confident wrong value or a
+silent success on a malformed message**.
 
 ```bash
-npm install @cosyte/cli
+cat adt.hl7 | cosyte parse -
 ```
+
+`@cosyte/cli` is a **`bin` package**, not a library: its primary artifact is the `cosyte` command on
+your `PATH`. It is a thin, honest skin over libraries that already own correctness — it routes, reads,
+shapes output, and owns two disciplines of its own: a documented **exit-code contract** and a
+**value-free diagnostic** posture (never a field value on stderr).
+
+> **Status:** pre-alpha (`0.0.x`), not yet published to npm. Phase 1 wires `parse` for **HL7 v2** and
+> **FHIR R4**; more commands and formats land in later phases.
 
 ## Parse a message
 
-```ts
-import { parseCli } from "@cosyte/cli";
+`parse` reads a file (or stdin via `-`), **autodetects the format by content**, and prints the parsed
+model as typed JSON on stdout:
 
-const result = parseCli(raw);
-
-result.warnings; // stable, positional tolerance warnings
+```bash
+cosyte parse message.hl7            # autodetected → HL7 v2
+cosyte parse patient.json           # autodetected → FHIR
+cat message.hl7 | cosyte parse -    # from a pipeline
+cosyte parse --format hl7 msg.txt   # override autodetection
 ```
 
-The parser is **lenient by default** — vendor quirks become warnings, not failures — while the
-serializer always emits spec-clean output (Postel's Law). A `{ strict: true }` mode (to be added)
-escalates every tolerated deviation to a thrown error.
+The exit code carries the outcome — `0` success, `65` unparseable/undetected, `66` missing file — so
+`cosyte parse` is safe to branch on in CI. See [Quickstart](./quickstart).
 
 ## Next
 
-- Read the **API reference** for every export, generated from source.
+- [Installation](./installation) — `npx`, global install, prerequisites.
+- [Quickstart](./quickstart) — the one-line parse, stdin, and the programmatic API.
+- **API Reference** — every programmatic export, generated from source.

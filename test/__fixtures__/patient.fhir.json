@@ -1,0 +1,9 @@
+{
+  "resourceType": "Patient",
+  "id": "synthetic-000123",
+  "identifier": [{ "system": "urn:hospital:mrn", "value": "MRN-000123" }],
+  "name": [{ "family": "ZZSENTINELLAST", "given": ["ZZSENTINELFIRST"] }],
+  "gender": "male",
+  "birthDate": "1980-01-01",
+  "address": [{ "line": ["123 SYNTHETIC ST"], "city": "METROPOLIS", "state": "NY", "postalCode": "10001" }]
+}

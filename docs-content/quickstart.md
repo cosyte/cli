@@ -6,43 +6,56 @@ sidebar_position: 1
 
 # Quickstart
 
-Parse a CLI payload and read the result in a few lines. `@cosyte/cli` is **lenient by default**
-(Postel's Law): real-world, vendor-quirky input parses into a value plus a list of tolerance
-**warnings**, rather than throwing.
+Turn an opaque healthcare message into typed JSON in one line. `cosyte parse` reads a file (or stdin
+via `-`), **autodetects the format by content**, and prints the parsed model to stdout.
 
-## Parse a payload
+## Parse a file or a pipeline
+
+```bash
+cosyte parse message.hl7            # → { "format": "hl7", "model": …, "warnings": [] }
+cat patient.json | cosyte parse -   # from stdin
+cosyte parse --json message.hl7 | jq '.model'   # compact output for a pipeline
+```
+
+The output is a stable envelope: the detected `format`, the parsed `model`, and any value-free
+`warnings` the wrapped parser recovered (each a stable code plus a position — never a field value).
+
+## Autodetection is conservative — it never guesses
+
+Detection sniffs the leading bytes' content, not the file extension: an `MSH|…` message is HL7, a JSON
+object with a `resourceType` is FHIR. If nothing matches, `parse` does **not** guess — it exits with a
+data error (`65`) and asks for `--format`:
 
 ```ts runnable
-import { parseCli } from "@cosyte/cli";
+import { detectFormat } from "@cosyte/cli";
 
-// Replace this with a real CLI message once the parser lands; on clean input the lenient
-// parser recovers nothing, so `warnings` is empty.
-const { value, warnings } = parseCli("");
-
-warnings; // => []
+const enc = new TextEncoder();
+detectFormat(enc.encode("MSH|^~\\&|Sender|Facility\r")).format; // => "hl7"
+detectFormat(enc.encode('{"resourceType":"Patient","id":"example"}')).format; // => "fhir"
+detectFormat(enc.encode("not a healthcare message")).confidence; // => "none"
 ```
 
-`parseCli` always returns a `{ value, warnings }` pair. Each warning carries a **stable code**
-you can branch on without it churning between releases:
+## The exit-code contract
 
-```ts
-import { parseCli, WARNING_CODES } from "@cosyte/cli";
+`cosyte parse` is safe to branch on in CI — the exit code carries the outcome:
 
-const { warnings } = parseCli(raw);
+| Code | Meaning                                              |
+|------|------------------------------------------------------|
+| `0`  | success                                              |
+| `2`  | usage error (unknown flag, missing argument)         |
+| `65` | data error (unparseable input, or format undetected) |
+| `66` | no input (missing/unreadable file)                   |
+| `70` | internal error (a bug)                               |
 
-for (const w of warnings) {
-  if (w.code === WARNING_CODES.EXAMPLE_TOLERATED_DEVIATION) {
-    // handle the tolerated deviation
-  }
-}
+```ts runnable
+import { EXIT } from "@cosyte/cli";
+
+EXIT.OK; // => 0
+EXIT.DATAERR; // => 65
+EXIT.NOINPUT; // => 66
 ```
-
-> **About runnable examples.** The first block above is tagged ```` ```ts runnable ````: the docs
-> build extracts it, runs it against the package, and asserts the `// =>` result — so a documented
-> example can never silently drift from the code. Tag a fence `runnable` only once its `// =>`
-> assertions match the shipped behavior; leave illustrative fragments as a plain ```` ```ts ```` block.
 
 ## Next
 
-- [Core Concepts](./concepts-archetype) — the parser archetype and the tolerance model.
-- **API Reference** — every export, generated from source.
+- [Core Concepts](./concepts-archetype) — the wrapper boundary, the exit-code contract, the PHI posture.
+- **API Reference** — every programmatic export, generated from source.

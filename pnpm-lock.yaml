@@ -7,6 +7,13 @@ settings:
 importers:
 
   .:
+    dependencies:
+      '@cosyte/fhir':
+        specifier: file:vendor/cosyte-fhir-0.0.0.tgz
+        version: file:vendor/cosyte-fhir-0.0.0.tgz
+      '@cosyte/hl7':
+        specifier: file:vendor/cosyte-hl7-0.0.0.tgz
+        version: file:vendor/cosyte-hl7-0.0.0.tgz
     devDependencies:
       '@arethetypeswrong/cli':
         specifier: 0.18.4
@@ -172,6 +179,16 @@ packages:
     peerDependencies:
       eslint: ^9.0.0 || ^10.0.0
       typescript: '>=5.0.0'
+
+  '@cosyte/fhir@file:vendor/cosyte-fhir-0.0.0.tgz':
+    resolution: {integrity: sha512-K3EI+MI5iDb4F5t8R+bOAXggS7JGVl2Ux5J7+G7KJO9BonrpsiK8PEu/LeRh7D6sWBJYl8eLmGkdcdOKevANhQ==, tarball: file:vendor/cosyte-fhir-0.0.0.tgz}
+    version: 0.0.0
+    engines: {node: '>=22.0.0'}
+
+  '@cosyte/hl7@file:vendor/cosyte-hl7-0.0.0.tgz':
+    resolution: {integrity: sha512-ZiHGyeIsVID2Y/DF/ZFKgYbFf0EcwaZzmDk3W3EuajExdIZ1Od/tkFmdTC6OI4Lw8gdzDyP1vVLzeim6cW3NMA==, tarball: file:vendor/cosyte-hl7-0.0.0.tgz}
+    version: 0.0.1
+    engines: {node: '>=22.0.0'}
 
   '@cosyte/prettier-config@0.0.2':
     resolution: {integrity: sha512-nmplXQKNq5DZ+Su/tCUF6m9UJ9MOArhw5NG0X9yqi6B5zvxmVXtKMAX1N2bKkqpKhZqyQOR9ALGYVpTx022R/g==}
@@ -2143,6 +2160,10 @@ snapshots:
       typescript-eslint: 8.65.0(eslint@10.5.0)(typescript@5.9.3)
     transitivePeerDependencies:
       - supports-color
+
+  '@cosyte/fhir@file:vendor/cosyte-fhir-0.0.0.tgz': {}
+
+  '@cosyte/hl7@file:vendor/cosyte-hl7-0.0.0.tgz': {}
 
   '@cosyte/prettier-config@0.0.2': {}
 

@@ -14,16 +14,38 @@ its public history at `0.0.x`, per the cosyte version ladder (`0.0.x` until firs
 
 ### Added
 
-- Project scaffold from the shared `@cosyte/*` parser template: the canonical toolchain (TypeScript
-  ES2023 + strict rigor via `@cosyte/tsconfig`, ESLint 10 + type-checked `typescript-eslint` via
-  `@cosyte/eslint-config`, Prettier via `@cosyte/prettier-config`, Vitest 4 + v8 coverage via
-  `@cosyte/vitest-config`, dual ESM + CJS build via `tsup` + `@cosyte/tsup-config`, `attw` publish
-  gate), thin callers of the reusable `cosyte/.github` CI/release workflows, Changesets on the
-  `0.0.x` ladder, and the property-based conformance harness from `@cosyte/test-utils`.
-- `VERSION` export plus the archetype stubs (`parseCli`, `WARNING_CODES`, `FATAL_CODES`) — to
-  be filled in by subsequent phases.
+- **Phase 1 — the `cosyte parse` foundation.** Reshaped the scaffold from a library skeleton into a
+  **`bin` package**: `package.json#bin` maps `cosyte` → `dist/bin/cosyte.mjs` (a shebang entry over a
+  testable `core`), argument-parsed with Node's built-in `util.parseArgs` + a hand-rolled subcommand
+  dispatcher (**no third-party CLI framework**).
+- **`cosyte parse <file|->`** — reads a file argument or stdin (`-`); **autodetects the format by
+  content** (HL7 v2 `MSH` framing, FHIR JSON `resourceType`) — conservative and fail-safe (a confident
+  single match parses; ambiguity/no-match is a data error asking for `--format`, never a guess); routes
+  to the wrapped parser (**lazy-loaded** per format); emits the parsed model as **typed JSON on
+  stdout**. Flags: `--format`, `--json`, `--quiet`, `--no-color`.
+- **The exit-code contract** (`sysexits.h`-grounded, documented, tested): `0` success · `2` usage ·
+  `65` data/parse error (`EX_DATAERR`) · `66` no input (`EX_NOINPUT`) · `70` internal (`EX_SOFTWARE`).
+  The CLI never exits `0` on input it could not handle.
+- **Value-free diagnostic channel** with stable `CLI_*` codes (`CLI_FORMAT_UNDETECTED`,
+  `CLI_FORMAT_AMBIGUOUS`, `CLI_FORMAT_UNSUPPORTED`, `CLI_NO_INPUT`, `CLI_EMPTY_INPUT`,
+  `CLI_PARSE_FAILED`, `CLI_USAGE`, `CLI_INTERNAL`). **stdout is the data channel; every stderr line is
+  value-free** — code + position only, never a field value. No temp files, no file logging.
+- **Programmatic `core` API** (the `.` subpath): `detectFormat` / `classifyCandidates` /
+  `detectionError`, `EXIT`, `CLI_CODES` / `CliError`, `run`, `parseCommand`, `VERSION`.
+- **Runtime dependencies (ADR 0021):** `@cosyte/hl7` (`46d50eb`, v0.0.1) and `@cosyte/fhir` (`7a099b2`,
+  v0.0.0) as **hard, first-party** deps — an `npx` bin cannot peer-depend — vendored as `pnpm pack`
+  tarballs under `vendor/` until PUB-FLIP (`pnpm vendor:refresh`; umbrella ADR 0008). Capped at **2**
+  by the umbrella `verify-policy.json`; third-party CLI-core runtime deps stay **zero**.
+- **ADRs:** `0021` (developer-tooling tier is a `bin` that hard-depends on first-party siblings;
+  third-party runtime deps minimized) and `0022` (one repo, two bins — the CLI and the future
+  `cosyte-mcp` MCP server over one core; the web playground is out of scope).
 
 ### Changed
+
+- **Reshaped the package from the parser-library scaffold to a `bin` package.** Removed the archetype
+  stubs (`parseCli`, `WARNING_CODES`, `FATAL_CODES`); replaced the library `src/index.ts` and the
+  round-trip property test with the command tree, the programmatic `core` API, and command-contract /
+  autodetection / PHI-leak / equivalence tests. Rewrote `docs-content/` and `README.md` for the CLI.
 
 ### Deprecated
 

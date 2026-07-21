@@ -6,22 +6,55 @@ sidebar_position: 1
 
 # Guides
 
-Task-oriented recipes — "how do I X?" — for `@cosyte/cli`. Each guide is a short, copy-pasteable answer to
-one real integration question.
+Task-oriented recipes for the `cosyte` command. Each is a short, copy-pasteable answer to one real
+question.
 
-> **Status:** this package is a pre-alpha scaffold, so the guide set is intentionally thin. Guides are
-> added here as the parser ships real capability; a guide is only written once the behavior it
-> documents is shipped and its runnable example passes the doc/code-agreement check.
+> **Status:** Phase 1 ships `parse` (HL7 v2 + FHIR). `validate`, `convert`, `redact`, `inspect`, the
+> MCP server, and the remaining formats land in later phases — a command is only documented here once
+> its behavior ships and its example passes the doc/code-agreement check.
 
-## Planned guides
+## Parse from a pipeline and select a field
 
-As the parser grows, expect recipes such as:
+`parse` is pipeline-first. Use `--json` for compact output and pipe it to `jq`:
 
-- **Handle a vendor quirk** — branch on a specific `WARNING_CODES` entry and decide whether to
-  tolerate, log, or reject.
-- **Fail fast with strict mode** — use `{ strict: true }` to turn tolerated deviations into thrown
-  errors at an integration boundary.
-- **Round-trip a payload** — parse, adjust, and re-serialize spec-clean output.
+```bash
+cat adt.hl7 | cosyte parse - --json | jq '.model.segments[0]'
+```
 
-Until then, the [Quickstart](./quickstart) covers the one-line parse, and the **API Reference**
-documents every shipped export.
+## Branch on the outcome in CI
+
+The exit code is the contract — no need to grep stdout:
+
+```bash
+if cosyte parse "$file" > /dev/null 2> err.log; then
+  echo "parsed OK"
+else
+  code=$?   # 65 = unparseable/undetected, 66 = missing file, 2 = usage
+  echo "parse failed with exit $code"; cat err.log   # err.log is value-free
+fi
+```
+
+## Force a format when autodetection can't
+
+A `.txt` that is really HL7, or an ambiguous input, takes an explicit `--format`:
+
+```bash
+cosyte parse --format hl7 weird-extension.txt
+```
+
+## Use the programmatic core
+
+The same autodetection and exit-code contract are importable — useful when embedding the routing logic:
+
+```ts runnable
+import { detectFormat, EXIT } from "@cosyte/cli";
+
+const enc = new TextEncoder();
+const detected = detectFormat(enc.encode('{"resourceType":"Bundle"}'));
+detected.format; // => "fhir"
+detected.confidence; // => "certain"
+EXIT.USAGE; // => 2
+```
+
+Until more commands ship, the [Quickstart](./quickstart) covers the one-line parse and the **API
+Reference** documents every export.

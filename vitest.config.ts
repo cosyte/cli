@@ -3,12 +3,13 @@ import { cosyteVitest } from "@cosyte/vitest-config";
 /**
  * Vitest config for @cosyte/cli from the shared @cosyte/vitest-config standard.
  *
- * Per-directory >= 90 coverage gates on the core dir(s). Add directories to `coverageDirs` as the
- * parser grows (e.g. "model", "serialize", "helpers", "builder") — mirror @cosyte/hl7's layout once
- * the corresponding source lands.
+ * `@cosyte/cli` is a `bin` package organised as a command tree: `core` (dispatch, format
+ * autodetection, exit codes, diagnostics, I/O) and `commands` (the command handlers). Both get the
+ * per-directory >= 90 coverage gate on top of the global gate. The thin `bin/` process adapter is
+ * coverage-excluded at the source (a `/* v8 ignore *​/` block) — it is glue over the covered core.
  */
 export default cosyteVitest({
-  coverageDirs: ["parser"],
+  coverageDirs: ["core", "commands"],
   test: {
     globals: false,
     environment: "node",

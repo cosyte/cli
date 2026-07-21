@@ -1,48 +1,73 @@
 # @cosyte/cli
 
-> CLI parser, serializer, and builder for Node.js and TypeScript — **lenient on parse,
-> spec-clean on emit**.
+> The **cosyte CLI** — a PHI-safe developer front door over the `@cosyte/*` healthcare parsers.
 
-`@cosyte/cli` is a zero-dependency TypeScript toolkit that follows the cosyte parser archetype: a lenient
-parser that turns real-world, vendor-quirky input into **warnings** rather than failures, paired with
-a serializer that always emits spec-clean output (Postel's Law). It mirrors the API shape of the
-reference parser, [`@cosyte/hl7`](https://github.com/cosyte/hl7).
-
-> **Status:** pre-alpha (`0.0.x`), not yet published to npm. The public API below is the scaffold;
-> the real parser lands in subsequent phases.
-
-## Install
+`@cosyte/cli` is a **`bin` package**: its primary artifact is the `cosyte` command on your `PATH`. Pipe
+a raw message from a hospital feed into the terminal and get typed, structured JSON back in one line —
+without writing code, without reading the spec, and **without ever being handed a confident wrong value
+or a silent success on a malformed message**.
 
 ```bash
-npm install @cosyte/cli
+cat adt.hl7 | cosyte parse -
 ```
 
-## Parse
+It is a thin, honest skin over libraries that already own correctness ([`@cosyte/hl7`](https://github.com/cosyte/hl7),
+[`@cosyte/fhir`](https://github.com/cosyte/fhir)): it routes, reads, and shapes output, and owns two
+disciplines of its own — a documented **exit-code contract** and a **value-free diagnostic** posture.
 
-```ts
-import { parseCli } from "@cosyte/cli";
+> **Status:** pre-alpha (`0.0.x`), not yet published to npm. **Phase 1** ships `parse` for **HL7 v2**
+> and **FHIR R4**, content format autodetection, and the exit-code contract. `validate` / `convert` /
+> `redact` / `inspect`, the MCP server, and the remaining formats land in later phases.
 
-const result = parseCli(raw);
+## Run it
 
-result.warnings; // stable, positional tolerance warnings (never throws on quirks)
+```bash
+npx @cosyte/cli parse message.hl7   # no install; format autodetected → HL7 v2
+npm install -g @cosyte/cli          # or put `cosyte` on your PATH
+cosyte --help
 ```
 
-The parser is **lenient by default** — vendor quirks become warnings, not failures. A
-`{ strict: true }` mode (to be added) escalates every tolerated deviation to a thrown error.
+## `cosyte parse`
 
-## The cosyte parser archetype
+Read a file (or stdin via `-`), autodetect the format by content, and print the parsed model as typed
+JSON on stdout:
 
-- **Postel's Law** — liberal parser (lenient default + warnings), conservative serializer (always
-  spec-clean), so quirks don't propagate downstream on round-trip.
-- **Tiered tolerance** — Tier 0/1 silent, Tier 2 warning + recovery (escalates in strict mode),
-  Tier 3 fatal always.
-- **Stable warning codes** — warnings carry stable string codes + positional context; consumers
-  branch on `w.code`, so renaming a code is a breaking change.
-- **Zero runtime dependencies** — Node stdlib only (healthcare integrations vet every dependency).
-- **Dual ESM + CJS** — built with `tsup`, validated with `attw`.
-- **Immutability** — parsed models are immutable; mutation is via explicit methods.
-- **Profile system** — a `defineProfile()` API for vendor quirks (to be added), with built-in
-  profiles authored through the same public API.
+```bash
+cosyte parse message.hl7            # → { "format": "hl7", "model": …, "warnings": [] }
+cat patient.json | cosyte parse -   # from a pipeline
+cosyte parse --json message.hl7 | jq '.model'   # compact machine output
+cosyte parse --format hl7 msg.txt   # override autodetection
+```
+
+Autodetection is **conservative**: a confident single match parses; ambiguity or no match is a typed
+data error asking for `--format` — **never a guessed parser**.
+
+## The exit-code contract
+
+`cosyte parse` is safe to branch on in CI — the exit code carries the outcome (`sysexits.h`):
+
+| Code | Meaning                                              |
+| ---- | ---------------------------------------------------- |
+| `0`  | success                                              |
+| `2`  | usage error (unknown flag, missing argument)         |
+| `65` | data error (unparseable input, or format undetected) |
+| `66` | no input (missing/unreadable file)                   |
+| `70` | internal error (a bug)                               |
+
+The load-bearing rule: the CLI **never prints a reassuring line and exits `0`** on input it could not
+handle.
+
+## PHI posture
+
+A CLI operates on real files a developer points at. So the channels are split: **stdout is the data
+channel** — `parse` prints the parsed model there because that is your explicit request — while **every
+diagnostic on stderr is value-free** (a stable code, a position, a file path — never a name, DOB, MRN,
+or field value). The CLI writes no temp files and logs to no file.
+
+## Programmatic API
+
+The same `core` is importable (the `.` subpath): `detectFormat`, the `EXIT` map, the `CLI_CODES`
+diagnostic registry, and `run`. See the docs for the full surface.
 
 ## License
 
