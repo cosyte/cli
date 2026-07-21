@@ -99,6 +99,12 @@ its public history at `0.0.x`, per the cosyte version ladder (`0.0.x` until firs
 
 ### Fixed
 
+- **README + guides now describe the shipped Phase-3 command surface.** The `README.md` and
+  `docs-content/guides-overview.md` "Status" blurbs read as a Phase-1-forward roadmap ("Phase 1 ships
+  `parse`…"); they now state the current surface directly — `parse` / `validate` / `inspect` / `fmt`
+  and the gated `redact`/`deid` — over the two wired parsers (HL7 v2 + FHIR R4). The pre-alpha,
+  not-yet-published-to-npm status is unchanged (accurate), and the `npx`/`npm install -g` examples now
+  carry a "not on npm yet" caveat (docs-only; README-ORG-SWEEP).
 - **`phi-scan` now scans the real fixture directory.** The scanner's fixture root pointed at a
   nonexistent `test/fixtures/`; it now walks `test/__fixtures__/` (and the same path in the staged
   filter), so the PHI commit-gate actually covers the CLI's synthetic fixtures.
