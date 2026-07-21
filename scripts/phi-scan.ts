@@ -68,10 +68,11 @@ const REPO_ROOT = process.cwd();
 const ALLOW_LIST_PATH = join(REPO_ROOT, "scripts", "phi-allow-list.txt");
 const OVERRIDE_LOG_PATH = join(REPO_ROOT, "phi-scan-overrides.md");
 
-// Roots walked in "all" mode. test/fixtures gets the full scan; src gets the
-// same conservative shape pass because it is hand-written code, not data —
-// JSDoc `@example` snippets must not carry real PHI either.
-const FIXTURE_ROOT = join(REPO_ROOT, "test", "fixtures");
+// Roots walked in "all" mode. test/__fixtures__ gets the full scan (the real
+// fixture dir this repo uses); src gets the same conservative shape pass because
+// it is hand-written code, not data — JSDoc `@example` snippets must not carry
+// real PHI either.
+const FIXTURE_ROOT = join(REPO_ROOT, "test", "__fixtures__");
 const SRC_ROOT = join(REPO_ROOT, "src");
 
 // ---------------------------------------------------------------------------
@@ -326,7 +327,9 @@ function buildTargetsForStaged(): Target[] {
     .toString("utf8")
     .split("\0")
     .filter((p) => p.length > 0)
-    .filter((p) => p.startsWith("test/fixtures/") || (p.startsWith("src/") && p.endsWith(".ts")));
+    .filter(
+      (p) => p.startsWith("test/__fixtures__/") || (p.startsWith("src/") && p.endsWith(".ts")),
+    );
   return list.map((relPath) => ({
     path: relPath,
     // SECURITY: array-form execFileSync, no shell. `:<path>` is a git pathspec.

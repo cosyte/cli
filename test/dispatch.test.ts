@@ -52,6 +52,18 @@ describe("run — top-level dispatch", () => {
     expect(r.stdout).toContain('"fhir"');
   });
 
+  it("routes `redact` and its `deid` alias to the redact command (exit 69)", async () => {
+    expect((await run(["redact", "x.hl7"], noDeps)).exit).toBe(EXIT.UNAVAILABLE);
+    expect((await run(["deid", "x.hl7"], noDeps)).exit).toBe(EXIT.UNAVAILABLE);
+  });
+
+  it("help names the redact command and the --unsafe-show-values flag", async () => {
+    const help = (await run(["--help"], noDeps)).stdout;
+    expect(help).toContain("redact");
+    expect(help).toContain("--unsafe-show-values");
+    expect(help).toContain("69");
+  });
+
   it("maps an unexpected exception to CLI_INTERNAL (exit 70), value-free", async () => {
     const boom: RunDeps = {
       readFile: () => Promise.reject(new Error("SECRET-PHI-IN-MESSAGE")),

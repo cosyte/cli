@@ -9,9 +9,11 @@
  */
 
 import { parseCommand } from "../commands/parse.js";
+import { redactCommand } from "../commands/redact.js";
 import { CLI_CODES, CliError, toCliError } from "./diagnostics.js";
 import { EXIT } from "./exit-codes.js";
 import type { RunDeps } from "./io.js";
+import { extractPhiPosture } from "./phi.js";
 import type { RunResult } from "./result.js";
 import { VERSION } from "./version.js";
 
@@ -23,10 +25,12 @@ Usage:
 
 Commands:
   parse <file|->    Parse a healthcare message to typed JSON (format autodetected)
+  redact <file|->   De-identify a message (alias: deid) — gated on @cosyte/deid, not yet available
 
 Global:
-  -h, --help        Show this help
-  -V, --version     Show the CLI version
+  -h, --help              Show this help
+  -V, --version           Show the CLI version
+  --unsafe-show-values    Permit input values on stderr/diagnostics (PHI-exposing; off by default)
 
 parse options:
   --format <fmt>    Override autodetection: hl7 | fhir | dicom | x12 | ccda | ncpdp | astm
@@ -38,10 +42,12 @@ parse options:
 Exit codes:
   0   success            65  data error (unparseable / undetected format)
   2   usage error        66  no input (missing/unreadable file)
+                         69  unavailable (a capability is not yet built, e.g. redact)
                          70  internal error
 
 PHI posture: the parsed model goes to stdout (the data channel you chose); every diagnostic on
-stderr is value-free — codes and positions only, never a field value.
+stderr is value-free — codes and positions only, never a field value — unless you pass the loud,
+opt-in --unsafe-show-values (which permits a bounded input excerpt in a failure diagnostic).
 `;
 
 /** True if `argv` requests help (`-h`/`--help` anywhere). */
@@ -65,8 +71,11 @@ function wantsHelp(argv: readonly string[]): boolean {
  * ```
  */
 export async function run(argv: string[], deps: RunDeps): Promise<RunResult> {
-  const [command, ...rest] = argv;
-  if (command === undefined || wantsHelp(argv)) {
+  // Resolve the global, order-independent --unsafe-show-values flag once, and dispatch on the argv
+  // with it removed so each command's own parseArgs never sees it (core/phi.ts).
+  const { posture, argv: rest0 } = extractPhiPosture(argv);
+  const [command, ...rest] = rest0;
+  if (command === undefined || wantsHelp(rest0)) {
     return { stdout: HELP, stderr: "", exit: EXIT.OK };
   }
   if (command === "--version" || command === "-V") {
@@ -76,7 +85,10 @@ export async function run(argv: string[], deps: RunDeps): Promise<RunResult> {
   try {
     switch (command) {
       case "parse":
-        return await parseCommand(rest, deps);
+        return await parseCommand(rest, deps, posture);
+      case "redact":
+      case "deid":
+        return redactCommand(rest);
       default:
         return resolve(
           new CliError(

@@ -12,10 +12,12 @@
  * | `2`  | `USAGE`    | usage error — unknown command, bad flag, missing argument (EX_USAGE) |
  * | `65` | `DATAERR`  | data error — input could not be parsed / format not detected (EX_DATAERR) |
  * | `66` | `NOINPUT`  | no input — the file does not exist or is unreadable (EX_NOINPUT)     |
+ * | `69` | `UNAVAILABLE` | a required capability is not yet available — e.g. `redact` before `@cosyte/deid` ships (EX_UNAVAILABLE) |
  * | `70` | `SOFTWARE` | internal error — an unexpected exception, i.e. a bug (EX_SOFTWARE)   |
  *
  * `validate`'s "invalid ⇒ exit 1" verdict code lands with the `validate` command in a later phase;
- * Phase 1 (`parse`) uses the five codes above.
+ * Phase 1 (`parse`) used the five non-`69` codes; Phase 2 adds `69` for the ground-layer-gated
+ * `redact`/`deid` command (a distinct, non-zero, never-a-fake-success signal — cli roadmap §8 P2).
  *
  * @packageDocumentation
  */
@@ -40,6 +42,9 @@ export const EXIT = {
   DATAERR: 65,
   /** No input — the named file does not exist or is unreadable (`EX_NOINPUT`). */
   NOINPUT: 66,
+  /** Unavailable — a required capability is not yet built (e.g. `redact` before `@cosyte/deid`), a
+   * distinct non-zero signal that is never a fake success (`EX_UNAVAILABLE`). */
+  UNAVAILABLE: 69,
   /** Internal error — an unexpected exception (a bug), distinct from a handled bad input (`EX_SOFTWARE`). */
   SOFTWARE: 70,
 } as const;

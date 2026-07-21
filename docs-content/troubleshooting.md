@@ -40,8 +40,16 @@ The file does not exist or is unreadable. Check the path; use `-` to read stdin 
 ## `CLI_PARSE_FAILED` (exit 65)
 
 The wrapped parser rejected the input as unrecoverable. The stderr line carries the format and a
-stable code token only — **not** the offending bytes. Inspect the input yourself; the CLI will not
+stable code token only — **not** the offending bytes. To see a bounded excerpt of the input while
+debugging locally, add the loud, opt-in `--unsafe-show-values` (below); by default the CLI will not
 echo it for you.
+
+## `CLI_NOT_IMPLEMENTED` (exit 69)
+
+The command's ground-layer library is not yet built, so the command is **unavailable** — never a fake
+success. Today this is `redact`/`deid`: de-identification belongs to `@cosyte/deid` (unpublished), and
+the CLI will not ship a partial scrub that looks de-identified while leaving PHI behind. The command
+never reads your input. It becomes available once `@cosyte/deid` ships and is vetted.
 
 ## `CLI_USAGE` (exit 2)
 
@@ -50,13 +58,22 @@ An unknown flag or command, or a missing `<file>` argument. Run `cosyte --help`.
 ## Is the output safe to share?
 
 **stdout is the data channel** — the parsed `model` it prints is your real data and may contain PHI;
-treat it as you would the source message. **stderr is value-free** — safe to paste into a bug report.
-The CLI never writes a temp file and never logs to a file.
+treat it as you would the source message. **stderr is value-free** — safe to paste into a bug report,
+**unless** you ran with `--unsafe-show-values` (below), which deliberately puts a bounded input excerpt
+into a failure diagnostic. The CLI never writes a temp file and never logs to a file.
 
-## Known limitations (Phase 1)
+## `--unsafe-show-values` (the one exception to value-free stderr)
 
-- Only `parse` is implemented, and only **hl7** and **fhir** are wired.
-- No `validate`/`convert`/`redact`/`inspect`, no `--unsafe-show-values`, no MCP server yet — those are
-  later phases.
+By default every diagnostic is value-free. When you need to see the bytes a parser rejected, add the
+loud, opt-in `--unsafe-show-values` — it appends a bounded excerpt of the offending input to a
+`CLI_PARSE_FAILED` line. It is **PHI-exposing**; do not use it on stderr you intend to share. It is the
+only setting under which a value reaches a secondary surface, and it affects failure diagnostics only —
+a successful parse still keeps values on stdout alone.
+
+## Known limitations (Phase 2)
+
+- `parse` is implemented for **hl7** and **fhir**; `redact`/`deid` exists but is an honest
+  `CLI_NOT_IMPLEMENTED` (exit `69`) gated on `@cosyte/deid`.
+- No `validate`/`convert`/`inspect`, no MCP server, and no other formats yet — those are later phases.
 
 The **API Reference** always reflects exactly what this release ships.

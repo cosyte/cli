@@ -25,6 +25,7 @@ import {
 import { CLI_CODES, CliError } from "../core/diagnostics.js";
 import { EXIT } from "../core/exit-codes.js";
 import type { RunDeps } from "../core/io.js";
+import { unsafeInputSuffix, VALUE_FREE, type PhiPosture } from "../core/phi.js";
 import type { RunResult } from "../core/result.js";
 
 /** A value-free warning entry in the parse envelope — a stable code plus structural position only. */
@@ -53,6 +54,9 @@ const PARSE_OPTIONS = {
  *
  * @param args - The arguments after the `parse` subcommand token.
  * @param deps - Injected input readers ({@link RunDeps}).
+ * @param posture - The resolved {@link PhiPosture}. Defaults to {@link VALUE_FREE}; under
+ *   `--unsafe-show-values` a bounded excerpt of the offending input is appended to a
+ *   `CLI_PARSE_FAILED` diagnostic (the single, opt-in value-echoing surface).
  * @returns A {@link RunResult}: the typed-JSON model on `stdout`, a value-free note (or nothing) on
  *   `stderr`, and the resolved exit code. Never throws a {@link CliError} — it resolves it to a
  *   result; unexpected exceptions are caught by the dispatcher and mapped to `CLI_INTERNAL`.
@@ -70,7 +74,11 @@ const PARSE_OPTIONS = {
  * result.exit; // => 0
  * ```
  */
-export async function parseCommand(args: string[], deps: RunDeps): Promise<RunResult> {
+export async function parseCommand(
+  args: string[],
+  deps: RunDeps,
+  posture: PhiPosture = VALUE_FREE,
+): Promise<RunResult> {
   let values: { format?: string; json?: boolean; quiet?: boolean; "no-color"?: boolean };
   let positionals: string[];
   try {
@@ -145,7 +153,16 @@ export async function parseCommand(args: string[], deps: RunDeps): Promise<RunRe
   try {
     envelope = await runParser(format, bytes);
   } catch (e) {
-    return err(parseFailure(format, e));
+    // The value-free diagnostic is built from a stable code only. The **single** value-echoing
+    // surface in the whole CLI — a bounded excerpt of the offending input — is appended here, and
+    // only when `--unsafe-show-values` is set (empty string otherwise); see core/phi.ts.
+    const base = parseFailure(format, e);
+    const suffix = unsafeInputSuffix(bytes, posture);
+    return {
+      stdout: "",
+      stderr: `cosyte: ${base.code}: ${base.message}${suffix}\n`,
+      exit: base.exit,
+    };
   }
 
   const stdout =

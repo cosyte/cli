@@ -39,8 +39,22 @@ export {
 
 export { readFileBytes, readStreamBytes, type RunDeps } from "./core/io.js";
 
+export {
+  VALUE_FREE,
+  SHOW_VALUES,
+  UNSAFE_SHOW_VALUES_FLAG,
+  UNSAFE_EXCERPT_MAX,
+  extractPhiPosture,
+  unsafeInputSuffix,
+  type PhiPosture,
+} from "./core/phi.js";
+
+export { deidStatus, DEID_UNAVAILABLE_REASON, type DeidAvailability } from "./core/deid.js";
+
 export type { RunResult } from "./core/result.js";
 
 export { run } from "./core/run.js";
 
 export { parseCommand, extractStableCode } from "./commands/parse.js";
+
+export { redactCommand } from "./commands/redact.js";

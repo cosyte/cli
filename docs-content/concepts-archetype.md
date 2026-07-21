@@ -51,5 +51,21 @@ So the channels are split:
 Diagnostic codes are stable (`CLI_CODES`): scripts branch on them, so renaming one is a breaking
 change.
 
-> The `--unsafe-show-values` escape hatch and the `redact` command are a later phase; Phase 1 is
-> value-free everywhere except the stdout data channel.
+### `--unsafe-show-values` — the single door to a value
+
+Value-free-by-default has one explicit escape hatch: `--unsafe-show-values`. With it set, a
+`CLI_PARSE_FAILED` diagnostic appends a bounded excerpt of the offending input to aid local debugging.
+It is off by default, PHI-exposing by design (the flag name carries the warning), and it is the
+**only** configuration under which a value reaches a secondary surface — resolved once, globally, and
+funnelled through a single chokepoint so the "a value appears on stderr **iff** the flag is set"
+property is provable in one place. A successful parse never puts values on stderr regardless of the
+flag.
+
+### `redact` / `deid` — honest, not faked
+
+The one command whose job is to strip PHI is **deliberately gated**. De-identification belongs to
+`@cosyte/deid` (unpublished); the wrapped parsers expose no de-id API. Rather than ship a partial
+Safe-Harbor scrub that would leave PHI behind while *looking* de-identified — a false-safety
+impression — `redact`/`deid` is a typed `CLI_NOT_IMPLEMENTED` (exit `69`) that never reads the input
+and never emits a partial scrub. It becomes real when `@cosyte/deid` ships. This is the same
+discipline the wrapper boundary rests on: the CLI never invents a capability its ground layer lacks.

@@ -23,18 +23,24 @@ subpath still exports a small programmatic `core` API (`detectFormat`, `EXIT`, `
 
 ## Status
 
-- **Phase 1 shipped** (`operations/roadmaps/cli.md` §Phase 1). Pre-alpha `0.0.x`, unpublished. Ships
-  `cosyte parse <file|->` for **HL7 v2** + **FHIR R4**, **content format autodetection** (conservative,
-  fail-safe — never a guessed parser), the documented **exit-code contract** (0/2/65/66/70), and the
-  **value-free diagnostic** channel with stable `CLI_*` codes.
+- **Phase 2 shipped** (`operations/roadmaps/cli.md` §Phase 2). Pre-alpha `0.0.x`, unpublished. On top
+  of Phase 1's `cosyte parse` (HL7 v2 + FHIR R4, content autodetection, exit-code contract, value-free
+  `CLI_*` diagnostics), Phase 2 hardens the PHI posture: the global opt-in **`--unsafe-show-values`**
+  (the single door to a value on a secondary surface, funnelled through one chokepoint in
+  `core/phi.ts`), a proven **never-a-PHI-temp-file** guarantee, and the **`redact`/`deid`** command as
+  an honest, `@cosyte/deid`-gated `CLI_NOT_IMPLEMENTED` (exit `69`) — never a built-in partial scrub
+  that would risk a false-safety impression. Exit-code contract is now `0/2/65/66/69/70`.
+- **Phase 1 shipped** (§Phase 1). `cosyte parse <file|->` for **HL7 v2** + **FHIR R4**, **content
+  format autodetection** (conservative, fail-safe — never a guessed parser), the documented
+  **exit-code contract**, and the **value-free diagnostic** channel with stable `CLI_*` codes.
 - **Hard runtime deps (ADR 0021):** `@cosyte/hl7` + `@cosyte/fhir` are **real `dependencies`** (an
   `npx` bin can't peer-depend), vendored as `pnpm pack` tarballs in `vendor/` until PUB-FLIP —
   refresh with `pnpm vendor:refresh`. Pinned shas: hl7 `46d50eb`, fhir `7a099b2`. **Lazy-loaded per
   format.** Umbrella `verify-policy.json` caps `cli` runtime deps at **2**. Third-party CLI-core
   runtime deps: **zero**.
-- **Deferred:** PHI hardening + `redact` (P2), `validate`/`inspect`/`fmt` (P3), `convert`/`map-codes`
-  (P4, library-gated), the MCP server (P5, ADR 0022), the other six parsers + streaming (P6),
-  release hardening (P7).
+- **Deferred:** `validate`/`inspect`/`fmt` (P3), `convert`/`map-codes` (P4, library-gated), the MCP
+  server (P5, ADR 0022), the other six parsers + streaming (P6), release hardening (P7). `redact`'s
+  real de-identification is deferred to when `@cosyte/deid` ships (P2 landed the gated stub + seam).
 - **ADRs:** `documentation/decisions/0021` (dependency-tier: a `bin` hard-deps first-party siblings)
   and `0022` (one-repo-two-bins: CLI + future MCP over one core; web playground out of scope).
 
