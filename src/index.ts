@@ -33,9 +33,16 @@ export {
   CLI_CODES,
   CliError,
   formatDiagnostic,
+  errorResult,
   toCliError,
   type CliCode,
 } from "./core/diagnostics.js";
+
+export { resolveInput, type ResolvedInput, type InputResolution } from "./core/input.js";
+
+export { extractStableCode, parseFailureResult } from "./core/wrap.js";
+
+export { formatHl7Position, type Finding } from "./core/findings.js";
 
 export { readFileBytes, readStreamBytes, type RunDeps } from "./core/io.js";
 
@@ -55,6 +62,12 @@ export type { RunResult } from "./core/result.js";
 
 export { run } from "./core/run.js";
 
-export { parseCommand, extractStableCode } from "./commands/parse.js";
+export { parseCommand } from "./commands/parse.js";
+
+export { validateCommand } from "./commands/validate.js";
+
+export { inspectCommand } from "./commands/inspect.js";
+
+export { fmtCommand } from "./commands/fmt.js";
 
 export { redactCommand } from "./commands/redact.js";

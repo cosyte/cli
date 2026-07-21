@@ -92,3 +92,40 @@ describe("PHI leak matrix — stderr is value-free across every mode", () => {
     expect(r.stdout).toBe("");
   });
 });
+
+describe("PHI leak matrix — validate / inspect are value-free on BOTH channels", () => {
+  // `validate` and `inspect` emit diagnostics / a structural summary, never the message data — so
+  // unlike `parse`/`fmt` (whose stdout IS the data channel), neither channel may carry a sentinel.
+  const cases: { name: string; argv: string[]; bytes: Uint8Array }[] = [
+    { name: "validate hl7", argv: ["validate", "m.hl7"], bytes: HL7 },
+    { name: "validate hl7 --json", argv: ["validate", "m.hl7", "--json"], bytes: HL7 },
+    { name: "validate fhir", argv: ["validate", "p.json"], bytes: FHIR },
+    { name: "validate fhir --json", argv: ["validate", "p.json", "--json"], bytes: FHIR },
+    { name: "inspect hl7", argv: ["inspect", "m.hl7"], bytes: HL7 },
+    { name: "inspect hl7 --json", argv: ["inspect", "m.hl7", "--json"], bytes: HL7 },
+    { name: "inspect fhir", argv: ["inspect", "p.json"], bytes: FHIR },
+    { name: "inspect fhir --json", argv: ["inspect", "p.json", "--json"], bytes: FHIR },
+  ];
+  for (const c of cases) {
+    it(`${c.name}: no sentinel on stderr OR stdout`, async () => {
+      const r = await run(c.argv, fileDeps(c.bytes));
+      assertNoSentinelOnStderr(r.stderr);
+      assertNoSentinelOnStderr(r.stdout); // validate/inspect stdout is value-free too
+    });
+  }
+});
+
+describe("PHI leak matrix — fmt keeps stderr value-free (stdout IS the data channel)", () => {
+  // `fmt`'s stdout is a re-serialization of the message (values included, by request); only its
+  // secondary channel (stderr) must be value-free.
+  for (const c of [
+    { name: "fmt hl7", argv: ["fmt", "m.hl7"], bytes: HL7 },
+    { name: "fmt fhir", argv: ["fmt", "p.json"], bytes: FHIR },
+  ]) {
+    it(`${c.name}: no sentinel on stderr; the re-serialized message IS on stdout`, async () => {
+      const r = await run(c.argv, fileDeps(c.bytes));
+      assertNoSentinelOnStderr(r.stderr);
+      expect(r.stdout.length).toBeGreaterThan(0);
+    });
+  }
+});

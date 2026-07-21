@@ -70,10 +70,13 @@ loud, opt-in `--unsafe-show-values` — it appends a bounded excerpt of the offe
 only setting under which a value reaches a secondary surface, and it affects failure diagnostics only —
 a successful parse still keeps values on stdout alone.
 
-## Known limitations (Phase 2)
+## Known limitations (Phase 3)
 
-- `parse` is implemented for **hl7** and **fhir**; `redact`/`deid` exists but is an honest
-  `CLI_NOT_IMPLEMENTED` (exit `69`) gated on `@cosyte/deid`.
-- No `validate`/`convert`/`inspect`, no MCP server, and no other formats yet — those are later phases.
+- `parse`, `validate`, `inspect`, and `fmt` are implemented for **hl7** and **fhir** only; the other
+  six formats are later phases.
+- `validate --profile` is reserved but gated — the CLI bundles no profiles yet, so it reports an honest
+  `CLI_NOT_IMPLEMENTED` (exit `69`) rather than fake a profile verdict.
+- `redact`/`deid` exists but is an honest `CLI_NOT_IMPLEMENTED` (exit `69`) gated on `@cosyte/deid`.
+- No `convert`/`map-codes` and no MCP server yet — those are later phases.
 
 The **API Reference** always reflects exactly what this release ships.

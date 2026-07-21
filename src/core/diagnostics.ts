@@ -9,6 +9,7 @@
  */
 
 import { EXIT, type ExitCode } from "./exit-codes.js";
+import type { RunResult } from "./result.js";
 
 /**
  * Stable **CLI diagnostic code** registry — errors the CLI owns (routing, I/O, argument handling),
@@ -100,6 +101,25 @@ export class CliError extends Error {
  */
 export function formatDiagnostic(err: CliError): string {
   return `cosyte: ${err.code}: ${err.message}`;
+}
+
+/**
+ * Resolve a {@link CliError} into a value-free {@link RunResult}: empty `stdout` (nothing reaches the
+ * data channel on an error), the rendered diagnostic on `stderr`, and the error's exit code. The
+ * single place the CLI turns an owned error into a result, so every command and the dispatcher render
+ * errors identically.
+ *
+ * @param err - The CLI error to resolve.
+ * @returns The value-free {@link RunResult}.
+ * @example
+ * ```ts
+ * import { CliError, CLI_CODES, EXIT, errorResult } from "@cosyte/cli";
+ *
+ * errorResult(new CliError(CLI_CODES.CLI_USAGE, EXIT.USAGE, "missing <file>")).exit; // => 2
+ * ```
+ */
+export function errorResult(err: CliError): RunResult {
+  return { stdout: "", stderr: `${formatDiagnostic(err)}\n`, exit: err.exit };
 }
 
 /**
