@@ -9,12 +9,13 @@ sidebar_position: 1
 Task-oriented recipes for the `cosyte` command. Each is a short, copy-pasteable answer to one real
 question.
 
-> **Status:** Phase 1 ships `parse` (HL7 v2 + FHIR); Phase 2 hardens the PHI posture, adds the opt-in
-> `--unsafe-show-values`, and lands `redact`/`deid` as an honest gated stub; Phase 3 adds `validate`
-> (verdict in the exit code), `inspect` (a value-free structural summary), and `fmt` (canonical
-> re-serialization). `convert`/`map-codes`, the MCP server, and the remaining formats land in later
-> phases — a command is only documented here once its behavior ships and its example passes the
-> doc/code-agreement check.
+> **Status:** pre-alpha (`0.0.x`), not yet published to npm. The `cosyte` command ships five commands
+> over two wired parsers (HL7 v2 + FHIR): `parse` (autodetect → typed JSON), `validate` (verdict in the
+> exit code), `inspect` (a value-free structural summary), `fmt` (canonical re-serialization), and
+> `redact`/`deid` (an honest gated stub, exit `69`, until `@cosyte/deid` ships). PHI discipline runs
+> throughout — value-free by default, the opt-in `--unsafe-show-values`, never a PHI temp file.
+> `convert`/`map-codes`, the MCP server, and the remaining formats land in later phases — a command is
+> only documented here once its behavior ships and its example passes the doc/code-agreement check.
 
 ## Parse from a pipeline and select a field
 

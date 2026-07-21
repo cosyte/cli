@@ -15,15 +15,28 @@ It is a thin, honest skin over libraries that already own correctness ([`@cosyte
 [`@cosyte/fhir`](https://github.com/cosyte/fhir)): it routes, reads, and shapes output, and owns two
 disciplines of its own — a documented **exit-code contract** and a **value-free diagnostic** posture.
 
-> **Status:** pre-alpha (`0.0.x`), not yet published to npm. **Phase 1** ships `parse` for **HL7 v2**
-> and **FHIR R4**, content format autodetection, and the exit-code contract; **Phase 2** hardens the
-> PHI posture (value-free by default across every diagnostic, the loud opt-in `--unsafe-show-values`,
-> never a temp file with PHI) and adds `redact`/`deid` as an honest, gated stub; **Phase 3** adds
-> `validate` (verdict in the exit code), `inspect` (value-free structural summary), and `fmt` (canonical
-> re-serialization). `convert` / `map-codes`, the MCP server, and the remaining formats land in later
+> **Status:** pre-alpha (`0.0.x`), **not yet published to npm**. The `cosyte` command today ships five
+> commands over two wired parsers (**HL7 v2** + **FHIR R4**), with conservative content-format
+> autodetection and a documented exit-code contract:
+>
+> - **`parse`** — autodetect the format and print the parsed model as typed JSON on stdout.
+> - **`validate`** — parse, then run the wrapped parser's own validation surface, with the **verdict in
+>   the exit code** (`0` valid · `1` invalid · `65` unparseable); findings are value-free.
+> - **`inspect`** — a value-free structural summary (type, version, per-segment/entry counts).
+> - **`fmt`** — canonical re-serialization through the library's spec-clean serializer; no partial emit
+>   on unparseable input.
+> - **`redact` / `deid`** — gated to an honest `CLI_NOT_IMPLEMENTED` (exit `69`) until `@cosyte/deid`
+>   ships; it never reads the input and never emits a partial scrub dressed up as de-identified.
+>
+> PHI discipline runs throughout: value-free by default across every diagnostic, the loud opt-in
+> `--unsafe-show-values` as the single door to a value on a secondary surface, and never a temp file
+> with PHI. `convert` / `map-codes`, the MCP server, and the remaining parser formats land in later
 > phases.
 
 ## Run it
+
+> Not on npm yet. The commands below are how you'll install and run it **once it's published** —
+> until then, run it from a local checkout (`pnpm build`, then invoke `dist/bin/cosyte.mjs`).
 
 ```bash
 npx @cosyte/cli parse message.hl7   # no install; format autodetected → HL7 v2
