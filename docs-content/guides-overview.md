@@ -9,9 +9,10 @@ sidebar_position: 1
 Task-oriented recipes for the `cosyte` command. Each is a short, copy-pasteable answer to one real
 question.
 
-> **Status:** Phase 1 ships `parse` (HL7 v2 + FHIR). `validate`, `convert`, `redact`, `inspect`, the
-> MCP server, and the remaining formats land in later phases — a command is only documented here once
-> its behavior ships and its example passes the doc/code-agreement check.
+> **Status:** Phase 1 ships `parse` (HL7 v2 + FHIR); Phase 2 hardens the PHI posture, adds the opt-in
+> `--unsafe-show-values`, and lands `redact`/`deid` as an honest gated stub. `validate`, `convert`,
+> `inspect`, the MCP server, and the remaining formats land in later phases — a command is only
+> documented here once its behavior ships and its example passes the doc/code-agreement check.
 
 ## Parse from a pipeline and select a field
 
@@ -40,6 +41,17 @@ A `.txt` that is really HL7, or an ambiguous input, takes an explicit `--format`
 
 ```bash
 cosyte parse --format hl7 weird-extension.txt
+```
+
+## Debug a rejected message (and mind the PHI)
+
+A `CLI_PARSE_FAILED` line is value-free by default — a code and position, never the bytes. When you
+are working locally and need to see what the parser choked on, add the loud, opt-in
+`--unsafe-show-values` (it is **PHI-exposing** — never on stderr you will share):
+
+```bash
+cosyte parse broken.hl7 --format hl7                       # value-free diagnostic
+cosyte parse broken.hl7 --format hl7 --unsafe-show-values  # appends a bounded input excerpt
 ```
 
 ## Use the programmatic core

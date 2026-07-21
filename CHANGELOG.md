@@ -14,6 +14,26 @@ its public history at `0.0.x`, per the cosyte version ladder (`0.0.x` until firs
 
 ### Added
 
+- **Phase 2 — PHI posture hardened + `redact`/`deid` + `--unsafe-show-values`.**
+  - **`--unsafe-show-values`** — a global, opt-in, PHI-exposing flag, resolved once and order-
+    independently and funnelled through a **single chokepoint** (`core/phi.ts`), so the "a value
+    reaches a secondary surface **iff** the flag is set" property holds in one place. Off by default;
+    with it set, a `CLI_PARSE_FAILED` diagnostic appends a bounded, single-line excerpt of the
+    offending input. Every other surface stays value-free, and a successful parse still puts values
+    only on the stdout data channel.
+  - **`redact` / `deid` (`<file|->`, `--format`)** — the de-identification command, shipped as an
+    **honest, typed `CLI_NOT_IMPLEMENTED`** (new exit code `69`, `EX_UNAVAILABLE`). It is **gated on
+    `@cosyte/deid`** (unpublished, `DEID-1` in flight), **never reads the input**, and never emits a
+    partial Safe-Harbor scrub presented as de-identified. A built-in redactor is **deliberately
+    withheld** — a partial scrub over only the obvious PHI loci would leave PHI behind and present a
+    false-safety impression (the cardinal hazard). It delegates to `@cosyte/deid` via a documented
+    seam (`core/deid.ts`) when that library ships and is vetted.
+  - **Never a PHI temp file / never a file log** — proven by test (no command creates a file in the
+    working directory) and by design (commands return a `RunResult`; only the thin `bin` writes to
+    process streams).
+  - New `CLI_NOT_IMPLEMENTED` diagnostic code and `EXIT.UNAVAILABLE` (`69`); new programmatic exports
+    (`PhiPosture`, `VALUE_FREE`/`SHOW_VALUES`, `extractPhiPosture`, `unsafeInputSuffix`, `deidStatus`,
+    `redactCommand`).
 - **Phase 1 — the `cosyte parse` foundation.** Reshaped the scaffold from a library skeleton into a
   **`bin` package**: `package.json#bin` maps `cosyte` → `dist/bin/cosyte.mjs` (a shebang entry over a
   testable `core`), argument-parsed with Node's built-in `util.parseArgs` + a hand-rolled subcommand
@@ -52,6 +72,10 @@ its public history at `0.0.x`, per the cosyte version ladder (`0.0.x` until firs
 ### Removed
 
 ### Fixed
+
+- **`phi-scan` now scans the real fixture directory.** The scanner's fixture root pointed at a
+  nonexistent `test/fixtures/`; it now walks `test/__fixtures__/` (and the same path in the staged
+  filter), so the PHI commit-gate actually covers the CLI's synthetic fixtures.
 
 ### Security
 

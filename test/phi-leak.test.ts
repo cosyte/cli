@@ -74,4 +74,21 @@ describe("PHI leak matrix — stderr is value-free across every mode", () => {
     const r = await run(["parse", "bad.json", "--format", "fhir"], fileDeps(bad));
     assertNoSentinelOnStderr(r.stderr);
   });
+
+  it("--unsafe-show-values on a SUCCESSFUL parse still keeps stderr value-free", async () => {
+    // The flag opens a value only on FAILURE diagnostics; a clean parse's stderr stays value-free
+    // (values live on the stdout data channel, as requested).
+    for (const bytes of [HL7, FHIR]) {
+      const r = await run(["parse", "m", "--unsafe-show-values"], fileDeps(bytes));
+      assertNoSentinelOnStderr(r.stderr);
+      expect(r.stdout.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("`redact` is value-free even when pointed at a PHI-laden file (and never reads it)", async () => {
+    const r = await run(["redact", "m.hl7"], fileDeps(HL7));
+    assertNoSentinelOnStderr(r.stderr);
+    expect(r.stderr).toContain("CLI_NOT_IMPLEMENTED");
+    expect(r.stdout).toBe("");
+  });
 });
