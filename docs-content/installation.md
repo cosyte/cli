@@ -6,31 +6,39 @@ sidebar_position: 1
 
 # Installation
 
-`@cosyte/cli` is a zero-dependency TypeScript package for Node.js. It ships dual **ESM + CJS** builds with
-per-condition type declarations, so it works from either module system without configuration.
+`@cosyte/cli` ships the `cosyte` command as a Node.js executable. The lowest-friction path is `npx` —
+no global install required.
 
-> **Status:** pre-alpha (`0.0.x`), not yet published to npm. The command below is the shape it will
-> take at first publish; until then, consume it from source or a workspace link.
+> **Status:** pre-alpha (`0.0.x`), not yet published to npm. The commands below are the shape they will
+> take at first publish; until then, consume the CLI from source.
 
 ## Prerequisites
 
 - **Node.js >= 22** (the whole `@cosyte/*` suite targets ES2023 / Node 22+).
 - A package manager — `pnpm`, `npm`, or `yarn`.
 
-## Install
+## Run it
 
 ```bash
-npm install @cosyte/cli
+npx @cosyte/cli parse message.hl7    # no install — npx caches the package
 ```
 
-## Smoke test
+Or install globally to put `cosyte` on your `PATH`:
 
-Confirm the package resolves and its version symbol is present:
+```bash
+npm install -g @cosyte/cli
+cosyte --help
+```
 
-```ts
+## Programmatic API
+
+The same `core` the CLI uses is available as a small library (the `.` subpath) — the format
+autodetector, the exit-code contract, and the value-free diagnostic types:
+
+```ts runnable
 import { VERSION } from "@cosyte/cli";
 
-console.log(VERSION);
+typeof VERSION; // => "string"
 ```
 
-If that prints a version string, the install is good — head to the [Quickstart](./quickstart).
+If that resolves, the install is good — head to the [Quickstart](./quickstart).

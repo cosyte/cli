@@ -27,12 +27,14 @@ EMAILDOMAIN example.org
 EMAILDOMAIN example.net
 EMAILDOMAIN example.test
 
-# --- Synthetic person-name tokens (example — extend for your fixtures) ---
-# NAME DOE
-# NAME JOHN
+# --- Synthetic person-name tokens (used by the CLI's parse fixtures) ---
+# These are deliberately non-real sentinel tokens (prefix ZZSENTINEL) so a PHI-leak test can assert
+# they never reach stderr; they positively declare the fixtures' names as synthetic.
+NAME ZZSENTINELLAST
+NAME ZZSENTINELFIRST
 
-# --- Synthetic dates of birth (example — normalize to your detector's format) ---
-# DOB 19800115
+# --- Synthetic dates of birth (test/__fixtures__/adt-a01.hl7, patient.fhir.json) ---
+DOB 19800101
 
-# --- Synthetic ids: SSN / MRN / member-id shapes (example) ---
-# ID MRN12345
+# --- Synthetic ids: MRN / member-id shapes (test/__fixtures__/*) ---
+ID MRN-000123

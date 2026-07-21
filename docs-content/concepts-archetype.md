@@ -1,42 +1,55 @@
 ---
 id: concepts-archetype
-title: The parser archetype
+title: How the CLI works
 sidebar_position: 1
 ---
 
 # Core Concepts
 
-`@cosyte/cli` follows the shared **cosyte parser archetype** — the same mental model every `@cosyte/*`
-parser implements, so what you learn here transfers across the suite. `@cosyte/hl7` is the reference
-implementation; this package mirrors its shape.
+`@cosyte/cli` is a **thin, honest skin** over the `@cosyte/*` parsers. Understanding its three
+load-bearing disciplines — the wrapper boundary, the exit-code contract, and the PHI posture — tells
+you exactly what to trust it for.
 
-## Postel's Law: lenient parse, strict emit
+## The wrapper boundary
 
-The parser is **liberal in what it accepts** and the serializer is **conservative in what it emits**.
-Vendor quirks and tolerated deviations don't fail a parse — they become **warnings** — while anything
-the serializer produces is spec-clean. A `{ strict: true }` option escalates every tolerated
-deviation to a thrown error for callers who want the parse to fail loudly instead.
+The CLI's correctness surface is **narrow by design**, because most correctness lives one layer down.
 
-## The tolerance tiers
+**The CLI owns:** format autodetection routing, the exit-code contract, the value-free PHI posture,
+argument/stdin handling, output shaping, and faithful pass-through of the wrapped library's warnings.
 
-Every deviation the parser encounters falls into one of three tiers:
+**The CLI does _not_ re-do:** any wire-format parsing, tolerance, or warning semantics — that is the
+wrapped parser's job, graded by its own conformance gate. `cosyte parse` equals the library's
+programmatic parse; a bug in a value is the library's, while a mis-route, a wrong exit code, or a
+leaked value is the CLI's.
 
-- **Tier 1 — spec-clean.** No deviation; no warning.
-- **Tier 2 — recoverable.** A vendor quirk the parser tolerates. It returns a **warning** with a
-  stable code and positional context, and keeps going. Never thrown (unless `strict`).
-- **Tier 3 — fatal.** Unrecoverable structural corruption. **Always thrown**, even in lenient mode.
+## Fail-safe autodetection
 
-## Stable warning + fatal codes
+Detection sniffs content, never the file extension, and is **conservative**: a single confident
+signature match parses; zero or more than one match is a typed data error asking for `--format`,
+**never a guess**. A wrong sniff would route bytes to the wrong parser and yield confident garbage —
+so the CLI refuses to guess, mirroring the parsers' "never a confident wrong value" rule at the
+routing layer.
 
-Warnings and fatal errors carry **stable codes** — `WARNING_CODES` (Tier 2) and `FATAL_CODES`
-(Tier 3). Consumers branch on these, so a code's name is part of the public contract: renaming or
-removing one is a **breaking change**. Codes are `key === value` entries, so the full set survives an
-`Object.values(...)` snapshot into a stability tripwire.
+## The exit-code contract
 
-> **Status:** the code registries currently hold placeholder entries; the real codes are added as the
-> parser grows, phase by phase. See the **API Reference** for the exact set this release ships.
+Exit codes are a **designed surface** CI depends on, grounded in the Unix `sysexits.h` conventions:
+`0` success, `2` usage error, `65` data error (unparseable / undetected), `66` no input, `70` internal
+error. The load-bearing rule: the CLI **never prints a reassuring line and exits `0`** on input it
+could not handle.
 
-## Immutability
+## The PHI posture
 
-Parsed values are immutable by default; mutation happens only through explicit methods. This keeps a
-parsed document safe to share across a pipeline without defensive copying.
+A CLI operates on real files a developer points at — the moment cosyte code touches un-synthetic PHI.
+So the channels are split:
+
+- **stdout is the data channel.** `parse` emits the parsed model there because that is your explicit
+  request, going to the sink you chose (a pipe, a redirect, your screen).
+- **Every other surface is value-free.** stderr, errors, and diagnostics carry **only** positional
+  context — a segment/field index, a byte offset, a file path, a stable code — **never** a name, DOB,
+  MRN, or result value. An error never echoes the offending bytes.
+
+Diagnostic codes are stable (`CLI_CODES`): scripts branch on them, so renaming one is a breaking
+change.
+
+> The `--unsafe-show-values` escape hatch and the `redact` command are a later phase; Phase 1 is
+> value-free everywhere except the stdout data channel.

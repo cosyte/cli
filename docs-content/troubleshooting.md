@@ -6,46 +6,57 @@ sidebar_position: 1
 
 # Troubleshooting
 
-Common symptoms when integrating `@cosyte/cli`, and how to read what the parser is telling you.
+Common symptoms with `cosyte parse`, and how to read what the CLI is telling you. Every diagnostic is
+a value-free line on stderr: `cosyte: <CODE>: <message>` — a stable code plus positional context,
+never a field value.
 
-## The parse "succeeded" but the result looks wrong
+## `CLI_FORMAT_UNDETECTED` (exit 65)
 
-`@cosyte/cli` is lenient — it recovers from vendor quirks rather than throwing. That means a surprising
-result usually comes with an explanation in `warnings`. Inspect them first:
+No format signature matched the content, and the CLI **will not guess**. Re-run with an explicit
+format:
 
-```ts
-const { value, warnings } = parseCli(raw);
-
-for (const w of warnings) {
-  console.warn(w.code, w.message, w.position);
-}
+```bash
+cosyte parse --format hl7 message.txt
 ```
 
-Each warning carries a **stable code** (`WARNING_CODES`) and positional context. If a deviation
-should be a hard failure for your integration, re-parse with `{ strict: true }` to have it thrown
-instead.
+Detection sniffs the leading bytes: HL7 needs an `MSH|…` start, FHIR needs a JSON object with a
+`resourceType`. A file with a misleading extension is fine — content is what matters.
 
-## A parse threw
+## `CLI_FORMAT_AMBIGUOUS` (exit 65)
 
-Only **Tier-3 fatal** conditions (`FATAL_CODES`) throw in lenient mode — these mark input the parser
-cannot recover into a structured result. In `{ strict: true }` mode, any tolerated deviation throws
-too. Catch and inspect the error's code to tell the two apart.
+More than one signature matched. Disambiguate with `--format`. (With only HL7 and FHIR wired this
+cannot yet occur — the branch exists so a future overlapping signature is a *detected* ambiguity, not
+a silent mis-route.)
 
-## Warning messages and logs
+## `CLI_FORMAT_UNSUPPORTED` (exit 65)
 
-Warning `message` fields are safe to log — they **never contain PHI**. Never log the raw payload
-itself; it may carry protected health information.
+The format was recognised but this CLI build does not yet wire it. Phase 1 wires **hl7** and **fhir**;
+the other formats arrive in later phases. The command is never faked to a success it cannot deliver.
 
-## Known limitations
+## `CLI_NO_INPUT` (exit 66)
 
-> **Status:** `@cosyte/cli` is a pre-alpha scaffold. `parseCli` currently returns a structural stub
-> (`{ value: {}, warnings: [] }`); the real lenient tokenizer, immutable model, serializer, and the
-> full warning/fatal code sets land in subsequent phases.
+The file does not exist or is unreadable. Check the path; use `-` to read stdin instead of a file.
 
-- **`string` input only** for now — `Buffer` / `Uint8Array` support arrives with the real parser.
-- **Placeholder code registries** — `WARNING_CODES` / `FATAL_CODES` hold example entries until the
-  parser populates the real ones.
-- **No serializer yet** — the spec-clean emit side is added in a later phase.
+## `CLI_PARSE_FAILED` (exit 65)
 
-The **API Reference** always reflects exactly what this release ships — treat it as the source of
-truth over any prose above.
+The wrapped parser rejected the input as unrecoverable. The stderr line carries the format and a
+stable code token only — **not** the offending bytes. Inspect the input yourself; the CLI will not
+echo it for you.
+
+## `CLI_USAGE` (exit 2)
+
+An unknown flag or command, or a missing `<file>` argument. Run `cosyte --help`.
+
+## Is the output safe to share?
+
+**stdout is the data channel** — the parsed `model` it prints is your real data and may contain PHI;
+treat it as you would the source message. **stderr is value-free** — safe to paste into a bug report.
+The CLI never writes a temp file and never logs to a file.
+
+## Known limitations (Phase 1)
+
+- Only `parse` is implemented, and only **hl7** and **fhir** are wired.
+- No `validate`/`convert`/`redact`/`inspect`, no `--unsafe-show-values`, no MCP server yet — those are
+  later phases.
+
+The **API Reference** always reflects exactly what this release ships.
