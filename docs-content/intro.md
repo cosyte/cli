@@ -20,8 +20,8 @@ your `PATH`. It is a thin, honest skin over libraries that already own correctne
 shapes output, and owns two disciplines of its own: a documented **exit-code contract** and a
 **value-free diagnostic** posture (never a field value on stderr).
 
-> **Status:** pre-alpha (`0.0.x`), not yet published to npm. Phase 1 wires `parse` for **HL7 v2** and
-> **FHIR R4**; more commands and formats land in later phases.
+> **Status:** pre-alpha (`0.0.x`), not yet published to npm. `parse`, `validate`, `inspect`, and `fmt`
+> are wired for **HL7 v2** and **FHIR R4**; more commands and formats land in later phases.
 
 ## Parse a message
 

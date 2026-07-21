@@ -18,8 +18,10 @@ disciplines of its own — a documented **exit-code contract** and a **value-fre
 > **Status:** pre-alpha (`0.0.x`), not yet published to npm. **Phase 1** ships `parse` for **HL7 v2**
 > and **FHIR R4**, content format autodetection, and the exit-code contract; **Phase 2** hardens the
 > PHI posture (value-free by default across every diagnostic, the loud opt-in `--unsafe-show-values`,
-> never a temp file with PHI) and adds `redact`/`deid` as an honest, gated stub (see below). `validate`
-> / `convert` / `inspect`, the MCP server, and the remaining formats land in later phases.
+> never a temp file with PHI) and adds `redact`/`deid` as an honest, gated stub; **Phase 3** adds
+> `validate` (verdict in the exit code), `inspect` (value-free structural summary), and `fmt` (canonical
+> re-serialization). `convert` / `map-codes`, the MCP server, and the remaining formats land in later
+> phases.
 
 ## Run it
 
@@ -44,20 +46,62 @@ cosyte parse --format hl7 msg.txt   # override autodetection
 Autodetection is **conservative**: a confident single match parses; ambiguity or no match is a typed
 data error asking for `--format` — **never a guessed parser**.
 
+## `cosyte validate`
+
+Parse the input and run the wrapped parser's own validation surface, with the **verdict in the exit
+code** — so it drops straight into a CI gate:
+
+```bash
+cosyte validate message.hl7            # exit 0 valid · 1 invalid · 65 unparseable
+cosyte validate patient.json --json    # value-free { format, valid, findings } on stdout
+cosyte validate patient.json --quiet   # no output — the exit code is the whole signal
+```
+
+Findings are **value-free**: a stable code, a severity, and a positional locator (a FHIRPath, or an
+HL7 segment/field index) — never a field value. The verdict is the wrapped library's, never invented:
+FHIR validity is `@cosyte/fhir`'s `validateResource()`; an HL7 message is valid when it parses (its
+warnings are non-fatal deviations, surfaced but never failing). `--profile` is reserved — the CLI
+bundles no profiles yet, so it reports an honest "unavailable" (exit `69`) rather than fake a verdict.
+
+The load-bearing rule: a validation failure is **never exit 0**, and "unparseable" (`65`) is a distinct
+signal from "parsed, but invalid" (`1`).
+
+## `cosyte inspect`
+
+A value-free structural summary — the "what shape is this?" answer, with no field value:
+
+```bash
+cosyte inspect message.hl7    # message type, version, per-segment counts, warning count
+cosyte inspect bundle.json --json
+```
+
+## `cosyte fmt`
+
+Canonically re-serialize through the wrapped library's spec-clean serializer (HL7 CR-separated;
+FHIR canonical JSON, decimals byte-exact). Its stdout **is** the data channel; an unparseable input is
+a data error with **no partial emit**:
+
+```bash
+cat messy.json | cosyte fmt -   # → canonical FHIR JSON on stdout
+cosyte fmt message.hl7          # → spec-clean HL7
+```
+
 ## The exit-code contract
 
-`cosyte parse` is safe to branch on in CI — the exit code carries the outcome (`sysexits.h`):
+Every command is safe to branch on in CI — the exit code carries the outcome (`sysexits.h`):
 
-| Code | Meaning                                              |
-| ---- | ---------------------------------------------------- |
-| `0`  | success                                              |
-| `2`  | usage error (unknown flag, missing argument)         |
-| `65` | data error (unparseable input, or format undetected) |
-| `66` | no input (missing/unreadable file)                   |
-| `70` | internal error (a bug)                               |
+| Code | Meaning                                                    |
+| ---- | ---------------------------------------------------------- |
+| `0`  | success / **valid** (`validate`)                           |
+| `1`  | **invalid** — `validate` found a parseable-but-bad message |
+| `2`  | usage error (unknown flag, missing argument)               |
+| `65` | data error (unparseable input, or format undetected)       |
+| `66` | no input (missing/unreadable file)                         |
+| `69` | unavailable (a capability is not yet built, e.g. `redact`) |
+| `70` | internal error (a bug)                                     |
 
 The load-bearing rule: the CLI **never prints a reassuring line and exits `0`** on input it could not
-handle.
+handle, or on an invalid message.
 
 ## PHI posture
 
@@ -93,8 +137,10 @@ ships and is vetted.
 
 ## Programmatic API
 
-The same `core` is importable (the `.` subpath): `detectFormat`, the `EXIT` map, the `CLI_CODES`
-diagnostic registry, and `run`. See the docs for the full surface.
+The same `core` is importable (the `.` subpath): `detectFormat`, the `EXIT` map (now including
+`EXIT.INVALID`), the `CLI_CODES` diagnostic registry, `resolveInput`, `run`, and each command
+(`parseCommand`, `validateCommand`, `inspectCommand`, `fmtCommand`, `redactCommand`). See the docs for
+the full surface.
 
 ## License
 

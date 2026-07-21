@@ -10,9 +10,11 @@ Task-oriented recipes for the `cosyte` command. Each is a short, copy-pasteable 
 question.
 
 > **Status:** Phase 1 ships `parse` (HL7 v2 + FHIR); Phase 2 hardens the PHI posture, adds the opt-in
-> `--unsafe-show-values`, and lands `redact`/`deid` as an honest gated stub. `validate`, `convert`,
-> `inspect`, the MCP server, and the remaining formats land in later phases — a command is only
-> documented here once its behavior ships and its example passes the doc/code-agreement check.
+> `--unsafe-show-values`, and lands `redact`/`deid` as an honest gated stub; Phase 3 adds `validate`
+> (verdict in the exit code), `inspect` (a value-free structural summary), and `fmt` (canonical
+> re-serialization). `convert`/`map-codes`, the MCP server, and the remaining formats land in later
+> phases — a command is only documented here once its behavior ships and its example passes the
+> doc/code-agreement check.
 
 ## Parse from a pipeline and select a field
 

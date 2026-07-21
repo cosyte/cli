@@ -23,6 +23,17 @@ subpath still exports a small programmatic `core` API (`detectFormat`, `EXIT`, `
 
 ## Status
 
+- **Phase 3 shipped** (`operations/roadmaps/cli.md` §Phase 3). Adds three commands over the two wired
+  parsers: **`validate`** (parse + the wrapped parser's own validation surface, **verdict in the exit
+  code** — `0` valid / `1` invalid / `65` unparseable; findings value-free; `--profile` gated to an
+  honest `CLI_NOT_IMPLEMENTED`/`69`; verdict never invented — FHIR = `validateResource().valid`, HL7 =
+  parseable), **`inspect`** (a value-free structural summary — message/resource type, segment/entry
+  counts, warning/issue count), and **`fmt`** (canonical re-serialization via the library's serializer;
+  stdout is the data channel; no partial emit on unparseable input). Adds **`EXIT.INVALID` (`1`)** — the
+  exit-code contract is now `0/1/2/65/66/69/70`. All four commands share one input+format front door
+  (`core/input.ts` `resolveInput`) and one value-free parser-failure boundary (`core/wrap.ts`), so the
+  value-free posture + `--unsafe-show-values` chokepoint stay uniform (`parse` refactored onto them,
+  behavior-preserving).
 - **Phase 2 shipped** (`operations/roadmaps/cli.md` §Phase 2). Pre-alpha `0.0.x`, unpublished. On top
   of Phase 1's `cosyte parse` (HL7 v2 + FHIR R4, content autodetection, exit-code contract, value-free
   `CLI_*` diagnostics), Phase 2 hardens the PHI posture: the global opt-in **`--unsafe-show-values`**
@@ -38,9 +49,11 @@ subpath still exports a small programmatic `core` API (`detectFormat`, `EXIT`, `
   refresh with `pnpm vendor:refresh`. Pinned shas: hl7 `46d50eb`, fhir `7a099b2`. **Lazy-loaded per
   format.** Umbrella `verify-policy.json` caps `cli` runtime deps at **2**. Third-party CLI-core
   runtime deps: **zero**.
-- **Deferred:** `validate`/`inspect`/`fmt` (P3), `convert`/`map-codes` (P4, library-gated), the MCP
-  server (P5, ADR 0022), the other six parsers + streaming (P6), release hardening (P7). `redact`'s
-  real de-identification is deferred to when `@cosyte/deid` ships (P2 landed the gated stub + seam).
+- **Deferred:** `convert`/`map-codes` (P4, library-gated on `@cosyte/transform` + `@cosyte/terminology`),
+  the MCP server (P5, ADR 0022), the other six parsers + streaming (P6), release hardening (P7).
+  `redact`'s real de-identification is deferred to when `@cosyte/deid` ships (P2 landed the gated stub +
+  seam). `validate --profile` is reserved but gated (`CLI_NOT_IMPLEMENTED`/`69`) until the CLI can load
+  a profile — no profiles are bundled.
 - **ADRs:** `documentation/decisions/0021` (dependency-tier: a `bin` hard-deps first-party siblings)
   and `0022` (one-repo-two-bins: CLI + future MCP over one core; web playground out of scope).
 

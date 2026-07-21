@@ -8,8 +8,11 @@
  * @packageDocumentation
  */
 
+import { fmtCommand } from "../commands/fmt.js";
+import { inspectCommand } from "../commands/inspect.js";
 import { parseCommand } from "../commands/parse.js";
 import { redactCommand } from "../commands/redact.js";
+import { validateCommand } from "../commands/validate.js";
 import { CLI_CODES, CliError, toCliError } from "./diagnostics.js";
 import { EXIT } from "./exit-codes.js";
 import type { RunDeps } from "./io.js";
@@ -24,25 +27,28 @@ Usage:
   cosyte <command> [options]
 
 Commands:
-  parse <file|->    Parse a healthcare message to typed JSON (format autodetected)
-  redact <file|->   De-identify a message (alias: deid) — gated on @cosyte/deid, not yet available
+  parse <file|->      Parse a healthcare message to typed JSON (format autodetected)
+  validate <file|->   Validate a message; exit code carries the verdict (0 valid / 1 invalid)
+  inspect <file|->    Print a value-free structural summary (segment/resource counts, type)
+  fmt <file|->        Canonically re-serialize via the parser's spec-clean serializer
+  redact <file|->     De-identify a message (alias: deid) — gated on @cosyte/deid, not yet available
 
 Global:
   -h, --help              Show this help
   -V, --version           Show the CLI version
   --unsafe-show-values    Permit input values on stderr/diagnostics (PHI-exposing; off by default)
 
-parse options:
+Common options (parse / validate / inspect / fmt):
   --format <fmt>    Override autodetection: hl7 | fhir | dicom | x12 | ccda | ncpdp | astm
                     (wired this build: hl7, fhir)
-  --json            Compact machine-readable JSON (default is pretty-printed)
-  --quiet           Suppress the value-free warning-count note on stderr
+  --json            Machine-readable JSON output (parse / validate / inspect)
+  --quiet           Suppress value-free notes on stderr
   --no-color        Disable ANSI colour
 
 Exit codes:
-  0   success            65  data error (unparseable / undetected format)
-  2   usage error        66  no input (missing/unreadable file)
-                         69  unavailable (a capability is not yet built, e.g. redact)
+  0   success / valid    65  data error (unparseable / undetected format)
+  1   invalid (validate) 66  no input (missing/unreadable file)
+  2   usage error        69  unavailable (a capability is not yet built, e.g. redact)
                          70  internal error
 
 PHI posture: the parsed model goes to stdout (the data channel you chose); every diagnostic on
@@ -86,6 +92,12 @@ export async function run(argv: string[], deps: RunDeps): Promise<RunResult> {
     switch (command) {
       case "parse":
         return await parseCommand(rest, deps, posture);
+      case "validate":
+        return await validateCommand(rest, deps, posture);
+      case "inspect":
+        return await inspectCommand(rest, deps, posture);
+      case "fmt":
+        return await fmtCommand(rest, deps, posture);
       case "redact":
       case "deid":
         return redactCommand(rest);

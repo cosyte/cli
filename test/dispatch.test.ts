@@ -57,11 +57,44 @@ describe("run — top-level dispatch", () => {
     expect((await run(["deid", "x.hl7"], noDeps)).exit).toBe(EXIT.UNAVAILABLE);
   });
 
-  it("help names the redact command and the --unsafe-show-values flag", async () => {
+  it("routes `validate` to the validate command", async () => {
+    const fhir = new TextEncoder().encode('{"resourceType":"Patient","gender":"male"}');
+    const r = await run(["validate", "-"], {
+      readFile: () => Promise.resolve(new Uint8Array()),
+      readStdin: () => Promise.resolve(fhir),
+    });
+    expect(r.exit).toBe(EXIT.OK);
+    expect(r.stderr).toContain("is valid");
+  });
+
+  it("routes `inspect` to the inspect command", async () => {
+    const fhir = new TextEncoder().encode('{"resourceType":"Patient"}');
+    const r = await run(["inspect", "-"], {
+      readFile: () => Promise.resolve(new Uint8Array()),
+      readStdin: () => Promise.resolve(fhir),
+    });
+    expect(r.exit).toBe(EXIT.OK);
+    expect(r.stdout).toContain("Patient");
+  });
+
+  it("routes `fmt` to the fmt command", async () => {
+    const fhir = new TextEncoder().encode('{ "resourceType":"Patient" }');
+    const r = await run(["fmt", "-"], {
+      readFile: () => Promise.resolve(new Uint8Array()),
+      readStdin: () => Promise.resolve(fhir),
+    });
+    expect(r.exit).toBe(EXIT.OK);
+    expect(r.stdout).toContain('"resourceType":"Patient"');
+  });
+
+  it("help names every command, the --unsafe-show-values flag, and the verdict exit codes", async () => {
     const help = (await run(["--help"], noDeps)).stdout;
-    expect(help).toContain("redact");
+    for (const cmd of ["parse", "validate", "inspect", "fmt", "redact"]) {
+      expect(help).toContain(cmd);
+    }
     expect(help).toContain("--unsafe-show-values");
     expect(help).toContain("69");
+    expect(help).toContain("1"); // the validate invalid verdict exit code
   });
 
   it("maps an unexpected exception to CLI_INTERNAL (exit 70), value-free", async () => {
