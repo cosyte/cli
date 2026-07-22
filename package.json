@@ -109,6 +109,8 @@
   },
   "dependencies": {
     "@cosyte/fhir": "file:vendor/cosyte-fhir-0.0.0.tgz",
-    "@cosyte/hl7": "file:vendor/cosyte-hl7-0.0.0.tgz"
+    "@cosyte/hl7": "file:vendor/cosyte-hl7-0.0.0.tgz",
+    "@cosyte/terminology": "file:vendor/cosyte-terminology-0.0.1.tgz",
+    "@cosyte/transform": "file:vendor/cosyte-transform-0.0.0.tgz"
   }
 }

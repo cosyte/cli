@@ -14,6 +14,36 @@ its public history at `0.0.x`, per the cosyte version ladder (`0.0.x` until firs
 
 ### Added
 
+- **Phase 4 — `convert` / `map-codes` (the consumer-of-consumers commands).** Two commands that wrap
+  the higher-layer libraries; the CLI adds **no** mapping or terminology logic of its own.
+  - **`convert <file|-> --to fhir [--json] [--quiet]`** — **HL7 v2 → FHIR R4** via
+    **`@cosyte/transform`**. Parses the input with `@cosyte/hl7`, hands the parsed message to
+    `transform.toFhir`, and emits the serialized FHIR **message `Bundle`** (the library's canonical
+    serialization) on **stdout** — `cosyte convert` equals `transform`'s programmatic output. The
+    conversion's value-free issues (a stable code + a v2-index → FHIRPath locator, never a field value)
+    render on stderr (or as a JSON envelope under `--json`); `--quiet` suppresses them. The
+    load-bearing rule mirrors `validate`: an **error-severity** transform issue drives exit **`1`**,
+    never `0`. `--to fhir` is required (the only target); a **non-HL7 source** (e.g. a FHIR document) is
+    a value-free `CLI_FORMAT_UNSUPPORTED` data error (`65`), never a fake conversion; an unparseable
+    HL7 input is `CLI_PARSE_FAILED` (`65`).
+  - **`map-codes <conceptmap|-> --code <code> [--system <uri>] [--version] [--display] [--json]
+[--quiet]`** — translate a single source coding through a **BYO FHIR R4 ConceptMap** via
+    **`@cosyte/terminology`** (`$translate`). The positional is the ConceptMap document; the source
+    coding is named by flags. A ConceptMap and a code are **reference data, not PHI**, so the
+    translation result goes to **stdout**: a **match** → the target coding(s) + exit **`0`**; an
+    **unmapped** code → the never-fabricate `TERM_TRANSLATE_UNMAPPED` signal + exit **`1`**. A map that
+    is not valid JSON or not a loadable ConceptMap is the new value-free **`CLI_MAP_INVALID`** data
+    error (`65`), surfacing the stable terminology-loader code (e.g. `TERM_CONCEPTMAP_MALFORMED`) —
+    never the map's bytes.
+  - New **`CLI_MAP_INVALID`** diagnostic code. New programmatic exports: `convertCommand`,
+    `convertOutcome`, `mapCodesCommand`. New runtime dependencies (ADR 0023): **`@cosyte/transform`**
+    (`e6c4531`, v0.0.0) and **`@cosyte/terminology`** (`e5ed368`, v0.0.1) as **hard, first-party,
+    lazy-loaded** deps — vendored as `pnpm pack` tarballs under `vendor/` until PUB-FLIP
+    (`pnpm vendor:refresh`; umbrella ADR 0008). The umbrella `verify-policy.json` cap on `cli` runtime
+    deps was raised **2 → 4**; third-party CLI-core runtime deps stay **zero** (both siblings are
+    lazy-loaded per command, so the `parse` fast path never loads them).
+  - **ADR `0023`** — wire `@cosyte/transform` + `@cosyte/terminology`; the deliberate 2 → 4 cap raise
+    (amends ADR 0021).
 - **Phase 3 — `validate` / `inspect` / `fmt`.** Three commands over the two wired parsers
   (HL7 v2 + FHIR R4), each a thin wrapper that re-implements no library logic.
   - **`validate <file|-> [--profile] [--json] [--quiet]`** — parse + run the wrapped parser's own

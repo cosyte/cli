@@ -23,6 +23,16 @@ subpath still exports a small programmatic `core` API (`detectFormat`, `EXIT`, `
 
 ## Status
 
+- **Phase 4 shipped** (`operations/roadmaps/cli.md` §Phase 4). Adds the two **consumer-of-consumers**
+  commands, each a thin wrapper that re-implements no library logic: **`convert <file|-> --to fhir`**
+  (HL7 v2 → FHIR R4 via **`@cosyte/transform`** — parse with `hl7`, `toFhir`, serialize with `fhir`;
+  the `Bundle` on stdout, value-free issues on stderr, an **error-severity issue drives exit `1`**, a
+  non-HL7 source is `CLI_FORMAT_UNSUPPORTED`/`65`) and **`map-codes <conceptmap|-> --code … [--system
+…]`** (ConceptMap `$translate` via **`@cosyte/terminology`**, BYO ConceptMap — a match → target
+  coding(s) + exit `0`; unmapped → `TERM_TRANSLATE_UNMAPPED` + exit `1`; an unloadable map → the new
+  **`CLI_MAP_INVALID`**/`65`). Both siblings are **hard, first-party, lazy-loaded** runtime deps
+  (vendored tarballs; the umbrella dep cap was raised **2 → 4** — ADR 0023). New exports:
+  `convertCommand`, `convertOutcome`, `mapCodesCommand`.
 - **Phase 3 shipped** (`operations/roadmaps/cli.md` §Phase 3). Adds three commands over the two wired
   parsers: **`validate`** (parse + the wrapped parser's own validation surface, **verdict in the exit
   code** — `0` valid / `1` invalid / `65` unparseable; findings value-free; `--profile` gated to an
@@ -44,18 +54,21 @@ subpath still exports a small programmatic `core` API (`detectFormat`, `EXIT`, `
 - **Phase 1 shipped** (§Phase 1). `cosyte parse <file|->` for **HL7 v2** + **FHIR R4**, **content
   format autodetection** (conservative, fail-safe — never a guessed parser), the documented
   **exit-code contract**, and the **value-free diagnostic** channel with stable `CLI_*` codes.
-- **Hard runtime deps (ADR 0021):** `@cosyte/hl7` + `@cosyte/fhir` are **real `dependencies`** (an
-  `npx` bin can't peer-depend), vendored as `pnpm pack` tarballs in `vendor/` until PUB-FLIP —
-  refresh with `pnpm vendor:refresh`. Pinned shas: hl7 `46d50eb`, fhir `7a099b2`. **Lazy-loaded per
-  format.** Umbrella `verify-policy.json` caps `cli` runtime deps at **2**. Third-party CLI-core
-  runtime deps: **zero**.
-- **Deferred:** `convert`/`map-codes` (P4, library-gated on `@cosyte/transform` + `@cosyte/terminology`),
-  the MCP server (P5, ADR 0022), the other six parsers + streaming (P6), release hardening (P7).
+- **Hard runtime deps (ADR 0021 + 0023):** `@cosyte/hl7` + `@cosyte/fhir` (parsers) and
+  `@cosyte/transform` + `@cosyte/terminology` (the higher-layer libs `convert`/`map-codes` wrap) are
+  **real `dependencies`** (an `npx` bin can't peer-depend), vendored as `pnpm pack` tarballs in
+  `vendor/` until PUB-FLIP — refresh with `pnpm vendor:refresh`. Pinned shas: hl7 `46d50eb`, fhir
+  `7a099b2`, transform `e6c4531`, terminology `e5ed368`. **Lazy-loaded per command.** Umbrella
+  `verify-policy.json` caps `cli` runtime deps at **4** (raised 2 → 4 for CLI-4, ADR 0023).
+  Third-party CLI-core runtime deps: **zero**.
+- **Deferred:** the MCP server (P5, ADR 0022), the other six parsers + streaming (P6), release
+  hardening (P7).
   `redact`'s real de-identification is deferred to when `@cosyte/deid` ships (P2 landed the gated stub +
   seam). `validate --profile` is reserved but gated (`CLI_NOT_IMPLEMENTED`/`69`) until the CLI can load
   a profile — no profiles are bundled.
-- **ADRs:** `documentation/decisions/0021` (dependency-tier: a `bin` hard-deps first-party siblings)
-  and `0022` (one-repo-two-bins: CLI + future MCP over one core; web playground out of scope).
+- **ADRs:** `documentation/decisions/0021` (dependency-tier: a `bin` hard-deps first-party siblings),
+  `0022` (one-repo-two-bins: CLI + future MCP over one core; web playground out of scope), and `0023`
+  (wire `transform` + `terminology` for `convert`/`map-codes`; the deliberate 2 → 4 dep-cap raise).
 
 ## Tech Stack (the shared `@cosyte/*` standard)
 
@@ -77,8 +90,9 @@ a summary.
   never on stderr, across `--json`/`--quiet`/verbose). The thin `bin/` process adapter is
   coverage-excluded at source (a `/* v8 ignore */` block over the argv/stdin/exit glue).
 - **CI/CD:** thin callers of the reusable `cosyte/.github` workflows.
-- **Runtime deps:** `@cosyte/hl7` + `@cosyte/fhir` (first-party, hard, vendored — ADR 0021), capped at
-  **2**. **Zero third-party** in the CLI core (`util.parseArgs`, no framework).
+- **Runtime deps:** `@cosyte/hl7` + `@cosyte/fhir` + `@cosyte/transform` + `@cosyte/terminology`
+  (first-party, hard, vendored — ADR 0021 + 0023), capped at **4**. **Zero third-party** in the CLI
+  core (`util.parseArgs`, no framework).
 - **License:** MIT.
 
 ## Engineering Guardrails

@@ -87,9 +87,42 @@ describe("run — top-level dispatch", () => {
     expect(r.stdout).toContain('"resourceType":"Patient"');
   });
 
+  it("routes `convert` to the convert command (HL7 v2 → FHIR)", async () => {
+    const hl7 = new TextEncoder().encode(
+      "MSH|^~\\&|A|B|C|D|20240101120000||ADT^A01|1|P|2.5\rEVN|A01|20240101120000\rPID|1||X^^^H^MR||DOE^JANE||19800101|F\r",
+    );
+    const r = await run(["convert", "-", "--to", "fhir"], {
+      readFile: () => Promise.resolve(new Uint8Array()),
+      readStdin: () => Promise.resolve(hl7),
+    });
+    expect(r.exit).toBe(EXIT.OK);
+    expect(r.stdout).toContain('"resourceType":"Bundle"');
+  });
+
+  it("routes `map-codes` to the map-codes command (BYO ConceptMap)", async () => {
+    const cmap = new TextEncoder().encode(
+      JSON.stringify({
+        resourceType: "ConceptMap",
+        group: [
+          {
+            source: "s",
+            target: "t",
+            element: [{ code: "male", target: [{ code: "M", equivalence: "equivalent" }] }],
+          },
+        ],
+      }),
+    );
+    const r = await run(["map-codes", "-", "--code", "male"], {
+      readFile: () => Promise.resolve(new Uint8Array()),
+      readStdin: () => Promise.resolve(cmap),
+    });
+    expect(r.exit).toBe(EXIT.OK);
+    expect(r.stdout).toContain('"M"');
+  });
+
   it("help names every command, the --unsafe-show-values flag, and the verdict exit codes", async () => {
     const help = (await run(["--help"], noDeps)).stdout;
-    for (const cmd of ["parse", "validate", "inspect", "fmt", "redact"]) {
+    for (const cmd of ["parse", "validate", "inspect", "fmt", "convert", "map-codes", "redact"]) {
       expect(help).toContain(cmd);
     }
     expect(help).toContain("--unsafe-show-values");

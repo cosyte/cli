@@ -41,6 +41,9 @@ export const CLI_CODES = {
   CLI_FORMAT_UNSUPPORTED: "CLI_FORMAT_UNSUPPORTED",
   /** The wrapped parser rejected the input. Positional context only — never the offending bytes. Exit `65`. */
   CLI_PARSE_FAILED: "CLI_PARSE_FAILED",
+  /** The BYO ConceptMap supplied to `map-codes` is not valid JSON or not a loadable FHIR ConceptMap.
+   * Names the stable terminology-loader code, never the map's bytes. Exit `65`. */
+  CLI_MAP_INVALID: "CLI_MAP_INVALID",
   /** A command whose ground-layer library is not yet built (e.g. `redact` before `@cosyte/deid`
    * ships). Never a fake success — a distinct, value-free "unavailable" signal. Exit `69`. */
   CLI_NOT_IMPLEMENTED: "CLI_NOT_IMPLEMENTED",
