@@ -8,8 +8,10 @@
  * @packageDocumentation
  */
 
+import { convertCommand } from "../commands/convert.js";
 import { fmtCommand } from "../commands/fmt.js";
 import { inspectCommand } from "../commands/inspect.js";
+import { mapCodesCommand } from "../commands/map-codes.js";
 import { parseCommand } from "../commands/parse.js";
 import { redactCommand } from "../commands/redact.js";
 import { validateCommand } from "../commands/validate.js";
@@ -31,6 +33,8 @@ Commands:
   validate <file|->   Validate a message; exit code carries the verdict (0 valid / 1 invalid)
   inspect <file|->    Print a value-free structural summary (segment/resource counts, type)
   fmt <file|->        Canonically re-serialize via the parser's spec-clean serializer
+  convert <file|->    Convert HL7 v2 → FHIR R4 via @cosyte/transform (use --to fhir)
+  map-codes <cmap|->  Translate a code through a BYO FHIR ConceptMap via @cosyte/terminology
   redact <file|->     De-identify a message (alias: deid) — gated on @cosyte/deid, not yet available
 
 Global:
@@ -41,9 +45,18 @@ Global:
 Common options (parse / validate / inspect / fmt):
   --format <fmt>    Override autodetection: hl7 | fhir | dicom | x12 | ccda | ncpdp | astm
                     (wired this build: hl7, fhir)
-  --json            Machine-readable JSON output (parse / validate / inspect)
+  --json            Machine-readable JSON output (parse / validate / inspect / convert / map-codes)
   --quiet           Suppress value-free notes on stderr
   --no-color        Disable ANSI colour
+
+convert options:
+  --to fhir         The conversion target (required; only HL7 v2 → FHIR R4 today)
+
+map-codes options (the positional is a BYO FHIR ConceptMap; a code is not PHI):
+  --code <code>     The source code to translate (required)
+  --system <uri>    The source code system (optional; selects the ConceptMap group)
+  --version <v>     The source code system version (optional)
+  --display <d>     The source display (optional)
 
 Exit codes:
   0   success / valid    65  data error (unparseable / undetected format)
@@ -98,6 +111,10 @@ export async function run(argv: string[], deps: RunDeps): Promise<RunResult> {
         return await inspectCommand(rest, deps, posture);
       case "fmt":
         return await fmtCommand(rest, deps, posture);
+      case "convert":
+        return await convertCommand(rest, deps, posture);
+      case "map-codes":
+        return await mapCodesCommand(rest, deps);
       case "redact":
       case "deid":
         return redactCommand(rest);

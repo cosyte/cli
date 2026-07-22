@@ -12,12 +12,15 @@ cat adt.hl7 | cosyte parse -
 ```
 
 It is a thin, honest skin over libraries that already own correctness ([`@cosyte/hl7`](https://github.com/cosyte/hl7),
-[`@cosyte/fhir`](https://github.com/cosyte/fhir)): it routes, reads, and shapes output, and owns two
-disciplines of its own — a documented **exit-code contract** and a **value-free diagnostic** posture.
+[`@cosyte/fhir`](https://github.com/cosyte/fhir), [`@cosyte/transform`](https://github.com/cosyte/transform),
+[`@cosyte/terminology`](https://github.com/cosyte/terminology)): it routes, reads, and shapes output,
+and owns two disciplines of its own — a documented **exit-code contract** and a **value-free
+diagnostic** posture.
 
-> **Status:** pre-alpha (`0.0.x`), **not yet published to npm**. The `cosyte` command today ships five
-> commands over two wired parsers (**HL7 v2** + **FHIR R4**), with conservative content-format
-> autodetection and a documented exit-code contract:
+> **Status:** pre-alpha (`0.0.x`), **not yet published to npm**. The `cosyte` command today ships seven
+> commands over two wired parsers (**HL7 v2** + **FHIR R4**) plus the `@cosyte/transform` and
+> `@cosyte/terminology` higher-layer libraries, with conservative content-format autodetection and a
+> documented exit-code contract:
 >
 > - **`parse`** — autodetect the format and print the parsed model as typed JSON on stdout.
 > - **`validate`** — parse, then run the wrapped parser's own validation surface, with the **verdict in
@@ -25,13 +28,16 @@ disciplines of its own — a documented **exit-code contract** and a **value-fre
 > - **`inspect`** — a value-free structural summary (type, version, per-segment/entry counts).
 > - **`fmt`** — canonical re-serialization through the library's spec-clean serializer; no partial emit
 >   on unparseable input.
+> - **`convert`** — HL7 v2 → FHIR R4 via `@cosyte/transform`; the converted `Bundle` on stdout, value-
+>   free issues on stderr, and a non-zero exit on an error-severity conversion issue.
+> - **`map-codes`** — translate a code through a BYO FHIR ConceptMap via `@cosyte/terminology`; the
+>   target coding(s) on stdout, or a value-free unmapped signal + exit `1`.
 > - **`redact` / `deid`** — gated to an honest `CLI_NOT_IMPLEMENTED` (exit `69`) until `@cosyte/deid`
 >   ships; it never reads the input and never emits a partial scrub dressed up as de-identified.
 >
 > PHI discipline runs throughout: value-free by default across every diagnostic, the loud opt-in
 > `--unsafe-show-values` as the single door to a value on a secondary surface, and never a temp file
-> with PHI. `convert` / `map-codes`, the MCP server, and the remaining parser formats land in later
-> phases.
+> with PHI. The MCP server and the remaining parser formats land in later phases.
 
 ## Run it
 
@@ -99,6 +105,41 @@ cat messy.json | cosyte fmt -   # → canonical FHIR JSON on stdout
 cosyte fmt message.hl7          # → spec-clean HL7
 ```
 
+## `cosyte convert`
+
+Convert an **HL7 v2** message to **FHIR R4** via [`@cosyte/transform`](https://github.com/cosyte/transform).
+The converted FHIR message `Bundle` is your explicit request, so it goes to **stdout**; the
+conversion's value-free issues (a v2 index → FHIRPath locator + a stable code, never a field value) go
+to stderr:
+
+```bash
+cosyte convert adt.hl7 --to fhir            # → a FHIR message Bundle on stdout
+cat oru.hl7 | cosyte convert - --to fhir | jq '.entry[].resource.resourceType'
+cosyte convert adt.hl7 --to fhir --json     # { format, bundle, findings } on stdout
+cosyte convert adt.hl7 --to fhir --quiet    # bundle only; the exit code carries the outcome
+```
+
+`--to fhir` is required (the only target today). The CLI adds no mapping of its own — the FHIR is
+`@cosyte/transform`'s, faithfully surfaced. The load-bearing rule mirrors `validate`: an
+**error-severity** conversion issue exits **`1`**, never `0`. A non-HL7 input (e.g. a FHIR document) is
+a data error (`65`), never a fake conversion.
+
+## `cosyte map-codes`
+
+Translate a single code through a **bring-your-own FHIR ConceptMap** via
+[`@cosyte/terminology`](https://github.com/cosyte/terminology) (`$translate`). A ConceptMap and a code
+are reference data, not PHI, so the translation result is your explicit request on **stdout**:
+
+```bash
+cosyte map-codes gender.conceptmap.json \
+  --system http://hl7.org/fhir/administrative-gender --code male   # → the target coding(s), exit 0
+cat cm.json | cosyte map-codes - --code female --json              # compact { source, result }
+```
+
+The CLI ships no terminology content and never fabricates a target: a **match** is exit `0`; an
+**unmapped** code is the value-free `TERM_TRANSLATE_UNMAPPED` signal + exit `1`; a map that is not
+valid JSON or not a loadable ConceptMap is a `CLI_MAP_INVALID` data error (`65`).
+
 ## The exit-code contract
 
 Every command is safe to branch on in CI — the exit code carries the outcome (`sysexits.h`):
@@ -152,8 +193,8 @@ ships and is vetted.
 
 The same `core` is importable (the `.` subpath): `detectFormat`, the `EXIT` map (now including
 `EXIT.INVALID`), the `CLI_CODES` diagnostic registry, `resolveInput`, `run`, and each command
-(`parseCommand`, `validateCommand`, `inspectCommand`, `fmtCommand`, `redactCommand`). See the docs for
-the full surface.
+(`parseCommand`, `validateCommand`, `inspectCommand`, `fmtCommand`, `convertCommand`, `mapCodesCommand`,
+`redactCommand`, plus `convertOutcome` for the conversion verdict). See the docs for the full surface.
 
 ## License
 

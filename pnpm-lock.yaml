@@ -18,6 +18,12 @@ importers:
       '@cosyte/hl7':
         specifier: file:vendor/cosyte-hl7-0.0.0.tgz
         version: file:vendor/cosyte-hl7-0.0.0.tgz
+      '@cosyte/terminology':
+        specifier: file:vendor/cosyte-terminology-0.0.1.tgz
+        version: file:vendor/cosyte-terminology-0.0.1.tgz
+      '@cosyte/transform':
+        specifier: file:vendor/cosyte-transform-0.0.0.tgz
+        version: file:vendor/cosyte-transform-0.0.0.tgz(@cosyte/fhir@file:vendor/cosyte-fhir-0.0.0.tgz)(@cosyte/hl7@file:vendor/cosyte-hl7-0.0.0.tgz)
     devDependencies:
       '@arethetypeswrong/cli':
         specifier: 0.18.4
@@ -197,11 +203,24 @@ packages:
   '@cosyte/prettier-config@0.0.2':
     resolution: {integrity: sha512-nmplXQKNq5DZ+Su/tCUF6m9UJ9MOArhw5NG0X9yqi6B5zvxmVXtKMAX1N2bKkqpKhZqyQOR9ALGYVpTx022R/g==}
 
+  '@cosyte/terminology@file:vendor/cosyte-terminology-0.0.1.tgz':
+    resolution: {integrity: sha512-LztV7MsD36hHJKCLmOlSPdnyP3YYe84O01k4G1tXOpw5smQTpB70sujcet8SdgEw1R1vOok4kUi2IMb6j2QQpg==, tarball: file:vendor/cosyte-terminology-0.0.1.tgz}
+    version: 0.0.1
+    engines: {node: '>=22.0.0'}
+
   '@cosyte/test-utils@0.0.1':
     resolution: {integrity: sha512-WnRVpWb6mucn8lFbTGA19rH4sjUrvOWdQBUb4YNrywXRi26cfZIcoHyb4x2TxmIoNGPW6EqtSfpUp6nQcYvRgA==}
     engines: {node: '>=22.0.0'}
     peerDependencies:
       fast-check: ^3.0.0
+
+  '@cosyte/transform@file:vendor/cosyte-transform-0.0.0.tgz':
+    resolution: {integrity: sha512-Vfx0cRA4nc9X3Bn5rCVarFZ2waGBjI+NCLbV31helXJ96V6gIrDGR/cyfsdRPfsUk/wUdcBqsS2Yv3EgJPOPfA==, tarball: file:vendor/cosyte-transform-0.0.0.tgz}
+    version: 0.0.0
+    engines: {node: '>=22.0.0'}
+    peerDependencies:
+      '@cosyte/fhir': '>=0.0.0'
+      '@cosyte/hl7': '>=0.0.0'
 
   '@cosyte/tsconfig@0.0.2':
     resolution: {integrity: sha512-+V3F04HIlvQskPMz/YuGr40IT89mZ/T/2S5fe5PAxIE3MER3v4fMBdh0/IYRtqqwGEX5g3DNDj61x68Xr8f/9Q==}
@@ -2010,9 +2029,16 @@ snapshots:
 
   '@cosyte/prettier-config@0.0.2': {}
 
+  '@cosyte/terminology@file:vendor/cosyte-terminology-0.0.1.tgz': {}
+
   '@cosyte/test-utils@0.0.1(fast-check@3.23.2)':
     dependencies:
       fast-check: 3.23.2
+
+  '@cosyte/transform@file:vendor/cosyte-transform-0.0.0.tgz(@cosyte/fhir@file:vendor/cosyte-fhir-0.0.0.tgz)(@cosyte/hl7@file:vendor/cosyte-hl7-0.0.0.tgz)':
+    dependencies:
+      '@cosyte/fhir': file:vendor/cosyte-fhir-0.0.0.tgz
+      '@cosyte/hl7': file:vendor/cosyte-hl7-0.0.0.tgz
 
   '@cosyte/tsconfig@0.0.2': {}
 

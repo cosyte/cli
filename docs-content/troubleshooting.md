@@ -70,13 +70,20 @@ loud, opt-in `--unsafe-show-values` — it appends a bounded excerpt of the offe
 only setting under which a value reaches a secondary surface, and it affects failure diagnostics only —
 a successful parse still keeps values on stdout alone.
 
-## Known limitations (Phase 3)
+## Known limitations (Phase 4)
 
 - `parse`, `validate`, `inspect`, and `fmt` are implemented for **hl7** and **fhir** only; the other
   six formats are later phases.
+- `convert` reads **HL7 v2** and writes **FHIR R4** only (`--to fhir`); its coverage is bounded by
+  `@cosyte/transform` (the IG-mapped ADT/ORU/order/… message families). A non-HL7 source is a data
+  error (`65`), never a fake conversion.
+- `map-codes` translates a **single** source coding through a **bring-your-own** ConceptMap — the CLI
+  ships no terminology content and does not scan a message for codes (that would re-implement the
+  parser/transform layer). An unmapped code is a value-free signal + exit `1`, never a fabricated
+  target.
 - `validate --profile` is reserved but gated — the CLI bundles no profiles yet, so it reports an honest
   `CLI_NOT_IMPLEMENTED` (exit `69`) rather than fake a profile verdict.
 - `redact`/`deid` exists but is an honest `CLI_NOT_IMPLEMENTED` (exit `69`) gated on `@cosyte/deid`.
-- No `convert`/`map-codes` and no MCP server yet — those are later phases.
+- No MCP server yet — that is a later phase.
 
 The **API Reference** always reflects exactly what this release ships.

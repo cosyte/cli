@@ -10,19 +10,23 @@
 # `file:` runtime dependencies (umbrella ADR 0008; this repo's documentation/decisions/0021). At
 # PUB-FLIP these `file:vendor/*.tgz` specifiers become real semver npm installs.
 #
-# Phase 1 wires only the two deepest parsers — @cosyte/hl7 and @cosyte/fhir — because the umbrella
-# verify-policy caps @cosyte/cli runtime deps at 2. The other six parsers + transform + terminology
-# are added, lazy-loaded, in later phases as the cap is deliberately raised per format.
+# Phase 1 wired the two deepest parsers — @cosyte/hl7 and @cosyte/fhir. Phase 4 (CLI-4) adds the two
+# higher-layer libraries the consumer-of-consumers commands wrap: @cosyte/transform (convert: HL7 v2 →
+# FHIR) and @cosyte/terminology (map-codes: ConceptMap $translate). The umbrella verify-policy cap on
+# @cosyte/cli runtime deps was raised 2 → 4 to accommodate them (documentation/decisions/0023). Every
+# sibling is still lazy-loaded per command so `cosyte parse` never loads transform/terminology.
 #
 # This is READ-ONLY on the sibling repos: it builds + packs them in place and copies the tarball
 # here; it never commits, mutates source, or touches their git state.
 #
-# Usage (run from the cli repo root, with ../hl7 and ../fhir checked out):
+# Usage (run from the cli repo root, with ../hl7 ../fhir ../transform ../terminology checked out):
 #   pnpm vendor:refresh
 #
 # Pinned sibling commits (record every bump here AND in the CHANGELOG):
-#   @cosyte/hl7  → 46d50eb775dc6576cec8ca5a2315720a65cb7418  (v0.0.1)
-#   @cosyte/fhir → 7a099b24e399b91d780be8110c529bc570756cfe  (v0.0.0)
+#   @cosyte/hl7         → 46d50eb775dc6576cec8ca5a2315720a65cb7418  (v0.0.1)
+#   @cosyte/fhir        → 7a099b24e399b91d780be8110c529bc570756cfe  (v0.0.0)
+#   @cosyte/transform   → e6c453157f83a8484e8f8254b1bdbc4ac3223571  (v0.0.0)
+#   @cosyte/terminology → e5ed3682787a185bf213c034ea2009d020e2d916  (v0.0.1)
 #
 # After a refresh: `pnpm install`, then `pnpm test` + `pnpm build` to confirm the new sibling surface
 # still satisfies the CLI. Bumping a pin is a deliberate act — a sibling API change can break the
@@ -47,7 +51,9 @@ refresh() {
   echo "vendor-refresh: wrote ${vendor}/${out}"
 }
 
-refresh "@cosyte/hl7"  hl7  cosyte-hl7-0.0.0.tgz
-refresh "@cosyte/fhir" fhir cosyte-fhir-0.0.0.tgz
+refresh "@cosyte/hl7"         hl7         cosyte-hl7-0.0.0.tgz
+refresh "@cosyte/fhir"        fhir        cosyte-fhir-0.0.0.tgz
+refresh "@cosyte/transform"   transform   cosyte-transform-0.0.0.tgz
+refresh "@cosyte/terminology" terminology cosyte-terminology-0.0.1.tgz
 
 echo "vendor-refresh: done. Now run: pnpm install && pnpm test && pnpm build"

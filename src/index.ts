@@ -70,4 +70,8 @@ export { inspectCommand } from "./commands/inspect.js";
 
 export { fmtCommand } from "./commands/fmt.js";
 
+export { convertCommand, convertOutcome } from "./commands/convert.js";
+
+export { mapCodesCommand } from "./commands/map-codes.js";
+
 export { redactCommand } from "./commands/redact.js";

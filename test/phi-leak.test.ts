@@ -50,6 +50,18 @@ describe("PHI leak matrix — stderr is value-free across every mode", () => {
       bytes: FHIR,
     },
     { name: "fhir stdin", argv: ["parse", "-"], bytes: FHIR },
+    // convert's stdout IS the converted FHIR (the data channel); only its stderr must be value-free.
+    { name: "convert hl7", argv: ["convert", "m.hl7", "--to", "fhir"], bytes: HL7 },
+    {
+      name: "convert hl7 --json",
+      argv: ["convert", "m.hl7", "--to", "fhir", "--json"],
+      bytes: HL7,
+    },
+    {
+      name: "convert hl7 --quiet",
+      argv: ["convert", "m.hl7", "--to", "fhir", "--quiet"],
+      bytes: HL7,
+    },
   ];
 
   for (const c of cases) {
@@ -89,6 +101,16 @@ describe("PHI leak matrix — stderr is value-free across every mode", () => {
     const r = await run(["redact", "m.hl7"], fileDeps(HL7));
     assertNoSentinelOnStderr(r.stderr);
     expect(r.stderr).toContain("CLI_NOT_IMPLEMENTED");
+    expect(r.stdout).toBe("");
+  });
+
+  it("`map-codes` pointed at a PHI-laden (non-ConceptMap) file fails value-free on BOTH channels", async () => {
+    // map-codes reads a ConceptMap (reference data). A PHI-laden HL7 file is not one — it must reject
+    // with a stable code and never echo the file's bytes on either channel.
+    const r = await run(["map-codes", "m.hl7", "--code", "male"], fileDeps(HL7));
+    assertNoSentinelOnStderr(r.stderr);
+    assertNoSentinelOnStderr(r.stdout);
+    expect(r.stderr).toContain("CLI_MAP_INVALID");
     expect(r.stdout).toBe("");
   });
 });
