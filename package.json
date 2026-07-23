@@ -125,6 +125,12 @@
     "@cosyte/transform": "file:vendor/cosyte-transform-0.0.0.tgz"
   },
   "optionalDependencies": {
+    "@cosyte/astm": "file:vendor/cosyte-astm-0.0.1.tgz",
+    "@cosyte/ccda": "file:vendor/cosyte-ccda-0.0.1.tgz",
+    "@cosyte/dicom": "file:vendor/cosyte-dicom-0.0.1.tgz",
+    "@cosyte/mllp": "file:vendor/cosyte-mllp-0.0.1.tgz",
+    "@cosyte/ncpdp": "file:vendor/cosyte-ncpdp-0.0.1.tgz",
+    "@cosyte/x12": "file:vendor/cosyte-x12-0.0.1.tgz",
     "@modelcontextprotocol/sdk": "1.29.0"
   }
 }

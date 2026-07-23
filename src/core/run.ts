@@ -8,6 +8,7 @@
  * @packageDocumentation
  */
 
+import { completionCommand } from "../commands/completion.js";
 import { convertCommand } from "../commands/convert.js";
 import { fmtCommand } from "../commands/fmt.js";
 import { inspectCommand } from "../commands/inspect.js";
@@ -37,6 +38,7 @@ Commands:
   map-codes <cmap|->  Translate a code through a BYO FHIR ConceptMap via @cosyte/terminology
   redact <file|->     De-identify a message (alias: deid) — gated on @cosyte/deid, not yet available
   mcp                 Start the stdio MCP server (agent front door; also the cosyte-mcp bin)
+  completion <shell>  Print a shell completion script (bash | zsh | fish)
 
 Global:
   -h, --help              Show this help
@@ -44,9 +46,11 @@ Global:
   --unsafe-show-values    Permit input values on stderr/diagnostics (PHI-exposing; off by default)
 
 Common options (parse / validate / inspect / fmt):
-  --format <fmt>    Override autodetection: hl7 | fhir | dicom | x12 | ccda | ncpdp | astm
-                    (wired this build: hl7, fhir)
+  --format <fmt>    Override autodetection: hl7 | fhir | dicom | x12 | ccda | ncpdp | astm | mllp
+                    (parse: hl7 fhir x12 astm ncpdp mllp · inspect: all · fmt: hl7 fhir x12 astm
+                     ccda ncpdp · validate: all but mllp — dicom/ccda parse & mllp fmt are deferred)
   --json            Machine-readable JSON output (parse / validate / inspect / convert / map-codes)
+  --ndjson          Treat each non-empty input line as a record; emit NDJSON (parse; FHIR bulk data)
   --quiet           Suppress value-free notes on stderr
   --no-color        Disable ANSI colour
 
@@ -119,6 +123,8 @@ export async function run(argv: string[], deps: RunDeps): Promise<RunResult> {
       case "redact":
       case "deid":
         return redactCommand(rest);
+      case "completion":
+        return completionCommand(rest);
       default:
         return resolve(
           new CliError(

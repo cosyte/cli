@@ -15,7 +15,7 @@ function deps(file: Uint8Array, stdin: Uint8Array = new Uint8Array()): RunDeps {
 
 describe("resolveInput — the shared input + format front door", () => {
   it("resolves a file to a wired format + bytes (autodetected)", async () => {
-    const r = await resolveInput("p.json", undefined, deps(FHIR));
+    const r = await resolveInput("p.json", undefined, deps(FHIR), "parse");
     expect(r.ok).toBe(true);
     if (r.ok) {
       expect(r.input.format).toBe("fhir");
@@ -24,18 +24,18 @@ describe("resolveInput — the shared input + format front door", () => {
   });
 
   it("reads stdin for `-`", async () => {
-    const r = await resolveInput("-", undefined, deps(new Uint8Array(), HL7));
+    const r = await resolveInput("-", undefined, deps(new Uint8Array(), HL7), "parse");
     expect(r.ok).toBe(true);
     if (r.ok) expect(r.input.format).toBe("hl7");
   });
 
   it("honours a valid --format override", async () => {
-    const r = await resolveInput("p.json", "fhir", deps(FHIR));
+    const r = await resolveInput("p.json", "fhir", deps(FHIR), "parse");
     expect(r.ok && r.input.format).toBe("fhir");
   });
 
   it("a missing source is a usage error (2)", async () => {
-    const r = await resolveInput(undefined, undefined, deps(FHIR));
+    const r = await resolveInput(undefined, undefined, deps(FHIR), "parse");
     expect(r.ok).toBe(false);
     if (!r.ok) {
       expect(r.result.exit).toBe(EXIT.USAGE);
@@ -44,25 +44,25 @@ describe("resolveInput — the shared input + format front door", () => {
   });
 
   it("empty input is a data error (65)", async () => {
-    const r = await resolveInput("-", undefined, deps(new Uint8Array(), new Uint8Array()));
+    const r = await resolveInput("-", undefined, deps(new Uint8Array(), new Uint8Array()), "parse");
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.result.exit).toBe(EXIT.DATAERR);
   });
 
   it("an unknown --format is a usage error (2)", async () => {
-    const r = await resolveInput("p.json", "xyz", deps(FHIR));
+    const r = await resolveInput("p.json", "xyz", deps(FHIR), "parse");
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.result.exit).toBe(EXIT.USAGE);
   });
 
   it("an undetectable format is a data error (65), never a guess", async () => {
-    const r = await resolveInput("x.txt", undefined, deps(enc.encode("hello world")));
+    const r = await resolveInput("x.txt", undefined, deps(enc.encode("hello world")), "parse");
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.result.stderr).toContain(CLI_CODES.CLI_FORMAT_UNDETECTED);
   });
 
-  it("a recognised-but-unwired format is a data error (65), never faked", async () => {
-    const r = await resolveInput("x.dcm", "dicom", deps(HL7));
+  it("a format that does not support the requested op is a data error (65), never faked", async () => {
+    const r = await resolveInput("x.dcm", "dicom", deps(HL7), "parse");
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.result.stderr).toContain(CLI_CODES.CLI_FORMAT_UNSUPPORTED);
   });
@@ -75,7 +75,7 @@ describe("resolveInput — the shared input + format front door", () => {
         ),
       readStdin: () => Promise.resolve(new Uint8Array()),
     };
-    const r = await resolveInput("gone.json", undefined, failing);
+    const r = await resolveInput("gone.json", undefined, failing, "parse");
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.result.exit).toBe(EXIT.NOINPUT);
   });
@@ -85,6 +85,6 @@ describe("resolveInput — the shared input + format front door", () => {
       readFile: () => Promise.reject(new Error("unexpected")),
       readStdin: () => Promise.resolve(new Uint8Array()),
     };
-    await expect(resolveInput("x.json", undefined, boom)).rejects.toThrow("unexpected");
+    await expect(resolveInput("x.json", undefined, boom, "parse")).rejects.toThrow("unexpected");
   });
 });

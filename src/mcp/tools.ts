@@ -82,9 +82,10 @@ const CONTENT_PROP = {
 const FORMAT_PROP = {
   format: {
     type: "string",
-    enum: ["hl7", "fhir"],
+    enum: ["hl7", "fhir", "dicom", "x12", "ccda", "ncpdp", "astm", "mllp"],
     description:
-      "Optional format override; omit to autodetect by content. Wired this build: hl7, fhir.",
+      "Optional format override; omit to autodetect by content. A format whose parser does not " +
+      "support the requested operation returns a value-free CLI_FORMAT_UNSUPPORTED (never a fake).",
   },
 } as const;
 

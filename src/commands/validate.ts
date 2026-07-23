@@ -24,9 +24,9 @@ import { CLI_CODES, CliError, errorResult } from "../core/diagnostics.js";
 import { EXIT } from "../core/exit-codes.js";
 import { resolveInput } from "../core/input.js";
 import type { RunDeps } from "../core/io.js";
+import { validateFormat, type Verdict } from "../core/parsers.js";
 import { VALUE_FREE, type PhiPosture } from "../core/phi.js";
 import type { RunResult } from "../core/result.js";
-import { formatHl7Position, type Finding } from "../core/findings.js";
 import { parseFailureResult } from "../core/wrap.js";
 
 /** The flags `validate` understands. */
@@ -40,12 +40,6 @@ const VALIDATE_OPTIONS = {
 
 /** Severities that make a resource **invalid** (exit `1`). Warnings/information never fail a verdict. */
 const ERROR_SEVERITIES: ReadonlySet<string> = new Set(["error", "fatal"]);
-
-/** The verdict of running a wrapped parser's validation surface: the value-free findings + validity. */
-interface Verdict {
-  readonly findings: readonly Finding[];
-  readonly valid: boolean;
-}
 
 /**
  * Run the `validate` command.
@@ -112,14 +106,15 @@ export async function validateCommand(
     );
   }
 
-  const resolved = await resolveInput(positionals[0], values.format, deps);
+  const resolved = await resolveInput(positionals[0], values.format, deps, "validate");
   if (!resolved.ok) return resolved.result;
   const { format, bytes } = resolved.input;
 
   let verdict: Verdict;
   try {
-    verdict = format === "hl7" ? await validateHl7(bytes) : await validateFhir(bytes);
+    verdict = await validateFormat(format, bytes);
   } catch (e) {
+    if (e instanceof CliError) return errorResult(e); // e.g. an absent optional parser (69)
     // Unparseable input is a data error (65), NOT an invalid verdict (1): the tool could not run the
     // check at all. Value-free; the opt-in excerpt flows through the single core/wrap chokepoint.
     return parseFailureResult(format, bytes, posture, e);
@@ -139,41 +134,6 @@ export async function validateCommand(
   }
 
   return { stdout: "", stderr: renderReport(format, verdict), exit };
-}
-
-/** Validate FHIR: read-time issues + `validateResource`; invalid iff any error/fatal-severity finding. */
-async function validateFhir(bytes: Uint8Array): Promise<Verdict> {
-  const { parseResource, validateResource } = await import("@cosyte/fhir");
-  const text = new TextDecoder("utf-8", { fatal: false }).decode(bytes);
-  const { resource, issues } = parseResource(text);
-  const validation = validateResource(resource);
-  const findings: Finding[] = [
-    ...issues.map((i) => toFinding(i.code, i.severity, i.expression)),
-    ...validation.issues.map((i) => toFinding(i.code, i.severity, i.expression, i.constraint)),
-  ];
-  const valid = !findings.some((f) => ERROR_SEVERITIES.has(f.severity));
-  return { findings, valid };
-}
-
-/**
- * Validate HL7: the parser's own conformance surface. A fatal is thrown (→ handled as unparseable by
- * the caller); every recovered deviation is a non-fatal `warning` (the library's design), surfaced as
- * a value-free finding. So a parseable message is **valid** — the CLI invents no stricter verdict.
- */
-async function validateHl7(bytes: Uint8Array): Promise<Verdict> {
-  const { parseHL7 } = await import("@cosyte/hl7");
-  const msg = parseHL7(Buffer.from(bytes));
-  const findings: Finding[] = msg.warnings.map((w) =>
-    toFinding(w.code, "warning", formatHl7Position(w.position)),
-  );
-  const valid = !findings.some((f) => ERROR_SEVERITIES.has(f.severity));
-  return { findings, valid };
-}
-
-/** Build one value-free {@link Finding}; the FHIR invariant `constraint` key is a public spec id. */
-function toFinding(code: string, severity: string, location: string, constraint?: string): Finding {
-  const loc = constraint !== undefined ? `${location} (${constraint})` : location;
-  return { code, severity, location: loc };
 }
 
 /** Render the value-free human report: one line per finding + a verdict summary line. */

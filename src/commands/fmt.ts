@@ -21,6 +21,7 @@ import { CLI_CODES, CliError, errorResult } from "../core/diagnostics.js";
 import { EXIT } from "../core/exit-codes.js";
 import { resolveInput } from "../core/input.js";
 import type { RunDeps } from "../core/io.js";
+import { fmtFormat, type FmtResult } from "../core/parsers.js";
 import { VALUE_FREE, type PhiPosture } from "../core/phi.js";
 import type { RunResult } from "../core/result.js";
 import { parseFailureResult } from "../core/wrap.js";
@@ -31,12 +32,6 @@ const FMT_OPTIONS = {
   quiet: { type: "boolean", default: false },
   "no-color": { type: "boolean", default: false },
 } as const;
-
-/** The result of a canonical re-serialization: the spec-clean text + a value-free warning count. */
-interface FmtResult {
-  readonly output: string;
-  readonly warningCount: number;
-}
 
 /**
  * Run the `fmt` command.
@@ -81,14 +76,15 @@ export async function fmtCommand(
     );
   }
 
-  const resolved = await resolveInput(positionals[0], values.format, deps);
+  const resolved = await resolveInput(positionals[0], values.format, deps, "fmt");
   if (!resolved.ok) return resolved.result;
   const { format, bytes } = resolved.input;
 
   let result: FmtResult;
   try {
-    result = format === "hl7" ? await fmtHl7(bytes) : await fmtFhir(bytes);
+    result = await fmtFormat(format, bytes);
   } catch (e) {
+    if (e instanceof CliError) return errorResult(e); // e.g. an absent optional parser (69)
     // No partial emit: an unparseable input yields a value-free data error, never half a message.
     return parseFailureResult(format, bytes, posture, e);
   }
@@ -98,19 +94,4 @@ export async function fmtCommand(
       ? `cosyte: fmt: re-serialized ${format} with ${String(result.warningCount)} parse warning(s)\n`
       : "";
   return { stdout: `${result.output}\n`, stderr, exit: EXIT.OK };
-}
-
-/** Canonically re-serialize HL7 via the wrapped `Hl7Message.toString()` (spec-clean, CR-separated). */
-async function fmtHl7(bytes: Uint8Array): Promise<FmtResult> {
-  const { parseHL7 } = await import("@cosyte/hl7");
-  const msg = parseHL7(Buffer.from(bytes));
-  return { output: msg.toString(), warningCount: msg.warnings.length };
-}
-
-/** Canonically re-serialize FHIR via the wrapped `serializeResource` (canonical JSON, decimals exact). */
-async function fmtFhir(bytes: Uint8Array): Promise<FmtResult> {
-  const { parseResource, serializeResource } = await import("@cosyte/fhir");
-  const text = new TextDecoder("utf-8", { fatal: false }).decode(bytes);
-  const { resource, issues } = parseResource(text);
-  return { output: serializeResource(resource), warningCount: issues.length };
 }

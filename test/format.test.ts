@@ -4,11 +4,12 @@ import fc from "fast-check";
 import {
   asCosyteFormat,
   classifyCandidates,
+  DETECTABLE_FORMATS,
   detectFormat,
   detectionError,
   KNOWN_FORMATS,
-  WIRED_FORMATS,
 } from "../src/core/format.js";
+import { OP_SUPPORT } from "../src/core/parsers.js";
 
 const enc = (s: string): Uint8Array => new TextEncoder().encode(s);
 
@@ -18,9 +19,11 @@ describe("detectFormat — confident matches route right", () => {
     expect(r).toStrictEqual({ format: "hl7", confidence: "certain", candidates: ["hl7"] });
   });
 
-  it("detects HL7 through leading whitespace and MLLP VT framing", () => {
-    expect(detectFormat(enc("\x0bMSH|^~\\&|A")).format).toBe("hl7");
+  it("detects HL7 through leading whitespace (but NOT a VT-framed stream — that is mllp)", () => {
     expect(detectFormat(enc("  MSH|^~\\&|A")).format).toBe("hl7");
+    // A leading 0x0B VT byte is the MLLP frame marker; it must route to mllp, never hl7 (disjoint).
+    const framed = new Uint8Array([0x0b, ...enc("MSH|^~\\&|A")]);
+    expect(detectFormat(framed).format).toBe("mllp");
   });
 
   it("detects FHIR from a JSON object with resourceType", () => {
@@ -34,6 +37,43 @@ describe("detectFormat — confident matches route right", () => {
 
   it("strips a UTF-8 BOM before sniffing", () => {
     expect(detectFormat(enc('﻿{"resourceType":"Patient"}')).format).toBe("fhir");
+  });
+});
+
+describe("detectFormat — the six CLI-6 breadth formats (conservative, disjoint)", () => {
+  it("detects X12 from a leading ISA interchange header", () => {
+    expect(detectFormat(enc("ISA*00*          *00*          *ZZ*SENDER")).format).toBe("x12");
+  });
+
+  it("detects ASTM from a leading H record with a field delimiter", () => {
+    expect(detectFormat(enc("H|\\^&|||host^1|||||||P|1|20240101")).format).toBe("astm");
+  });
+
+  it("detects C-CDA from a <ClinicalDocument> root", () => {
+    expect(
+      detectFormat(enc('<?xml version="1.0"?><ClinicalDocument xmlns="urn:hl7-org:v3">')).format,
+    ).toBe("ccda");
+  });
+
+  it("detects NCPDP SCRIPT from a <Message> root in the ncpdp namespace", () => {
+    expect(
+      detectFormat(enc('<?xml version="1.0"?><Message xmlns="http://www.ncpdp.org/schema/SCRIPT">'))
+        .format,
+    ).toBe("ncpdp");
+  });
+
+  it("detects DICOM from the DICM magic at byte 128", () => {
+    const b = new Uint8Array(140);
+    b.set(enc("DICM"), 128);
+    expect(detectFormat(b).format).toBe("dicom");
+  });
+
+  it("detects MLLP from a leading 0x0B VT frame byte", () => {
+    expect(detectFormat(new Uint8Array([0x0b, 0x4d, 0x53, 0x48])).format).toBe("mllp");
+  });
+
+  it("does NOT claim a generic <Message> without the ncpdp namespace", () => {
+    expect(detectFormat(enc("<Message><foo/></Message>")).confidence).toBe("none");
   });
 });
 
@@ -141,8 +181,20 @@ describe("format helpers", () => {
     expect(asCosyteFormat("")).toBeNull();
   });
 
-  it("WIRED_FORMATS is a subset of KNOWN_FORMATS (only hl7+fhir this phase)", () => {
-    expect([...WIRED_FORMATS].sort()).toStrictEqual(["fhir", "hl7"]);
-    for (const f of WIRED_FORMATS) expect(KNOWN_FORMATS).toContain(f);
+  it("every detectable format is a known format", () => {
+    for (const f of DETECTABLE_FORMATS) expect(KNOWN_FORMATS).toContain(f);
+  });
+
+  it("all eight cosyte formats are now detectable", () => {
+    expect([...DETECTABLE_FORMATS].sort()).toStrictEqual(
+      ["astm", "ccda", "dicom", "fhir", "hl7", "mllp", "ncpdp", "x12"].sort(),
+    );
+  });
+
+  it("every op's supporting formats are a subset of KNOWN_FORMATS (the honest capability matrix)", () => {
+    for (const set of Object.values(OP_SUPPORT)) {
+      for (const op of set) expect(["parse", "inspect", "fmt", "validate"]).toContain(op);
+    }
+    for (const f of Object.keys(OP_SUPPORT)) expect(KNOWN_FORMATS).toContain(f);
   });
 });

@@ -30,8 +30,18 @@ a silent mis-route.)
 
 ## `CLI_FORMAT_UNSUPPORTED` (exit 65)
 
-The format was recognised but this CLI build does not yet wire it. Phase 1 wires **hl7** and **fhir**;
-the other formats arrive in later phases. The command is never faked to a success it cannot deliver.
+The format was recognised, but its parser does not support the operation you asked for. Support is
+**per (format, operation)**: `x12`/`astm`/`ncpdp` support parse/inspect/fmt/validate; `ccda` supports
+inspect/fmt/validate (parse is deferred — XML is the canonical `fmt` form); `dicom` supports
+inspect/validate (parse/fmt deferred — the model is binary); `mllp` supports parse/inspect. The message
+names which formats *do* support the operation. The command is never faked to a success it cannot deliver.
+
+## `CLI_PARSER_UNAVAILABLE` (exit 69)
+
+The optional parser package for a recognised format is not installed. The six breadth parsers
+(`dicom`/`x12`/`ccda`/`ncpdp`/`astm`/`mllp`) are `optionalDependencies` — installed by default, but if
+one is absent (e.g. you installed with `--omit=optional`) the CLI degrades to this value-free signal
+rather than crashing. Install the named `@cosyte/<format>` package to use that format.
 
 ## `CLI_NO_INPUT` (exit 66)
 
@@ -70,10 +80,15 @@ loud, opt-in `--unsafe-show-values` — it appends a bounded excerpt of the offe
 only setting under which a value reaches a secondary surface, and it affects failure diagnostics only —
 a successful parse still keeps values on stdout alone.
 
-## Known limitations (Phase 4)
+## Known limitations (Phase 6)
 
-- `parse`, `validate`, `inspect`, and `fmt` are implemented for **hl7** and **fhir** only; the other
-  six formats are later phases.
+- All eight formats are wired, but **per (format, operation)**: `x12`/`astm`/`ncpdp` support
+  parse/inspect/fmt/validate; `ccda` supports inspect/fmt/validate (no `parse` — XML is the canonical
+  `fmt` form); `dicom` supports inspect/validate (no `parse`/`fmt` — binary model); `mllp` supports
+  parse/inspect. A deferred cell is a value-free `CLI_FORMAT_UNSUPPORTED`, never a fake.
+- Streaming is **multi-record NDJSON**: MLLP de-frames to one record per frame, and `--ndjson` treats
+  each non-empty line as a record (FHIR bulk data). A failed record is isolated as a value-free
+  `{ record, error }` line; any failure makes the overall exit `65`.
 - `convert` reads **HL7 v2** and writes **FHIR R4** only (`--to fhir`); its coverage is bounded by
   `@cosyte/transform` (the IG-mapped ADT/ORU/order/… message families). A non-HL7 source is a data
   error (`65`), never a fake conversion.
@@ -84,6 +99,5 @@ a successful parse still keeps values on stdout alone.
 - `validate --profile` is reserved but gated — the CLI bundles no profiles yet, so it reports an honest
   `CLI_NOT_IMPLEMENTED` (exit `69`) rather than fake a profile verdict.
 - `redact`/`deid` exists but is an honest `CLI_NOT_IMPLEMENTED` (exit `69`) gated on `@cosyte/deid`.
-- No MCP server yet — that is a later phase.
 
 The **API Reference** always reflects exactly what this release ships.

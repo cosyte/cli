@@ -14,6 +14,39 @@ its public history at `0.0.x`, per the cosyte version ladder (`0.0.x` until firs
 
 ### Added
 
+- **Phase 6 — six more formats + streaming + shell completion (ADR 0025).** The `cosyte` CLI now wraps
+  **all eight cosyte formats**, routed through a single lazy **per-format adapter registry**
+  (`src/core/parsers.ts`) that replaces the old per-command `hl7 ? : fhir` branches and makes support
+  **per (format, operation)**. An unsupported (format, op) is a value-free `CLI_FORMAT_UNSUPPORTED`,
+  never a fake (ADR 0018).
+  - **New formats and their honest capabilities.** `x12`, `astm`, `ncpdp` (SCRIPT) → **parse · inspect ·
+    fmt · validate**; `ccda` → **inspect · fmt** (XML re-serialize) **· validate** (`parse` deferred — no
+    library-blessed JSON model; XML is the canonical form); `dicom` → **inspect · validate** (`parse`/`fmt`
+    deferred — the model is binary); `mllp` → **parse · inspect** (a transport container the CLI de-frames
+    to its enclosed HL7 message(s)). Content autodetection now covers all eight (conservative + disjoint —
+    a leading `0x0B` VT byte routes to `mllp`, `ISA`→`x12`, an `H`-record→`astm`, `<ClinicalDocument>`→`ccda`,
+    a `<Message>` in the NCPDP namespace→`ncpdp`, `DICM`@128→`dicom`); `--format` accepts `mllp`.
+  - **Streaming / multi-message.** `parse` emits **NDJSON** with per-record isolation for inherently
+    multi-record inputs — an **MLLP** stream (one record per frame) and any input under the new
+    **`--ndjson`** flag (one record per non-empty line — the FHIR bulk-data convention). A record that
+    fails to parse becomes a value-free `{ record, error }` line and the stream continues; the overall
+    exit is a data error (`65`) if any record failed. A single message is unchanged (one pretty, or
+    `--json` compact, envelope + a value-free warning-count note).
+  - **Shell completion.** `cosyte completion <bash|zsh|fish>` prints a static, value-free completion
+    script generated from the command tree.
+  - **Dependencies — the cap stays 4 (no umbrella edit).** The six breadth parsers are vendored
+    **`optionalDependencies`**, lazy-loaded per format and **outside** the hard-runtime-dep closure
+    (ADR 0025, mirroring the MCP SDK isolation of ADR 0024). An absent optional parser degrades to a
+    value-free **`CLI_PARSER_UNAVAILABLE`** (exit `69`), never a crash. Pinned sibling commits: dicom
+    `d1ed590`, x12 `0c60606`, ccda `3753216`, ncpdp `184eecc`, astm `92ac210`, mllp `aecff75` (all
+    v0.0.1 except astm records-layer). Third-party CLI-core runtime deps stay **zero**.
+  - New diagnostic **`CLI_PARSER_UNAVAILABLE`** (exit `69`); the exit-code contract is otherwise
+    unchanged (`0/1/2/65/66/69/70`). New value-free inspect summaries per format; new programmatic
+    exports (`OP_SUPPORT`, `supportsOp`, `formatsSupporting`, `parseFormat`, `inspectFormat`, `fmtFormat`,
+    `validateFormat`, `deframeMllp`, `loadOptional`, `valueFreeLocator`, `DETECTABLE_FORMATS`,
+    `completionCommand`, and the result/summary types). The public `WIRED_FORMATS` set is **removed** in
+    favour of the per-op `OP_SUPPORT` matrix (pre-alpha `0.0.x` surface change).
+
 - **Phase 5 — the `cosyte-mcp` MCP server (the agent front door).** A **stdio Model Context Protocol
   server** that exposes the shared command core to an LLM/agent as callable tools — the second adapter
   over one core (ADR 0022, 0024). Reachable three ways: the new **`cosyte-mcp`** bin, the **`cosyte mcp`**
