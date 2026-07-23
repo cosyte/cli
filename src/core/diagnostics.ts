@@ -37,8 +37,13 @@ export const CLI_CODES = {
   CLI_FORMAT_UNDETECTED: "CLI_FORMAT_UNDETECTED",
   /** More than one format signature matched; the CLI will not guess. Names the candidates, never the bytes. Exit `65`. */
   CLI_FORMAT_AMBIGUOUS: "CLI_FORMAT_AMBIGUOUS",
-  /** A recognised format that this CLI build does not yet wire (deferred to a later phase). Exit `65`. */
+  /** A recognised format whose parser does not support the requested operation (e.g. `parse` on a
+   * format wired only for `inspect`). Names the format + operation, never the bytes. Exit `65`. */
   CLI_FORMAT_UNSUPPORTED: "CLI_FORMAT_UNSUPPORTED",
+  /** The optional parser package for a recognised format is not installed. The six breadth parsers
+   * (dicom/x12/ccda/ncpdp/astm/mllp) are `optionalDependencies` (ADR 0025): normally installed, but if
+   * one is absent the CLI degrades to this value-free signal rather than crashing. Exit `69`. */
+  CLI_PARSER_UNAVAILABLE: "CLI_PARSER_UNAVAILABLE",
   /** The wrapped parser rejected the input. Positional context only — never the offending bytes. Exit `65`. */
   CLI_PARSE_FAILED: "CLI_PARSE_FAILED",
   /** The BYO ConceptMap supplied to `map-codes` is not valid JSON or not a loadable FHIR ConceptMap.

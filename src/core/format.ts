@@ -9,10 +9,19 @@
  * exit asking for `--format`. This is the parsers' "never a confident wrong value" rule at the routing
  * layer (cli roadmap §3).
  *
- * Phase 1 wires signatures for the two deepest parsers, **hl7** and **fhir**; the remaining formats'
- * signatures land as their wiring does. Because the signatures are disjoint by construction, a
- * genuine `ambiguous` cannot occur yet — the branch exists so a future overlapping signature is a
- * *detected* ambiguity, never a silent mis-route.
+ * All eight cosyte formats now carry a signature (CLI-6): **hl7** (`MSH` + field separator), **mllp**
+ * (a leading `0x0B` VT frame byte — an MLLP-framed stream, de-framed to its enclosed HL7), **fhir** (a
+ * JSON object declaring `resourceType`), **x12** (a leading `ISA` interchange header), **astm** (a
+ * leading `H` record whose second byte is the field delimiter), **ccda** (a `<ClinicalDocument>` root),
+ * **ncpdp** (a `<Message>` root in the NCPDP SCRIPT namespace), and **dicom** (the `DICM` magic at byte
+ * 128). The signatures are **conservative and, on realistic inputs, mutually exclusive** — the
+ * distinctive-lead formats (`MSH`, `ISA`, `H`+delimiter, `<ClinicalDocument>`, `<Message>`+ncpdp, the
+ * `DICM` magic, `0x0B` VT, `{…"resourceType"`) don't overlap on a real message of any one type. They
+ * are **not** disjoint in the absolute sense — a pathological input could satisfy two (an MLLP frame
+ * enclosing a `<ClinicalDocument>` payload matches both `mllp` and `ccda`; a text file whose byte 128
+ * is `DICM` matches both) — which is exactly why the **`ambiguous` branch is load-bearing, not dead
+ * code**: any co-match is a *detected* ambiguity (a value-free data error asking for `--format`),
+ * **never a silent mis-route**.
  *
  * @packageDocumentation
  */
@@ -24,7 +33,7 @@ import { EXIT } from "./exit-codes.js";
  * The set of formats the `cosyte` command names. Detection currently recognises **hl7** and **fhir**;
  * the others are accepted by `--format` but reported as not-yet-wired (never faked) until their phase.
  */
-export type CosyteFormat = "hl7" | "fhir" | "dicom" | "x12" | "ccda" | "ncpdp" | "astm";
+export type CosyteFormat = "hl7" | "fhir" | "dicom" | "x12" | "ccda" | "ncpdp" | "astm" | "mllp";
 
 /**
  * How confident autodetection is:
@@ -53,7 +62,9 @@ interface Signature {
 /** How many leading bytes to decode for text sniffing. Small — signatures live in the first line. */
 const SNIFF_BYTES = 512;
 
-/** Strip a leading UTF-8 BOM and any leading ASCII whitespace/control bytes for a tolerant sniff. */
+/** Strip a leading UTF-8 BOM and any leading ASCII whitespace for a tolerant sniff. Deliberately does
+ * **not** strip the MLLP `0x0B` VT frame byte (`\v`) — that byte is the mllp signature, so consuming it
+ * here would collide the hl7 and mllp signatures on a framed message. */
 function leadingText(bytes: Uint8Array): string {
   const slice = bytes.subarray(0, SNIFF_BYTES);
   let text = new TextDecoder("utf-8", { fatal: false }).decode(slice);
@@ -61,19 +72,36 @@ function leadingText(bytes: Uint8Array): string {
   return text;
 }
 
-/**
- * HL7 v2: the message begins with an `MSH` segment whose 4th character is the field separator
- * (conventionally `|`) followed by the encoding characters. Tolerates leading whitespace and MLLP
- * `0x0B` framing. Conservative: requires `MSH` + a non-alphanumeric single-char field separator.
- */
-function looksLikeHl7(prefix: string): boolean {
-  const s = prefix.replace(/^\s+/, "");
-  if (!s.startsWith("MSH")) return false;
-  const ch = s[3];
-  if (ch === undefined) return false; // "MSH" with no following field separator
-  // A field separator is a single printable non-alphanumeric byte (e.g. "|"). Reject letters/digits.
+/** Trim only regular leading whitespace (space/tab/CR/LF/FF) — never the `0x0B` VT MLLP frame byte. */
+function trimLeading(prefix: string): string {
+  return prefix.replace(/^[ \t\r\n\f]+/, "");
+}
+
+/** True iff `ch` is a single printable, non-alphanumeric byte usable as a wire delimiter (e.g. `|`, `*`). */
+function isDelimiter(ch: string | undefined): boolean {
+  if (ch === undefined) return false;
   const code = ch.charCodeAt(0);
   return code > 0x20 && code < 0x7f && !/[A-Za-z0-9]/.test(ch);
+}
+
+/**
+ * HL7 v2: the message begins with an `MSH` segment whose 4th character is the field separator
+ * (conventionally `|`) followed by the encoding characters. Conservative: requires `MSH` + a
+ * non-alphanumeric single-char field separator. An MLLP-framed message (leading `0x0B`) is **not**
+ * claimed here — it is the `mllp` signature — because {@link trimLeading} preserves the VT byte.
+ */
+function looksLikeHl7(prefix: string): boolean {
+  const s = trimLeading(prefix);
+  return s.startsWith("MSH") && isDelimiter(s[3]);
+}
+
+/**
+ * MLLP: a Minimal Lower Layer Protocol frame opens with the `0x0B` VT byte. This is a **transport
+ * framing**, not a document format — the CLI de-frames it and parses the enclosed HL7 v2 payload(s).
+ * The check is on the **raw first byte**, so it is disjoint from every text signature.
+ */
+function looksLikeMllp(_prefix: string, bytes: Uint8Array): boolean {
+  return bytes[0] === 0x0b;
 }
 
 /**
@@ -82,16 +110,70 @@ function looksLikeHl7(prefix: string): boolean {
  * `resourceType` key must be present, so a bare JSON object without it is not claimed as FHIR.
  */
 function looksLikeFhir(prefix: string): boolean {
-  const s = prefix.replace(/^\s+/, "");
+  const s = trimLeading(prefix);
   if (!s.startsWith("{")) return false;
   return /"resourceType"\s*:\s*"/.test(s);
 }
 
-/** The signature registry. Disjoint by construction in Phase 1 (HL7 starts `MSH`, FHIR starts `{`). */
+/**
+ * X12 EDI: an interchange opens with the fixed 3-byte `ISA` segment id immediately followed by the
+ * element separator (a non-alphanumeric byte — `*` conventionally, but delimiter-agnostic).
+ */
+function looksLikeX12(prefix: string): boolean {
+  const s = trimLeading(prefix);
+  return s.startsWith("ISA") && isDelimiter(s[3]);
+}
+
+/**
+ * ASTM E1394/E1381 records: the first record is an `H` (header) whose second byte is the field
+ * delimiter and whose next three bytes are the repeat / component / escape **delimiter declarations**
+ * (all punctuation — classically `\^&`). Requiring the full 4-delimiter block, not just `H` + one
+ * delimiter, keeps a mundane `H:...`/`H!...` text line from being confidently mis-routed to ASTM (it
+ * would instead be a value-free `CLI_FORMAT_UNDETECTED`). Distinct from HL7 (`MSH`) and X12 (`ISA`).
+ */
+function looksLikeAstm(prefix: string): boolean {
+  const s = trimLeading(prefix);
+  if (!s.startsWith("H") || s.length < 5) return false;
+  // s[1] = field delimiter; s[2..4] = the repeat/component/escape delimiter declarations.
+  return isDelimiter(s[1]) && isDelimiter(s[2]) && isDelimiter(s[3]) && isDelimiter(s[4]);
+}
+
+/** C-CDA: an HL7 v3 CDA document rooted at `<ClinicalDocument>` (XML). */
+function looksLikeCcda(prefix: string): boolean {
+  return /<ClinicalDocument[\s>]/.test(prefix);
+}
+
+/**
+ * NCPDP SCRIPT: an ePrescribing message rooted at `<Message>` in the NCPDP SCRIPT namespace.
+ * Requires **both** the `<Message>` root and the `ncpdp` namespace marker so a generic `<Message>`
+ * XML is not mis-claimed (conservative — disjoint from C-CDA's `<ClinicalDocument>`).
+ */
+function looksLikeNcpdp(prefix: string): boolean {
+  return /<Message[\s>]/.test(prefix) && /ncpdp/i.test(prefix);
+}
+
+/** DICOM Part 10: the `DICM` magic sits at byte offset 128, after the 128-byte preamble. */
+function looksLikeDicom(_prefix: string, bytes: Uint8Array): boolean {
+  if (bytes.length < 132) return false;
+  return (
+    bytes[128] === 0x44 && bytes[129] === 0x49 && bytes[130] === 0x43 && bytes[131] === 0x4d // "DICM"
+  );
+}
+
+/** The signature registry — disjoint by construction across all eight cosyte formats (CLI-6). */
 const SIGNATURES: readonly Signature[] = [
   { format: "hl7", match: (prefix) => looksLikeHl7(prefix) },
+  { format: "mllp", match: (prefix, bytes) => looksLikeMllp(prefix, bytes) },
   { format: "fhir", match: (prefix) => looksLikeFhir(prefix) },
+  { format: "x12", match: (prefix) => looksLikeX12(prefix) },
+  { format: "astm", match: (prefix) => looksLikeAstm(prefix) },
+  { format: "ccda", match: (prefix) => looksLikeCcda(prefix) },
+  { format: "ncpdp", match: (prefix) => looksLikeNcpdp(prefix) },
+  { format: "dicom", match: (prefix, bytes) => looksLikeDicom(prefix, bytes) },
 ];
+
+/** The formats content-autodetection can recognise (every format now carries a signature). */
+export const DETECTABLE_FORMATS: readonly CosyteFormat[] = SIGNATURES.map((s) => s.format);
 
 /**
  * Detect the healthcare format of `bytes` by content, conservatively.
@@ -166,13 +248,9 @@ export function detectionError(detected: DetectResult): CliError {
   return new CliError(
     CLI_CODES.CLI_FORMAT_UNDETECTED,
     EXIT.DATAERR,
-    "could not detect the input format; re-run with --format (wired: hl7, fhir)",
+    `could not detect the input format; re-run with --format (detectable: ${DETECTABLE_FORMATS.join(", ")})`,
   );
 }
-
-/** The formats this CLI build actually wires to a parser. `--format` values outside this set, and any
- * future detected format not in it, produce a value-free `CLI_FORMAT_UNSUPPORTED` — never a fake parse. */
-export const WIRED_FORMATS: ReadonlySet<CosyteFormat> = new Set<CosyteFormat>(["hl7", "fhir"]);
 
 /** The full set of format names `--format` accepts as syntactically valid (a bad value is a usage error). */
 export const KNOWN_FORMATS: readonly CosyteFormat[] = [
@@ -183,6 +261,7 @@ export const KNOWN_FORMATS: readonly CosyteFormat[] = [
   "ccda",
   "ncpdp",
   "astm",
+  "mllp",
 ];
 
 /**

@@ -23,11 +23,30 @@ export {
   classifyCandidates,
   detectionError,
   asCosyteFormat,
-  WIRED_FORMATS,
+  DETECTABLE_FORMATS,
   KNOWN_FORMATS,
   type CosyteFormat,
   type DetectResult,
 } from "./core/format.js";
+
+export {
+  OP_SUPPORT,
+  supportsOp,
+  formatsSupporting,
+  parseFormat,
+  inspectFormat,
+  fmtFormat,
+  validateFormat,
+  deframeMllp,
+  loadOptional,
+  valueFreeLocator,
+  type Op,
+  type ParseResult,
+  type ParseWarning,
+  type FmtResult,
+  type Verdict,
+  type InspectSummary,
+} from "./core/parsers.js";
 
 export {
   CLI_CODES,
@@ -75,3 +94,5 @@ export { convertCommand, convertOutcome } from "./commands/convert.js";
 export { mapCodesCommand } from "./commands/map-codes.js";
 
 export { redactCommand } from "./commands/redact.js";
+
+export { completionCommand } from "./commands/completion.js";

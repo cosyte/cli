@@ -121,7 +121,7 @@ export async function convertCommand(
     );
   }
 
-  const resolved = await resolveInput(positionals[0], values.format, deps);
+  const resolved = await resolveInput(positionals[0], values.format, deps, "parse");
   if (!resolved.ok) return resolved.result;
   const { format, bytes } = resolved.input;
 

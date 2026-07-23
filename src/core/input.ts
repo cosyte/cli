@@ -13,21 +13,16 @@
  * @packageDocumentation
  */
 
-import {
-  asCosyteFormat,
-  detectFormat,
-  detectionError,
-  WIRED_FORMATS,
-  type CosyteFormat,
-} from "./format.js";
+import { asCosyteFormat, detectFormat, detectionError, type CosyteFormat } from "./format.js";
 import { CLI_CODES, CliError, errorResult } from "./diagnostics.js";
 import { EXIT } from "./exit-codes.js";
 import type { RunDeps } from "./io.js";
+import { formatsSupporting, supportsOp, type Op } from "./parsers.js";
 import type { RunResult } from "./result.js";
 
-/** A successfully-resolved input: the confirmed-wired format and the bytes to operate on. */
+/** A successfully-resolved input: the format (guaranteed to support the requested op) and the bytes. */
 export interface ResolvedInput {
-  /** The resolved format — guaranteed to be in {@link WIRED_FORMATS}. */
+  /** The resolved format — guaranteed to satisfy `supportsOp(format, op)` for the requested op. */
   readonly format: CosyteFormat;
   /** The input bytes (a whole file or a drained stdin buffer); guaranteed non-empty. */
   readonly bytes: Uint8Array;
@@ -48,8 +43,10 @@ export type InputResolution =
  * @param source - The positional `<file|->` argument (or `undefined` when it was omitted).
  * @param formatOverride - The raw `--format` value, or `undefined` to autodetect by content.
  * @param deps - Injected input readers ({@link RunDeps}).
- * @returns `{ ok: true, input }` when the bytes read and the format resolved to a wired parser; else
- *   `{ ok: false, result }` with a value-free usage/no-input/data-error {@link RunResult}.
+ * @param op - The wrapping operation the caller will run; the resolved format is confirmed to support
+ *   it (else a value-free `CLI_FORMAT_UNSUPPORTED` naming the supporting formats).
+ * @returns `{ ok: true, input }` when the bytes read and the format resolved to a parser supporting
+ *   `op`; else `{ ok: false, result }` with a value-free usage/no-input/data-error {@link RunResult}.
  * @throws Propagates a **non-`CliError`** read failure unchanged, so the dispatcher maps it to
  *   `CLI_INTERNAL` (a `CliError` read failure — e.g. a missing file — is caught and returned).
  * @example
@@ -60,7 +57,7 @@ export type InputResolution =
  *   readFile: async () => new TextEncoder().encode('{"resourceType":"Patient"}'),
  *   readStdin: async () => new Uint8Array(),
  * };
- * const r = await resolveInput("patient.json", undefined, deps);
+ * const r = await resolveInput("patient.json", undefined, deps, "parse");
  * if (r.ok) r.input.format; // => "fhir"
  * ```
  */
@@ -68,6 +65,7 @@ export async function resolveInput(
   source: string | undefined,
   formatOverride: string | undefined,
   deps: RunDeps,
+  op: Op,
 ): Promise<InputResolution> {
   if (source === undefined) {
     return fail(
@@ -100,7 +98,7 @@ export async function resolveInput(
         new CliError(
           CLI_CODES.CLI_USAGE,
           EXIT.USAGE,
-          "unknown --format value; expected one of hl7, fhir, dicom, x12, ccda, ncpdp, astm",
+          "unknown --format value; expected one of hl7, fhir, dicom, x12, ccda, ncpdp, astm, mllp",
         ),
       );
     }
@@ -112,12 +110,13 @@ export async function resolveInput(
     format = detected.format;
   }
 
-  if (!WIRED_FORMATS.has(format)) {
+  if (!supportsOp(format, op)) {
     return fail(
       new CliError(
         CLI_CODES.CLI_FORMAT_UNSUPPORTED,
         EXIT.DATAERR,
-        `format '${format}' is recognised but not yet wired in this CLI build (wired: hl7, fhir)`,
+        `format '${format}' does not support \`${op}\` in this CLI build ` +
+          `(${op} supports: ${formatsSupporting(op).join(", ")})`,
       ),
     );
   }

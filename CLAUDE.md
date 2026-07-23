@@ -23,6 +23,22 @@ subpath still exports a small programmatic `core` API (`detectFormat`, `EXIT`, `
 
 ## Status
 
+- **Phase 6 shipped** (`operations/roadmaps/cli.md` §Phase 6). **Six more formats + streaming + shell
+  completion** (ADR 0025). The CLI now wraps **all eight** cosyte formats through a single lazy
+  **per-format adapter registry** (`src/core/parsers.ts`) that replaced the per-command `hl7 ? : fhir`
+  branches and makes support **per (format, operation)** via `OP_SUPPORT` — an unsupported (format, op)
+  is a value-free `CLI_FORMAT_UNSUPPORTED`, never a fake. Capabilities: `x12`/`astm`/`ncpdp` →
+  parse+inspect+fmt+validate; `ccda` → inspect+fmt(XML)+validate (parse deferred — no library JSON
+  model); `dicom` → inspect+validate (parse/fmt deferred — binary model); `mllp` → parse+inspect (a
+  transport container de-framed to its enclosed HL7). Autodetection covers all eight (conservative +
+  fail-safe — a co-match is a _detected_ ambiguity, never a mis-route). **Streaming:** `parse` emits
+  **NDJSON** with per-record isolation for MLLP frames and the
+  new **`--ndjson`** input mode (a failed record is a value-free `{record,error}` line; any failure →
+  exit `65`). **`cosyte completion <bash|zsh|fish>`** prints a static completion script. The six breadth
+  parsers are **`optionalDependencies`** (vendored, lazy per format, outside the hard-dep closure — ADR
+  0025), so the umbrella `verify-policy` `cli` cap **stays 4**; an absent optional parser degrades to a
+  value-free **`CLI_PARSER_UNAVAILABLE`** (exit `69`). New diagnostic `CLI_PARSER_UNAVAILABLE`; the public
+  `WIRED_FORMATS` set is replaced by the per-op `OP_SUPPORT` matrix.
 - **Phase 5 shipped** (`operations/roadmaps/cli.md` §Phase 5). Adds the **`cosyte-mcp` MCP server** — the
   **agent front door** and the _second adapter_ over the one shared `core` (ADR 0022). A **stdio** Model
   Context Protocol server on `@modelcontextprotocol/sdk`, reachable three ways: the new **`cosyte-mcp`**
@@ -79,15 +95,17 @@ subpath still exports a small programmatic `core` API (`detectFormat`, `EXIT`, `
   Third-party CLI-core runtime deps: **zero**. The MCP server's **`@modelcontextprotocol/sdk`** is the
   CLI's only third-party runtime dep — declared in **`optionalDependencies`** (not `dependencies`),
   isolated behind `./mcp`, so it is outside the hard-closure cap (ADR 0024).
-- **Deferred:** the other six parsers + streaming (P6), release hardening (P7). The MCP tool set covers
-  `parse`/`validate`/`inspect`/`convert`; `redact`/`map-codes` tools and remote/HTTP MCP are later.
-  `redact`'s real de-identification is deferred to when `@cosyte/deid` ships (P2 landed the gated stub +
-  seam). `validate --profile` is reserved but gated (`CLI_NOT_IMPLEMENTED`/`69`) until the CLI can load
-  a profile — no profiles are bundled.
+- **Deferred:** release hardening (P7). Per-(format, op) cells deferred honestly (never faked): `dicom`
+  `parse`/`fmt` (binary model), `ccda` `parse` (XML is the canonical `fmt` surface), `mllp` `fmt`/`validate`.
+  The MCP tool set covers `parse`/`validate`/`inspect`/`convert`; `redact`/`map-codes` tools and
+  remote/HTTP MCP are later. `redact`'s real de-identification is deferred to when `@cosyte/deid` ships
+  (P2 landed the gated stub + seam). `validate --profile` is reserved but gated (`CLI_NOT_IMPLEMENTED`/`69`)
+  until the CLI can load a profile — no profiles are bundled.
 - **ADRs:** `documentation/decisions/0021` (dependency-tier: a `bin` hard-deps first-party siblings),
   `0022` (one-repo-two-bins: CLI + MCP over one core; web playground out of scope), `0023` (wire
-  `transform` + `terminology` for `convert`/`map-codes`; the deliberate 2 → 4 dep-cap raise), and `0024`
-  (the Phase-5 MCP server; the SDK as an isolated, runtime-optional dependency — hard-dep cap stays 4).
+  `transform` + `terminology` for `convert`/`map-codes`; the deliberate 2 → 4 dep-cap raise), `0024`
+  (the Phase-5 MCP server; the SDK as an isolated, runtime-optional dependency — hard-dep cap stays 4),
+  and `0025` (the Phase-6 breadth parsers as runtime-optional lazy deps outside the cap; the cap stays 4).
 
 ## Tech Stack (the shared `@cosyte/*` standard)
 
@@ -110,8 +128,10 @@ a summary.
   coverage-excluded at source (a `/* v8 ignore */` block over the argv/stdin/exit glue).
 - **CI/CD:** thin callers of the reusable `cosyte/.github` workflows.
 - **Runtime deps:** `@cosyte/hl7` + `@cosyte/fhir` + `@cosyte/transform` + `@cosyte/terminology`
-  (first-party, hard, vendored — ADR 0021 + 0023), capped at **4**. **Zero third-party** in the CLI
-  core (`util.parseArgs`, no framework).
+  (first-party, hard, vendored — ADR 0021 + 0023), capped at **4**. The six CLI-6 breadth parsers
+  (`dicom`/`x12`/`ccda`/`ncpdp`/`astm`/`mllp`) are vendored **`optionalDependencies`**, lazy-loaded per
+  format and **outside** that cap (ADR 0025); the MCP `@modelcontextprotocol/sdk` is likewise optional
+  (ADR 0024). **Zero third-party** in the CLI core (`util.parseArgs`, no framework).
 - **License:** MIT.
 
 ## Engineering Guardrails

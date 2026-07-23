@@ -9,15 +9,19 @@ sidebar_position: 1
 Task-oriented recipes for the `cosyte` command. Each is a short, copy-pasteable answer to one real
 question.
 
-> **Status:** pre-alpha (`0.0.x`), not yet published to npm. The `cosyte` command ships seven commands
-> over two wired parsers (HL7 v2 + FHIR) plus the `@cosyte/transform` and `@cosyte/terminology`
-> higher-layer libraries: `parse` (autodetect → typed JSON), `validate` (verdict in the exit code),
-> `inspect` (a value-free structural summary), `fmt` (canonical re-serialization), `convert` (HL7 v2 →
-> FHIR R4 via `@cosyte/transform`), `map-codes` (ConceptMap `$translate` via `@cosyte/terminology`),
-> and `redact`/`deid` (an honest gated stub, exit `69`, until `@cosyte/deid` ships). PHI discipline runs
-> throughout — value-free by default, the opt-in `--unsafe-show-values`, never a PHI temp file. The MCP
-> server and the remaining formats land in later phases — a command is only documented here once its
-> behavior ships and its example passes the doc/code-agreement check.
+> **Status:** pre-alpha (`0.0.x`), not yet published to npm. The `cosyte` command wraps **all eight
+> cosyte formats** (HL7 v2, FHIR R4, X12, ASTM, NCPDP SCRIPT, C-CDA, DICOM, MLLP) plus the
+> `@cosyte/transform` and `@cosyte/terminology` higher-layer libraries: `parse` (autodetect → typed JSON,
+> with NDJSON streaming for MLLP frames and `--ndjson`), `validate` (verdict in the exit code), `inspect`
+> (a value-free structural summary), `fmt` (canonical re-serialization), `convert` (HL7 v2 → FHIR R4 via
+> `@cosyte/transform`), `map-codes` (ConceptMap `$translate` via `@cosyte/terminology`), `redact`/`deid`
+> (an honest gated stub, exit `69`, until `@cosyte/deid` ships), and `completion` (a shell completion
+> script). Support is honest **per (format, operation)** — a parser that does not faithfully support a
+> command (DICOM `parse`/`fmt`, C-CDA `parse`, MLLP `fmt`/`validate`) is a value-free
+> `CLI_FORMAT_UNSUPPORTED`, never a fake. PHI discipline runs throughout — value-free by default, the
+> opt-in `--unsafe-show-values`, never a PHI temp file. A `cosyte-mcp` MCP server exposes the same core
+> to an LLM/agent. A command is only documented here once its behavior ships and its example passes the
+> doc/code-agreement check.
 
 ## Parse from a pipeline and select a field
 

@@ -17,15 +17,17 @@ It is a thin, honest skin over libraries that already own correctness ([`@cosyte
 and owns two disciplines of its own — a documented **exit-code contract** and a **value-free
 diagnostic** posture.
 
-> **Status:** pre-alpha (`0.0.x`), **not yet published to npm**. The `cosyte` command today ships seven
-> commands over two wired parsers (**HL7 v2** + **FHIR R4**) plus the `@cosyte/transform` and
-> `@cosyte/terminology` higher-layer libraries, with conservative content-format autodetection and a
-> documented exit-code contract:
+> **Status:** pre-alpha (`0.0.x`), **not yet published to npm**. The `cosyte` command wraps **all eight
+> cosyte formats** (**HL7 v2**, **FHIR R4**, **X12**, **ASTM**, **NCPDP SCRIPT**, **C-CDA**, **DICOM**,
+> and **MLLP**) plus the `@cosyte/transform` and `@cosyte/terminology` higher-layer libraries, with
+> conservative content-format autodetection and a documented exit-code contract:
 >
-> - **`parse`** — autodetect the format and print the parsed model as typed JSON on stdout.
+> - **`parse`** — autodetect the format and print the parsed model as typed JSON on stdout. Multi-record
+>   inputs (an **MLLP** stream, or any input under **`--ndjson`**) stream as **NDJSON** with per-record
+>   isolation.
 > - **`validate`** — parse, then run the wrapped parser's own validation surface, with the **verdict in
 >   the exit code** (`0` valid · `1` invalid · `65` unparseable); findings are value-free.
-> - **`inspect`** — a value-free structural summary (type, version, per-segment/entry counts).
+> - **`inspect`** — a value-free structural summary (type/classification codes + structural counts).
 > - **`fmt`** — canonical re-serialization through the library's spec-clean serializer; no partial emit
 >   on unparseable input.
 > - **`convert`** — HL7 v2 → FHIR R4 via `@cosyte/transform`; the converted `Bundle` on stdout, value-
@@ -34,11 +36,14 @@ diagnostic** posture.
 >   target coding(s) on stdout, or a value-free unmapped signal + exit `1`.
 > - **`redact` / `deid`** — gated to an honest `CLI_NOT_IMPLEMENTED` (exit `69`) until `@cosyte/deid`
 >   ships; it never reads the input and never emits a partial scrub dressed up as de-identified.
+> - **`completion <bash|zsh|fish>`** — print a static shell completion script.
 >
-> PHI discipline runs throughout: value-free by default across every diagnostic, the loud opt-in
-> `--unsafe-show-values` as the single door to a value on a secondary surface, and never a temp file
-> with PHI. An **MCP server** (`cosyte-mcp`) now exposes the same core to an LLM/agent as callable
-> tools. The remaining parser formats land in later phases.
+> **Support is honest per (format, operation)** — not every parser faithfully supports every command, so
+> the deferred cells (DICOM `parse`/`fmt` — binary model; C-CDA `parse` — XML is the canonical `fmt`
+> surface; MLLP `fmt`/`validate`) are a value-free `CLI_FORMAT_UNSUPPORTED`, never a fake. PHI discipline
+> runs throughout: value-free by default across every diagnostic, the loud opt-in `--unsafe-show-values`
+> as the single door to a value on a secondary surface, and never a temp file with PHI. An **MCP server**
+> (`cosyte-mcp`) exposes the same core to an LLM/agent as callable tools.
 
 ## Run it
 
@@ -61,10 +66,24 @@ cosyte parse message.hl7            # → { "format": "hl7", "model": …, "warn
 cat patient.json | cosyte parse -   # from a pipeline
 cosyte parse --json message.hl7 | jq '.model'   # compact machine output
 cosyte parse --format hl7 msg.txt   # override autodetection
+cosyte parse stream.mllp             # MLLP frames → one NDJSON record per frame
+cosyte parse bulk.ndjson --ndjson    # one FHIR resource per line → NDJSON records
 ```
 
 Autodetection is **conservative**: a confident single match parses; ambiguity or no match is a typed
-data error asking for `--format` — **never a guessed parser**.
+data error asking for `--format` — **never a guessed parser**. `--format` accepts `hl7 | fhir | x12 |
+astm | ncpdp | ccda | dicom | mllp`.
+
+**Streaming / multi-message.** A single message prints one JSON envelope. A multi-record input — an
+**MLLP** stream (one record per frame) or any input under **`--ndjson`** (one record per non-empty
+line) — streams as **NDJSON**, one `{ record, format, model, warnings }` line each, with per-record
+isolation: a record that fails to parse becomes a value-free `{ record, error }` line and the stream
+continues; the overall exit is a data error (`65`) if any record failed.
+
+Support is honest **per (format, operation)**: `x12`/`astm`/`ncpdp` support all of parse/inspect/fmt/
+validate; `ccda` supports inspect/fmt/validate (parse deferred); `dicom` supports inspect/validate
+(parse/fmt deferred); `mllp` supports parse/inspect. A deferred cell is a value-free
+`CLI_FORMAT_UNSUPPORTED`, never a fake result.
 
 ## `cosyte validate`
 
@@ -189,6 +208,16 @@ exact false-safety hazard `redact` exists to avoid. So `cosyte redact <file>` is
 `CLI_NOT_IMPLEMENTED` (exit `69`, `EX_UNAVAILABLE`) that **never reads your input** and **never emits a
 partial scrub dressed up as safe** — it will produce a real de-identified copy once `@cosyte/deid`
 ships and is vetted.
+
+## `cosyte completion`
+
+Print a shell completion script generated from the command tree, and source it:
+
+```bash
+source <(cosyte completion bash)     # bash
+source <(cosyte completion zsh)      # zsh
+cosyte completion fish | source      # fish
+```
 
 ## The MCP server (agent front door)
 

@@ -22,7 +22,8 @@ shapes output, and owns two disciplines of its own: a documented **exit-code con
 
 > **Status:** pre-alpha (`0.0.x`), not yet published to npm. `parse`, `validate`, `inspect`, and `fmt`
 > are wired for **HL7 v2** and **FHIR R4**; `convert` and `map-codes` wrap the higher-layer libraries.
-> A **`cosyte-mcp` MCP server** exposes the same core to an LLM/agent. More formats land in later phases.
+> A **`cosyte-mcp` MCP server** exposes the same core to an LLM/agent. All eight cosyte formats are
+> wired, with support honest per (format, operation) and NDJSON streaming for MLLP and `--ndjson`.
 
 ## Parse a message
 
