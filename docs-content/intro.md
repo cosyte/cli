@@ -21,7 +21,8 @@ shapes output, and owns two disciplines of its own: a documented **exit-code con
 **value-free diagnostic** posture (never a field value on stderr).
 
 > **Status:** pre-alpha (`0.0.x`), not yet published to npm. `parse`, `validate`, `inspect`, and `fmt`
-> are wired for **HL7 v2** and **FHIR R4**; more commands and formats land in later phases.
+> are wired for **HL7 v2** and **FHIR R4**; `convert` and `map-codes` wrap the higher-layer libraries.
+> A **`cosyte-mcp` MCP server** exposes the same core to an LLM/agent. More formats land in later phases.
 
 ## Parse a message
 
@@ -42,4 +43,5 @@ The exit code carries the outcome — `0` success, `65` unparseable/undetected, 
 
 - [Installation](./installation) — `npx`, global install, prerequisites.
 - [Quickstart](./quickstart) — the one-line parse, stdin, and the programmatic API.
+- [MCP server](./mcp) — expose the same parse/validate/convert core to an LLM/agent.
 - **API Reference** — every programmatic export, generated from source.

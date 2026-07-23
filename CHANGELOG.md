@@ -14,6 +14,31 @@ its public history at `0.0.x`, per the cosyte version ladder (`0.0.x` until firs
 
 ### Added
 
+- **Phase 5 — the `cosyte-mcp` MCP server (the agent front door).** A **stdio Model Context Protocol
+  server** that exposes the shared command core to an LLM/agent as callable tools — the second adapter
+  over one core (ADR 0022, 0024). Reachable three ways: the new **`cosyte-mcp`** bin, the **`cosyte mcp`**
+  subcommand, and the **`@cosyte/cli/mcp`** subpath export. Tools: **`parse`**, **`validate`**,
+  **`inspect`**, **`convert`** — each a thin wrapper that calls the same command handler the terminal
+  uses (with `--json`), so `cosyte parse` and the MCP `parse` tool agree by construction; the CLI
+  re-implements nothing.
+  - **PHI posture, inherited and hardened.** Every tool runs under the value-free posture — there is
+    **no** `--unsafe-show-values` door on the agent surface. A tool _result_ carries the requested data
+    (the parsed model / converted Bundle — the explicit request); a tool _error_ carries only the value-
+    free diagnostic (a stable code + positional context), never an input value. A parsed-but-invalid
+    `validate` verdict is a **successful** call reporting the verdict, not a tool error; only a hard
+    failure (unparseable / no input / usage) sets `isError`.
+  - **The MCP SDK is isolated and runtime-optional (ADR 0024).** `@modelcontextprotocol/sdk` — the CLI's
+    first and only third-party runtime dependency — is declared in **`optionalDependencies`** (pinned
+    `1.29.0`) and imported **only** in `src/mcp/server.ts`, reachable solely via the `./mcp` boundary
+    (the subpath, the `cosyte-mcp` bin, and a dynamic `import()` on the `cosyte mcp` branch). A `cosyte
+parse` invocation never loads it; the core works with the SDK absent (`--omit=optional`). Because it
+    is not part of the hard runtime closure, the umbrella `verify-policy.json` cap on `cli` runtime
+    `dependencies` stays **4** — unchanged. A static isolation test proves no `core`/`commands` module
+    imports the SDK.
+  - New subpath export **`@cosyte/cli/mcp`** and new **`cosyte-mcp`** bin; new programmatic exports
+    (`createMcpServer`, `startStdioServer`, `dispatchTool`, `TOOL_DEFS`, and the MCP result types) on the
+    `./mcp` subpath. `redact`/`deid` (gated on `@cosyte/deid`) and `map-codes` are deliberately not
+    exposed as tools yet.
 - **Phase 4 — `convert` / `map-codes` (the consumer-of-consumers commands).** Two commands that wrap
   the higher-layer libraries; the CLI adds **no** mapping or terminology logic of its own.
   - **`convert <file|-> --to fhir [--json] [--quiet]`** — **HL7 v2 → FHIR R4** via

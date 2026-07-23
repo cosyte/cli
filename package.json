@@ -11,7 +11,8 @@
     "typescript"
   ],
   "bin": {
-    "cosyte": "./dist/bin/cosyte.mjs"
+    "cosyte": "./dist/bin/cosyte.mjs",
+    "cosyte-mcp": "./dist/bin/cosyte-mcp.mjs"
   },
   "homepage": "https://github.com/cosyte/cli#readme",
   "bugs": {
@@ -40,6 +41,16 @@
       "require": {
         "types": "./dist/index.d.cts",
         "default": "./dist/index.cjs"
+      }
+    },
+    "./mcp": {
+      "import": {
+        "types": "./dist/mcp.d.ts",
+        "default": "./dist/mcp.mjs"
+      },
+      "require": {
+        "types": "./dist/mcp.d.cts",
+        "default": "./dist/mcp.cjs"
       }
     },
     "./package.json": "./package.json"
@@ -71,7 +82,7 @@
     "clean": "rm -rf dist coverage",
     "vendor:refresh": "bash scripts/vendor-refresh.sh",
     "pack:docs": "bash scripts/build-docs-artifacts.sh",
-    "attw": "attw --pack .",
+    "attw": "attw --pack . --profile node16",
     "version": "changeset version && prettier --write package.json CHANGELOG.md",
     "release": "changeset publish",
     "prepublishOnly": "pnpm clean && pnpm typecheck && pnpm lint && pnpm test && pnpm build && pnpm attw",
@@ -112,5 +123,8 @@
     "@cosyte/hl7": "file:vendor/cosyte-hl7-0.0.0.tgz",
     "@cosyte/terminology": "file:vendor/cosyte-terminology-0.0.1.tgz",
     "@cosyte/transform": "file:vendor/cosyte-transform-0.0.0.tgz"
+  },
+  "optionalDependencies": {
+    "@modelcontextprotocol/sdk": "1.29.0"
   }
 }

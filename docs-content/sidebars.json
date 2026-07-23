@@ -13,6 +13,11 @@
     },
     {
       "type": "category",
+      "label": "MCP server",
+      "items": ["mcp"]
+    },
+    {
+      "type": "category",
       "label": "Core Concepts",
       "collapsed": false,
       "items": ["concepts-archetype"]

@@ -18,15 +18,28 @@ const deps: RunDeps = {
   readStdin: () => readStreamBytes(process.stdin),
 };
 
-run(process.argv.slice(2), deps)
-  .then((result) => {
-    if (result.stdout) process.stdout.write(result.stdout);
-    if (result.stderr) process.stderr.write(result.stderr);
-    process.exitCode = result.exit;
-  })
-  .catch(() => {
-    // Last-resort guard: a truly unexpected failure prints a value-free line and exits EX_SOFTWARE.
-    process.stderr.write("cosyte: CLI_INTERNAL: an unexpected internal error occurred\n");
-    process.exitCode = 70;
-  });
+// The `cosyte mcp` subcommand starts the stdio MCP server (also reachable as the `cosyte-mcp` bin).
+// It is dispatched here, before `run`, and the server module is DYNAMICALLY imported so the
+// @modelcontextprotocol/sdk dependency loads only on this path — a plain `cosyte parse` never pulls it
+// (ADR 0021 isolation). A server invocation stays alive serving requests; it does not return a result.
+if (process.argv[2] === "mcp") {
+  import("../mcp/server.js")
+    .then(({ startStdioServer }) => startStdioServer())
+    .catch(() => {
+      process.stderr.write("cosyte: CLI_INTERNAL: the MCP server failed to start\n");
+      process.exitCode = 70;
+    });
+} else {
+  run(process.argv.slice(2), deps)
+    .then((result) => {
+      if (result.stdout) process.stdout.write(result.stdout);
+      if (result.stderr) process.stderr.write(result.stderr);
+      process.exitCode = result.exit;
+    })
+    .catch(() => {
+      // Last-resort guard: a truly unexpected failure prints a value-free line and exits EX_SOFTWARE.
+      process.stderr.write("cosyte: CLI_INTERNAL: an unexpected internal error occurred\n");
+      process.exitCode = 70;
+    });
+}
 /* v8 ignore stop */

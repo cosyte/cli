@@ -36,6 +36,7 @@ Commands:
   convert <file|->    Convert HL7 v2 → FHIR R4 via @cosyte/transform (use --to fhir)
   map-codes <cmap|->  Translate a code through a BYO FHIR ConceptMap via @cosyte/terminology
   redact <file|->     De-identify a message (alias: deid) — gated on @cosyte/deid, not yet available
+  mcp                 Start the stdio MCP server (agent front door; also the cosyte-mcp bin)
 
 Global:
   -h, --help              Show this help
