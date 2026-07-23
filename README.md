@@ -44,6 +44,12 @@ diagnostic** posture.
 > runs throughout: value-free by default across every diagnostic, the loud opt-in `--unsafe-show-values`
 > as the single door to a value on a secondary surface, and never a temp file with PHI. An **MCP server**
 > (`cosyte-mcp`) exposes the same core to an LLM/agent as callable tools.
+>
+> The CLI is **feature-complete and release-hardened** (the final roadmap phase): an argv+stdin+MCP fuzz
+> gate, an exit-code golden matrix, a built-package smoke of both bins, and a clean `npm publish`
+> dry-run. What remains is the two standing founder stops — flipping the repo public and the real
+> `npm publish` — plus swapping the vendored sibling deps for real `@cosyte/*` npm ranges at that flip.
+> See [RELEASING.md](./RELEASING.md).
 
 ## Run it
 

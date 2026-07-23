@@ -79,6 +79,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "test:fuzz": "vitest run test/fuzz.property.test.ts",
+    "smoke": "node scripts/smoke.mjs",
     "clean": "rm -rf dist coverage",
     "vendor:refresh": "bash scripts/vendor-refresh.sh",
     "pack:docs": "bash scripts/build-docs-artifacts.sh",

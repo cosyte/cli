@@ -14,6 +14,26 @@ its public history at `0.0.x`, per the cosyte version ladder (`0.0.x` until firs
 
 ### Added
 
+- **Phase 7 — release hardening (the final roadmap phase; the CLI is feature-complete).** No new
+  runtime command surface — this phase is publish-readiness.
+  - **Fuzz gate over the two input boundaries.** `test/fuzz.property.test.ts` fuzzes the terminal
+    (`run`, over arbitrary argv vectors + stdin bytes) and the agent surface (`dispatchTool`, over an
+    arbitrary tool name + arguments), asserting neither ever throws an unhandled exception, always
+    resolves to a documented exit code, and never leaks a raw stack frame onto a secondary channel. The
+    case count scales via `CLI_FUZZ_RUNS`; a scheduled **Fuzz** workflow (`.github/workflows/fuzz.yml`)
+    runs it nightly at a high count, and `pnpm test:fuzz` runs it on demand.
+  - **Exit-code golden matrix.** `test/exit-code-matrix.test.ts` locks one representative invocation for
+    every code in the `0/1/2/65/66/69/70` contract, driven end-to-end through `run`, so a regression that
+    turns an invalid-input exit `1` into a `0` (or renumbers a code) fails CI. The exit-code map and the
+    stable `CLI_*` diagnostic codes are a stability surface: renaming one is a breaking change.
+  - **Publish dry-run proven.** A new `smoke` gate (`scripts/smoke.mjs`, wired into `verify.sh`)
+    exercises the **built** package — the dual ESM/CJS `.` and `./mcp` subpath exports, and **both**
+    `cosyte` / `cosyte-mcp` bins under `node` — and `npm publish --dry-run` assembles a clean tarball
+    (`dist` + `README`/`LICENSE`/`CHANGELOG`). `attw` remains a publish gate.
+  - **Honesty + release docs.** `docs-content/limitations.md` (wraps-not-implements, the non-goals, the
+    honest per-(format, operation) support matrix, the PHI-default posture), a man-page-style
+    `docs-content/reference-commands.md`, and `RELEASING.md` (the one-package-two-bins publish,
+    provenance/OIDC, the vendored-`file:`→npm dep swap, and the two standing founder stops).
 - **Phase 6 — six more formats + streaming + shell completion (ADR 0025).** The `cosyte` CLI now wraps
   **all eight cosyte formats**, routed through a single lazy **per-format adapter registry**
   (`src/core/parsers.ts`) that replaces the old per-command `hl7 ? : fhir` branches and makes support
