@@ -1,0 +1,36 @@
+name: Fuzz
+
+# Nightly extended fuzz of the CLI's two input boundaries — the terminal (`run`, over the argv + stdin
+# byte stream) and the agent surface (`dispatchTool`, over a tool name + arguments). The same property
+# suite runs in every CI at a lower case count; this job scales it up (CLI_FUZZ_RUNS) so rare
+# degeneracies get more chances to surface off the PR critical path. Self-contained by design: fuzzing
+# is an extra, scheduled surface, not one of the shared CI gates.
+
+on:
+  schedule:
+    - cron: "23 4 * * *" # nightly, 04:23 UTC
+  workflow_dispatch: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  fuzz:
+    runs-on: ubuntu-latest
+    env:
+      CLI_FUZZ_RUNS: "25000"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test:fuzz

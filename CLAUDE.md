@@ -23,6 +23,22 @@ subpath still exports a small programmatic `core` API (`detectFormat`, `EXIT`, `
 
 ## Status
 
+- **Phase 7 shipped (CLI-7): release hardening — the final roadmap phase. The CLI is feature-complete.**
+  No new runtime command surface; this phase is publish-readiness. **Fuzz** over the CLI's two input
+  boundaries — the terminal (`run`, over argv plus stdin bytes) and the agent surface (`dispatchTool`,
+  over a tool name plus arguments) — proving neither ever throws or leaks a stack frame
+  (`test/fuzz.property.test.ts`, scaled by `CLI_FUZZ_RUNS`, run nightly by a scheduled **Fuzz** workflow
+  and on demand via `pnpm test:fuzz`). The **exit-code golden matrix** (`test/exit-code-matrix.test.ts`)
+  locks one representative invocation for every code in the `0/1/2/65/66/69/70` contract as a stability
+  surface. **Publish dry-run proven:** `attw` green, a new `smoke` gate (`scripts/smoke.mjs`, in
+  `verify.sh`) exercising the built dual ESM/CJS `.` and `./mcp` subpaths **and both bins** under `node`,
+  and a clean `npm publish --dry-run` tarball. **Honesty docs:** `docs-content/limitations.md`
+  (wraps-not-implements, the non-goals, the per-(format, op) matrix, the PHI posture) and a
+  man-page-style `docs-content/reference-commands.md`; plus `RELEASING.md` (the two-bin publish,
+  provenance/OIDC, the vendor→npm swap, the two founder stops). **Founder-gated tail (NOT crossed):** the
+  real `npm publish` and the repo public-flip remain the two standing human stops — and, unique to this
+  `bin`, the vendored `file:` sibling deps must become real `@cosyte/*` npm ranges at `PUB-FLIP` (a
+  published package cannot ship a `file:` dep). Everything up to those is done.
 - **Phase 6 shipped** (`operations/roadmaps/cli.md` §Phase 6). **Six more formats + streaming + shell
   completion** (ADR 0025). The CLI now wraps **all eight** cosyte formats through a single lazy
   **per-format adapter registry** (`src/core/parsers.ts`) that replaced the per-command `hl7 ? : fhir`
@@ -95,7 +111,8 @@ subpath still exports a small programmatic `core` API (`detectFormat`, `EXIT`, `
   Third-party CLI-core runtime deps: **zero**. The MCP server's **`@modelcontextprotocol/sdk`** is the
   CLI's only third-party runtime dep — declared in **`optionalDependencies`** (not `dependencies`),
   isolated behind `./mcp`, so it is outside the hard-closure cap (ADR 0024).
-- **Deferred:** release hardening (P7). Per-(format, op) cells deferred honestly (never faked): `dicom`
+- **Deferred:** the roadmap's build phases are complete (P7 release hardening shipped). Per-(format, op)
+  cells remain deferred honestly (never faked): `dicom`
   `parse`/`fmt` (binary model), `ccda` `parse` (XML is the canonical `fmt` surface), `mllp` `fmt`/`validate`.
   The MCP tool set covers `parse`/`validate`/`inspect`/`convert`; `redact`/`map-codes` tools and
   remote/HTTP MCP are later. `redact`'s real de-identification is deferred to when `@cosyte/deid` ships
@@ -124,8 +141,10 @@ a summary.
 - **Testing:** **Vitest 4** + v8 coverage (`@cosyte/vitest-config`), per-directory >= 90 gates on
   `src/core` + `src/commands`. Command-contract snapshots, an autodetection corpus + a fast-check
   property, the `parse == library-parse` equivalence, and a **PHI-leak matrix** (sentinel values
-  never on stderr, across `--json`/`--quiet`/verbose). The thin `bin/` process adapter is
-  coverage-excluded at source (a `/* v8 ignore */` block over the argv/stdin/exit glue).
+  never on stderr, across `--json`/`--quiet`/verbose). CLI-7 adds an **argv+stdin+MCP fuzz** gate
+  (`test:fuzz`, nightly-scaled by `CLI_FUZZ_RUNS`), an **exit-code golden matrix**, and a built-package
+  **`smoke`** (dual ESM/CJS `.` + `./mcp` subpaths and both bins under `node`). The thin `bin/` process
+  adapter is coverage-excluded at source (a `/* v8 ignore */` block over the argv/stdin/exit glue).
 - **CI/CD:** thin callers of the reusable `cosyte/.github` workflows.
 - **Runtime deps:** `@cosyte/hl7` + `@cosyte/fhir` + `@cosyte/transform` + `@cosyte/terminology`
   (first-party, hard, vendored — ADR 0021 + 0023), capped at **4**. The six CLI-6 breadth parsers

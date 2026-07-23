@@ -29,6 +29,11 @@
     },
     {
       "type": "category",
+      "label": "Reference",
+      "items": ["reference-commands", "limitations"]
+    },
+    {
+      "type": "category",
       "label": "Troubleshooting",
       "items": ["troubleshooting"]
     }
