@@ -23,6 +23,22 @@ subpath still exports a small programmatic `core` API (`detectFormat`, `EXIT`, `
 
 ## Status
 
+- **Phase 5 shipped** (`operations/roadmaps/cli.md` §Phase 5). Adds the **`cosyte-mcp` MCP server** — the
+  **agent front door** and the _second adapter_ over the one shared `core` (ADR 0022). A **stdio** Model
+  Context Protocol server on `@modelcontextprotocol/sdk`, reachable three ways: the new **`cosyte-mcp`**
+  bin, the **`cosyte mcp`** subcommand, and the **`@cosyte/cli/mcp`** subpath export. It exposes four
+  tools — **`parse`/`validate`/`inspect`/`convert`** — each a thin wrapper that calls the same command
+  handler the terminal uses (with `--json`), so `cosyte parse` and the MCP `parse` tool agree by
+  construction; the CLI re-implements nothing. Every tool runs **value-free** (no `--unsafe-show-values`
+  door on the agent surface): a tool _result_ carries the requested data, a tool _error_ carries only the
+  value-free diagnostic, and a parsed-but-invalid `validate` verdict is a **successful** call reporting
+  the verdict — only a hard failure sets `isError`. The **SDK is isolated and runtime-optional** (ADR
+  0024): it is the CLI's first and only third-party runtime dep, declared in **`optionalDependencies`**
+  (pinned `1.29.0`), imported only in `src/mcp/server.ts`, and reachable solely via the `./mcp` boundary
+  — a `cosyte parse` invocation never loads it (proven by `test/mcp-isolation.test.ts`), and the core
+  works with the SDK absent. Because it is not in the hard runtime closure, the umbrella `verify-policy`
+  runtime-dep cap on `cli` stays **4**. `redact`/`deid` and `map-codes` are deliberately not yet exposed
+  as tools. New exports (on `./mcp`): `createMcpServer`, `startStdioServer`, `dispatchTool`, `TOOL_DEFS`.
 - **Phase 4 shipped** (`operations/roadmaps/cli.md` §Phase 4). Adds the two **consumer-of-consumers**
   commands, each a thin wrapper that re-implements no library logic: **`convert <file|-> --to fhir`**
   (HL7 v2 → FHIR R4 via **`@cosyte/transform`** — parse with `hl7`, `toFhir`, serialize with `fhir`;
@@ -60,15 +76,18 @@ subpath still exports a small programmatic `core` API (`detectFormat`, `EXIT`, `
   `vendor/` until PUB-FLIP — refresh with `pnpm vendor:refresh`. Pinned shas: hl7 `46d50eb`, fhir
   `7a099b2`, transform `e6c4531`, terminology `e5ed368`. **Lazy-loaded per command.** Umbrella
   `verify-policy.json` caps `cli` runtime deps at **4** (raised 2 → 4 for CLI-4, ADR 0023).
-  Third-party CLI-core runtime deps: **zero**.
-- **Deferred:** the MCP server (P5, ADR 0022), the other six parsers + streaming (P6), release
-  hardening (P7).
+  Third-party CLI-core runtime deps: **zero**. The MCP server's **`@modelcontextprotocol/sdk`** is the
+  CLI's only third-party runtime dep — declared in **`optionalDependencies`** (not `dependencies`),
+  isolated behind `./mcp`, so it is outside the hard-closure cap (ADR 0024).
+- **Deferred:** the other six parsers + streaming (P6), release hardening (P7). The MCP tool set covers
+  `parse`/`validate`/`inspect`/`convert`; `redact`/`map-codes` tools and remote/HTTP MCP are later.
   `redact`'s real de-identification is deferred to when `@cosyte/deid` ships (P2 landed the gated stub +
   seam). `validate --profile` is reserved but gated (`CLI_NOT_IMPLEMENTED`/`69`) until the CLI can load
   a profile — no profiles are bundled.
 - **ADRs:** `documentation/decisions/0021` (dependency-tier: a `bin` hard-deps first-party siblings),
-  `0022` (one-repo-two-bins: CLI + future MCP over one core; web playground out of scope), and `0023`
-  (wire `transform` + `terminology` for `convert`/`map-codes`; the deliberate 2 → 4 dep-cap raise).
+  `0022` (one-repo-two-bins: CLI + MCP over one core; web playground out of scope), `0023` (wire
+  `transform` + `terminology` for `convert`/`map-codes`; the deliberate 2 → 4 dep-cap raise), and `0024`
+  (the Phase-5 MCP server; the SDK as an isolated, runtime-optional dependency — hard-dep cap stays 4).
 
 ## Tech Stack (the shared `@cosyte/*` standard)
 

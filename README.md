@@ -37,7 +37,8 @@ diagnostic** posture.
 >
 > PHI discipline runs throughout: value-free by default across every diagnostic, the loud opt-in
 > `--unsafe-show-values` as the single door to a value on a secondary surface, and never a temp file
-> with PHI. The MCP server and the remaining parser formats land in later phases.
+> with PHI. An **MCP server** (`cosyte-mcp`) now exposes the same core to an LLM/agent as callable
+> tools. The remaining parser formats land in later phases.
 
 ## Run it
 
@@ -189,12 +190,40 @@ exact false-safety hazard `redact` exists to avoid. So `cosyte redact <file>` is
 partial scrub dressed up as safe** — it will produce a real de-identified copy once `@cosyte/deid`
 ships and is vetted.
 
+## The MCP server (agent front door)
+
+The same `core` is exposed to an **LLM/agent** as a [Model Context Protocol](https://modelcontextprotocol.io)
+server — the second adapter over one codebase (the terminal is the first). It is a **local stdio
+subprocess**, not a hosted endpoint. Register it in an MCP client's config:
+
+```json
+{
+  "mcpServers": {
+    "cosyte": { "command": "npx", "args": ["-y", "@cosyte/cli", "mcp"] }
+  }
+}
+```
+
+`cosyte mcp` and the standalone `cosyte-mcp` bin both start the stdio server. It exposes four tools —
+`parse`, `validate`, `inspect`, `convert` — each calling the same command the terminal runs, so the CLI
+and the agent get identical results. The PHI posture is inherited and hardened: there is **no
+`--unsafe-show-values` door on the agent surface**, a tool _result_ carries the requested data, and a
+tool _error_ carries only value-free diagnostics (a stable code + position, never an input value). A
+parsed-but-invalid `validate` is a **successful** call reporting the verdict, not a tool error.
+
+The MCP SDK (`@modelcontextprotocol/sdk`) is the CLI's only third-party runtime dependency; it is
+declared **optional** and loaded only on the MCP path, so a `cosyte parse` invocation never pulls it and
+the core works with the SDK absent. The server surface is importable via the `@cosyte/cli/mcp` subpath
+(`createMcpServer`, `startStdioServer`, `dispatchTool`, `TOOL_DEFS`).
+
 ## Programmatic API
 
 The same `core` is importable (the `.` subpath): `detectFormat`, the `EXIT` map (now including
 `EXIT.INVALID`), the `CLI_CODES` diagnostic registry, `resolveInput`, `run`, and each command
 (`parseCommand`, `validateCommand`, `inspectCommand`, `fmtCommand`, `convertCommand`, `mapCodesCommand`,
-`redactCommand`, plus `convertOutcome` for the conversion verdict). See the docs for the full surface.
+`redactCommand`, plus `convertOutcome` for the conversion verdict). The **`./mcp` subpath** exports the
+agent adapter (`createMcpServer`, `startStdioServer`, `dispatchTool`, `TOOL_DEFS`). See the docs for the
+full surface.
 
 ## License
 
