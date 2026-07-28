@@ -24,7 +24,7 @@ function deps(bytes: Uint8Array): RunDeps {
 const SENTINEL = "ZZSENTINELLAST";
 const BAD_HL7 = new TextEncoder().encode(`{"resourceType":"Patient","secret":"${SENTINEL}"}`);
 
-describe("extractPhiPosture — the single, order-independent flag resolver", () => {
+describe("extractPhiPosture: the single, order-independent flag resolver", () => {
   it("defaults to value-free when the flag is absent", () => {
     const { posture, argv } = extractPhiPosture(["parse", "x.hl7"]);
     expect(posture.showValues).toBe(false);
@@ -49,7 +49,7 @@ describe("extractPhiPosture — the single, order-independent flag resolver", ()
   });
 });
 
-describe("unsafeInputSuffix — the single value-echoing chokepoint", () => {
+describe("unsafeInputSuffix: the single value-echoing chokepoint", () => {
   it("returns empty under the value-free default (no value ever appended)", () => {
     expect(unsafeInputSuffix(BAD_HL7, VALUE_FREE)).toBe("");
   });
@@ -73,7 +73,7 @@ describe("unsafeInputSuffix — the single value-echoing chokepoint", () => {
   });
 });
 
-describe("the gate property — a value reaches stderr IFF --unsafe-show-values is set", () => {
+describe("the gate property: a value reaches stderr IFF --unsafe-show-values is set", () => {
   it("WITHOUT the flag: a parse failure is value-free (no sentinel on stderr)", async () => {
     const r = await run(["parse", "bad.hl7", "--format", "hl7"], deps(BAD_HL7));
     expect(r.exit).toBe(EXIT.DATAERR);
@@ -88,7 +88,7 @@ describe("the gate property — a value reaches stderr IFF --unsafe-show-values 
     );
     expect(r.exit).toBe(EXIT.DATAERR);
     expect(r.stderr).toContain("CLI_PARSE_FAILED");
-    expect(r.stderr).toContain(SENTINEL); // the door is open — the value is shown deliberately
+    expect(r.stderr).toContain(SENTINEL); // the door is open. The value is shown deliberately
   });
 
   it("the flag position is irrelevant (before the subcommand works too)", async () => {
@@ -122,7 +122,7 @@ describe("never writes a temp file / never logs to a file", () => {
     try {
       process.chdir(dir);
       // A representative spread: a success, a failure, both with and without the unsafe flag, and the
-      // redact command — none of these may leave a scratch/log file behind.
+      // redact command: none of these may leave a scratch/log file behind.
       const fhir = new TextEncoder().encode('{"resourceType":"Patient","id":"x"}');
       await run(["parse", "p.json"], deps(fhir));
       await run(["parse", "bad.hl7", "--format", "hl7"], deps(BAD_HL7));

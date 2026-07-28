@@ -1,0 +1,160 @@
+name: Em-dash gate
+
+# The brand rule (founder directive 2026-07-24, written down in the knowledgebase
+# repo at 06-brand/voice-and-tone.md: "No em dashes. Ever.") bans U+2014 outright
+# across every cosyte surface, and names commit messages explicitly.
+# `documentation/conventions.md` in the meta-repo has claimed the rule is CI-gated
+# since it was written. This workflow is the CI half of that rule for cli: the
+# tracked files, and the text that is not a file.
+#
+# cli was NOT clean when this landed, and the measurement behind that is the whole
+# tree rather than a sample: all 124 tracked files were read byte by byte on
+# 2026-07-28 and 87 of them carried U+2014, 659 occurrences in total, none in an
+# encoded form. 61 of the 87 are not markdown (26 are), and 37 of those 61 are
+# outside `test/` too. One is `package.json`, whose
+# `description` is published to npm and rendered on the package page, which is the
+# same npm-visible surface dicom was caught on and the reason a markdown-only count
+# is not an acceptable measurement. All 659 were rewritten in the commit that added
+# this gate, so it arrives green over a tree that was cleared rather than green over
+# a tree nobody looked at.
+#
+# A green run on a clean tree proves nothing on its own, which is why the script it
+# calls refuses to print OK from a scan that did not read everything it was handed,
+# and why every one of those refusals was checked red before this landed.
+#
+# cli tracks ELEVEN binaries: the ten `vendor/cosyte-*.tgz` packed sibling
+# dependencies (ADR 0021: an `npx` bin cannot peer-depend, so the parsers are hard,
+# vendored deps) and `test/__fixtures__/sample.dcm`. That is why this repo runs
+# website's NUL-exclusion variant of the script rather than the text-only one
+# knowledgebase, hl7, fhir, pathways, x12, ncpdp and dicom run. The full reasoning is
+# in the script header, and unlike mllp it does not rest on a hypothetical: measured
+# on this tree, `vendor/cosyte-hl7-0.0.0.tgz` ALREADY CONTAINS the byte sequence
+# E2 80 94, by DEFLATE coincidence. A text-only port goes red on it today, naming a
+# compressed byte stream nobody wrote and offering no way to fix it.
+#
+# WHY A SEPARATE WORKFLOW, and not a job in ci.yml:
+#
+#   The reusable pipeline is not an option. cli's `ci` job calls
+#   cosyte/.github/.github/workflows/ci.yml@main, which runs a fixed ladder and no
+#   arbitrary repo script. Adding the gate there would also flip crew, config, iac,
+#   and assets red on their next run: all four violate the ban wholesale today, and
+#   remediating them is separate, founder-gated work. A shared pipeline is the wrong
+#   place to land a rule several of its callers cannot yet satisfy. The correct
+#   variant of the script also differs per repo (repos with no binaries take
+#   knowledgebase's text-only shape, repos tracking undeclared binaries take
+#   website's NUL-partition one, which is this repo), so the gate stays per-repo
+#   until every caller carries a script. cli declares no `.gitattributes` at all, so
+#   pathways' `git check-attr binary` partition has nothing to read here.
+#
+#   Within cli, the deciding factor is the trigger. The PR-text half below needs the
+#   `edited` activity type, which is not a default: without it, a title or body
+#   edited after the last push is never re-checked. But ci.yml's triggers drive the
+#   shared pipeline over the Node 22 + 24 matrix (typecheck, lint, format, PHI scan,
+#   test, coverage, build, attw, dual ESM/CJS smoke). Re-running all of that every
+#   time someone fixes a typo in a PR description is a large cost for no extra
+#   safety. Same call hl7, fhir, mllp, pathways, website, x12, ncpdp and dicom made,
+#   for the same reason.
+#
+#   Both halves live here rather than splitting the file scan back into ci.yml (which
+#   is how website ended up): the file scan is a checkout and one grep, so it costs
+#   nothing to re-run on `edited`, and one file is one thing to read.
+#
+# WHAT ACTUALLY LANDS ON `main` HERE, read from the repo settings rather than assumed,
+# and stated carefully because the ncpdp copy of this workflow gets it wrong. That
+# copy says "the PR title and body are what lands". Neither half of that is true in
+# general, and the second half is not true anywhere: the PR BODY never lands under any
+# merge method GitHub offers. For cli specifically, all THREE merge methods are
+# enabled (`allow_squash_merge`, `allow_merge_commit` and `allow_rebase_merge` are all
+# true), which is a wider surface than mllp's squash-only configuration:
+#
+#   * squash (`squash_merge_commit_title: COMMIT_OR_PR_TITLE`,
+#     `squash_merge_commit_message: COMMIT_MESSAGES`): the subject comes from the PR
+#     title, or from the lone commit's subject when the branch has exactly one, and
+#     the body is the branch commit messages concatenated.
+#   * merge commit: the branch commit messages land verbatim, and the PR title reaches
+#     `main` only inside the generated merge-commit subject.
+#   * rebase: the branch commit messages land verbatim and the PR title does not land
+#     at all.
+#
+# So the one text that lands under EVERY enabled method is the branch COMMIT MESSAGES,
+# which is exactly what the brand rule names. The PR title lands under two of the
+# three. The PR body lands under none of them, and is scanned anyway as deliberate
+# over-strictness: it is a cosyte surface in its own right and it costs nothing to
+# cover. All three are checked below.
+#
+# Run the file half locally with `pnpm check:no-emdash`, which is also on
+# `scripts/verify.sh cli`'s ladder in the meta-repo.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+    # `edited` is deliberate and load-bearing. See the note above.
+    types: [opened, synchronize, reopened, edited]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # The job id is the check-run context name a branch ruleset requires. It is
+  # `no-emdash`, NOT the workflow's `name:` ("Em-dash gate") and NOT the rendered
+  # "Em-dash gate / no-emdash" a PR's checks list shows. Requiring either of those in
+  # the ruleset silently protects nothing: the context never arrives, so the rule
+  # matches no check run. Renaming this job detaches the required check the same way,
+  # leaving the ruleset looking configured while guarding nothing. Rename both
+  # together or neither. There is no `paths:` filter here on purpose: a required
+  # context that a path filter can skip leaves a PR pending forever.
+  no-emdash:
+    runs-on: ubuntu-latest
+    steps:
+      # SHA-pinned rather than tagged, because this is the only workflow in the repo
+      # besides no-internal-refs.yml that calls a third-party action directly (every
+      # other one delegates to the cosyte/.github reusable workflows, which pin their
+      # own). The pin was resolved against the upstream repo rather than copied on
+      # faith: actions/checkout tag v7.0.0 is commit
+      # 9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0. Same pin as the mllp, dicom and
+      # ncpdp copies of this workflow.
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          # Full history: the commit-message step below reads the PR's commit range,
+          # and the default shallow clone does not contain the base commit.
+          fetch-depth: 0
+
+      - name: Check tracked files
+        run: bash scripts/check-no-emdash.sh
+
+      # The rule names commit messages explicitly, and the branch commit messages are
+      # the one text that reaches `main` under all three merge methods this repo
+      # enables. See the header for what each method actually lands. The PR body does
+      # NOT land under any of them, and is scanned anyway as deliberate
+      # over-strictness, so all three are checked.
+      # Pull requests only: on a push to main the message is already written, and this
+      # gate exists to stop it landing.
+      - name: Check PR title, body, and commit messages
+        if: github.event_name == 'pull_request'
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          # Collect first, scan second, and set the shell options here rather than
+          # trust the runner's default: piping the collection straight into the
+          # scanner would hide a failed `git log` (a rewritten base commit, or a
+          # future edit that drops fetch-depth) behind a clean title and body, and the
+          # gate would print OK over commits it never read. The title and body arrive
+          # through env and are never interpolated into the script, so a PR
+          # description cannot inject shell.
+          set -euo pipefail
+          {
+            printf '%s\n' "$PR_TITLE"
+            printf '%s\n' "$PR_BODY"
+            git log --format=%B "$BASE_SHA..$HEAD_SHA"
+          } > "$RUNNER_TEMP/pr-messages.txt"
+          bash scripts/check-no-emdash.sh --stdin "the PR title, body, or commit messages" \
+            < "$RUNNER_TEMP/pr-messages.txt"

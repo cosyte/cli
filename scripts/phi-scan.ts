@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 /**
- * `@cosyte/cli` PHI scanner — the CI / pre-commit half of the PHI commit-gate.
+ * `@cosyte/cli` PHI scanner: the CI / pre-commit half of the PHI commit-gate.
  *
  * Pure Node. Zero runtime deps. `git` is the only subprocess, always via
  * `execFileSync` with array args (never shell-form). Walks the synthetic test
@@ -9,7 +9,7 @@
  * accident.
  *
  * ===========================================================================
- * ██  STARTER — READ BEFORE YOU RELY ON THIS  ███████████████████████████████
+ * ██  STARTER: READ BEFORE YOU RELY ON THIS  ████████████████████████████████
  * ===========================================================================
  *
  *   This file is the SHARED MACHINERY only. As shipped it detects EXACTLY TWO
@@ -20,7 +20,7 @@
  *
  *   That is a FLOOR, not a gate. It does NOT understand CLI. It will NOT
  *   catch a patient name, a date of birth, an MRN / member id, an address, or a
- *   phone number sitting in a structured CLI field — the PHI that a real
+ *   phone number sitting in a structured CLI field: the PHI that a real
  *   CLI message actually carries.
  *
  *   ⚠  A scanner that silently ships SSN/email-only detection is a FALSE-
@@ -31,7 +31,7 @@
  *      TODO section inside `scanTarget` below.
  *
  *   Worked examples of structured, format-aware detection live in the sibling
- *   parsers — read one before you start:
+ *   parsers: read one before you start:
  *       ../hl7/scripts/phi-scan.ts     (segment → field → component aware)
  *       ../x12/scripts/phi-scan.ts     (ISA-delimited NM1 / DMG / PER aware)
  *       ../dicom/scripts/phi-scan.ts   (binary tag-aware)
@@ -39,7 +39,7 @@
  *       ../ncpdp/scripts/phi-scan.ts   (fixed-field aware)
  *
  *   The mechanism for declaring genuinely-synthetic identifiers is the
- *   allow-list (`scripts/phi-allow-list.txt`) — a positive declaration that a
+ *   allow-list (`scripts/phi-allow-list.txt`): a positive declaration that a
  *   fixture's identifiers are fake. Byte-strict formats cannot carry an inline
  *   `# synthetic: true` header, so the allow-list is the proven substitute
  *   (same approach every sibling uses). A whole-file bypass needs
@@ -70,7 +70,7 @@ const OVERRIDE_LOG_PATH = join(REPO_ROOT, "phi-scan-overrides.md");
 
 // Roots walked in "all" mode. test/__fixtures__ gets the full scan (the real
 // fixture dir this repo uses); src gets the same conservative shape pass because
-// it is hand-written code, not data — JSDoc `@example` snippets must not carry
+// it is hand-written code, not data: JSDoc `@example` snippets must not carry
 // real PHI either.
 const FIXTURE_ROOT = join(REPO_ROOT, "test", "__fixtures__");
 const SRC_ROOT = join(REPO_ROOT, "src");
@@ -88,18 +88,18 @@ interface Hit {
 
 interface AllowList {
   /**
-   * Uppercase synthetic person-name tokens. UNUSED by the starter floor — the
+   * Uppercase synthetic person-name tokens. UNUSED by the starter floor: the
    * structured name detector you add in the TODO section consumes these.
    */
   names: Set<string>;
   /**
    * Synthetic dates of birth (raw, format-normalized as you choose). UNUSED by
-   * the starter floor — your structured DOB detector consumes these.
+   * the starter floor: your structured DOB detector consumes these.
    */
   dobs: Set<string>;
   /**
    * Synthetic id values (SSN / MRN / member-id shapes). UNUSED by the starter
-   * floor — your structured id detector consumes these.
+   * floor: your structured id detector consumes these.
    */
   ids: Set<string>;
   /** Allowed email domains (anything else is a hit). Used by the starter floor. */
@@ -161,7 +161,7 @@ function parseArgs(argv: string[]): Args {
   }
 
   // An `--allow-fixture` path is a *subtractive* acknowledgement on a broader
-  // scan, never a scan target on its own — so it also seeds the positional path
+  // scan, never a scan target on its own, so it also seeds the positional path
   // set. That makes `--allow-fixture X` mean "scan X, but allow it" (proving the
   // override gate actually subtracts a scanned target) instead of a silent no-op.
   const scanPaths = paths.length > 0 ? paths : [...allowFixtures];
@@ -276,7 +276,7 @@ function gitIgnored(paths: string[]): Set<string> {
   const ignored = new Set<string>();
   if (paths.length === 0) return ignored;
   try {
-    // SECURITY: array-form execFileSync, no shell. Default (Buffer) encoding —
+    // SECURITY: array-form execFileSync, no shell. Default (Buffer) encoding, because
     // `encoding: "buffer"` with `input` is rejected by Node.
     const out = execFileSync("git", ["check-ignore", "--stdin", "-z"], {
       input: paths.map(normalizePath).join("\0"),
@@ -286,7 +286,7 @@ function gitIgnored(paths: string[]): Set<string> {
       if (p.length > 0) ignored.add(p);
     }
   } catch {
-    // `git check-ignore` exits 1 when nothing matches — treat as none ignored.
+    // `git check-ignore` exits 1 when nothing matches: treat as none ignored.
   }
   return ignored;
 }
@@ -342,7 +342,7 @@ function buildTargetsForStaged(): Target[] {
 }
 
 // ---------------------------------------------------------------------------
-// Cross-cutting shape checks — the format-agnostic FLOOR
+// Cross-cutting shape checks: the format-agnostic FLOOR
 // ---------------------------------------------------------------------------
 
 function scanCommonShapes(path: string, content: string, allow: AllowList, hits: Hit[]): void {
@@ -382,13 +382,13 @@ function scanTarget(target: Target, allow: AllowList, hits: Hit[]): void {
   //
   //   The floor above ONLY catches SSN/email shapes. Before you rely on this
   //   scanner as a real safety gate you MUST add structured, field-level
-  //   detection for CLI's PHI — at minimum: person NAMES, DATE OF BIRTH,
-  //   MRN / MEMBER ID, ADDRESS, and PHONE — parsing `text` according to the
+  //   detection for CLI's PHI (at minimum: person NAMES, DATE OF BIRTH,
+  //   MRN / MEMBER ID, ADDRESS, and PHONE), parsing `text` according to the
   //   CLI wire format and checking each PHI-bearing field against the
   //   allow-list (`allow.names` / `allow.dobs` / `allow.ids`), pushing a `Hit`
   //   for anything not positively declared synthetic.
   //
-  //   Parse the format properly (delimiters / segments / elements / tags) — do
+  //   Parse the format properly (delimiters / segments / elements / tags): do
   //   NOT bolt on a blind text regex for names: coded values (`CBC^Complete
   //   Blood Count`, `Boston^MA`) produce false confidence. See the sibling
   //   parsers named in the STARTER banner at the top of this file for worked,
@@ -401,7 +401,7 @@ function scanTarget(target: Target, allow: AllowList, hits: Hit[]): void {
   //     }
   //
   //   Until this section is implemented, treat a green `pnpm phi-scan` as
-  //   "no SSN/email shapes found" — NOT as "no PHI".
+  //   "no SSN/email shapes found", NOT as "no PHI".
   // ───────────────────────────────────────────────────────────────────────────
 }
 
@@ -411,7 +411,7 @@ function scanTarget(target: Target, allow: AllowList, hits: Hit[]): void {
 
 function report(hits: Hit[]): void {
   if (hits.length === 0) {
-    process.stdout.write("[phi-scan] OK — no hits\n");
+    process.stdout.write("[phi-scan] OK, no hits\n");
     return;
   }
   const byPath = new Map<string, Hit[]>();

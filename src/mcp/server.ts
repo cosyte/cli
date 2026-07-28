@@ -1,11 +1,11 @@
 /**
- * The **stdio MCP server** — the JSON-RPC/stdio adapter over the same shared `core`/`commands` the
+ * The **stdio MCP server**: the JSON-RPC/stdio adapter over the same shared `core`/`commands` the
  * `cosyte` terminal command drives. This is the **only** module that touches
- * `@modelcontextprotocol/sdk`, so the SDK — the CLI's single third-party runtime dependency — stays
+ * `@modelcontextprotocol/sdk`, so the SDK (the CLI's single third-party runtime dependency) stays
  * **isolated behind the `./mcp` subpath and lazy-loaded**: a `cosyte parse` invocation never imports
  * this file and therefore never loads the SDK (proven by `mcp-isolation.test.ts`).
  *
- * The server is a **local stdio subprocess**, implicitly trusted by the user/agent that launched it —
+ * The server is a **local stdio subprocess**, implicitly trusted by the user/agent that launched it,
  * not a hosted network endpoint. It is **stateless per call**: each tool request is one operation
  * over the wrapped libraries, with the same value-free PHI posture the CLI proves once and both
  * adapters inherit.
@@ -26,7 +26,7 @@ export const SERVER_INFO = { name: "cosyte", version: VERSION } as const;
 /**
  * Build the cosyte MCP {@link Server} with its two request handlers wired to the shared tool surface:
  * `tools/list` advertises {@link TOOL_DEFS}, and `tools/call` routes to {@link dispatchTool} (the same
- * command handlers the terminal uses). The returned server is **not yet connected** to a transport —
+ * command handlers the terminal uses). The returned server is **not yet connected** to a transport:
  * the caller connects it to stdio (in production) or to an in-memory transport (in tests), so the
  * handler wiring is drivable without a subprocess.
  *

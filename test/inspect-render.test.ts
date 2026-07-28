@@ -4,11 +4,11 @@ import { renderSummary } from "../src/commands/inspect.js";
 import type { InspectSummary } from "../src/core/parsers.js";
 
 /**
- * Exhaustive branch coverage of the value-free `inspect` render — every format variant, and both the
+ * Exhaustive branch coverage of the value-free `inspect` render: every format variant, and both the
  * present and the null/`(unknown)` fallbacks of each classification field. Hand-built summaries let us
  * hit the display branches deterministically without crafting a null-producing fixture per format.
  */
-describe("renderSummary — every variant, present + (unknown) fallbacks, always value-free", () => {
+describe("renderSummary: every variant, present + (unknown) fallbacks, always value-free", () => {
   const cases: { name: string; summary: InspectSummary; needles: string[] }[] = [
     {
       name: "hl7 present",

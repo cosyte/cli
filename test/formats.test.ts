@@ -1,5 +1,5 @@
 /**
- * CLI-6 — the six breadth formats (x12 / astm / ccda / dicom / ncpdp / mllp) across the command
+ * CLI-6: the six breadth formats (x12 / astm / ccda / dicom / ncpdp / mllp) across the command
  * surface, plus multi-message/NDJSON streaming and shell completion. These exercise the **wrapper**
  * (roadmap §5): does a supported (format, op) route to the right parser and shape output faithfully;
  * does an unsupported (format, op) fail value-free (never a fake); is every secondary surface value-free.
@@ -41,7 +41,7 @@ const frame = (hl7: string): number[] => [0x0b, ...enc.encode(hl7), 0x1c, 0x0d];
 const HL7_MSG = "MSH|^~\\&|A|B|C|D|20240101||ADT^A01|1|P|2.5\rPID|1||123^^^HOSP\r";
 const MLLP = new Uint8Array([...frame(HL7_MSG), ...frame(HL7_MSG)]); // two frames
 
-describe("x12 — parse / inspect / fmt / validate", () => {
+describe("x12: parse / inspect / fmt / validate", () => {
   it("parse emits the interchange model + exit 0, value-free stderr", async () => {
     const r = await run(["parse", "f.edi"], bytesDeps(X12));
     expect(r.exit).toBe(EXIT.OK);
@@ -72,7 +72,7 @@ describe("x12 — parse / inspect / fmt / validate", () => {
   });
 });
 
-describe("astm — parse / inspect / fmt / validate", () => {
+describe("astm: parse / inspect / fmt / validate", () => {
   it("parse emits the record model", async () => {
     const r = await run(["parse", "f.astm"], bytesDeps(ASTM));
     expect(r.exit).toBe(EXIT.OK);
@@ -100,7 +100,7 @@ describe("astm — parse / inspect / fmt / validate", () => {
   });
 });
 
-describe("ccda — inspect / fmt / validate; parse is deferred (no library JSON model)", () => {
+describe("ccda: inspect / fmt / validate; parse is deferred (no library JSON model)", () => {
   it("inspect reports document type + section LOINC codes (value-free)", async () => {
     const r = await run(["inspect", "c.xml", "--json"], bytesDeps(CCDA));
     const s = JSON.parse(r.stdout) as { format: string; sectionCodes: string[] };
@@ -127,7 +127,7 @@ describe("ccda — inspect / fmt / validate; parse is deferred (no library JSON 
   });
 });
 
-describe("dicom — inspect / validate; parse & fmt deferred (binary model)", () => {
+describe("dicom: inspect / validate; parse & fmt deferred (binary model)", () => {
   it("inspect reports classification UIDs + element count (value-free)", async () => {
     const r = await run(["inspect", "s.dcm", "--json"], bytesDeps(DICOM));
     expect(r.exit).toBe(EXIT.OK);
@@ -150,7 +150,7 @@ describe("dicom — inspect / validate; parse & fmt deferred (binary model)", ()
   });
 });
 
-describe("ncpdp — parse / inspect / fmt / validate (SCRIPT)", () => {
+describe("ncpdp: parse / inspect / fmt / validate (SCRIPT)", () => {
   it("parse emits the SCRIPT model", async () => {
     const r = await run(["parse", "rx.xml"], bytesDeps(NCPDP));
     expect(r.exit).toBe(EXIT.OK);
@@ -177,7 +177,7 @@ describe("ncpdp — parse / inspect / fmt / validate (SCRIPT)", () => {
   });
 });
 
-describe("mllp — de-framed to HL7, multi-frame is the streaming surface", () => {
+describe("mllp: de-framed to HL7, multi-frame is the streaming surface", () => {
   it("parse de-frames every frame → NDJSON records (one per frame)", async () => {
     const r = await run(["parse", "s.mllp"], bytesDeps(MLLP));
     expect(r.exit).toBe(EXIT.OK);
@@ -212,7 +212,7 @@ describe("mllp — de-framed to HL7, multi-frame is the streaming surface", () =
   });
 });
 
-describe("streaming — --ndjson multi-record parse with per-record isolation", () => {
+describe("streaming: --ndjson multi-record parse with per-record isolation", () => {
   const A = '{"resourceType":"Patient","id":"a"}';
   const B = '{"resourceType":"Observation","id":"b","status":"final","code":{}}';
 
@@ -245,7 +245,7 @@ describe("streaming — --ndjson multi-record parse with per-record isolation", 
   });
 });
 
-describe("inspect — the human (non-JSON) render for every breadth format", () => {
+describe("inspect: the human (non-JSON) render for every breadth format", () => {
   const cases: { name: string; bytes: Uint8Array; needles: string[] }[] = [
     { name: "x12", bytes: X12, needles: ["format:", "groups:", "transaction sets:", "834"] },
     { name: "astm", bytes: ASTM, needles: ["format:", "message kind:", "records:"] },
@@ -267,7 +267,7 @@ describe("inspect — the human (non-JSON) render for every breadth format", () 
   }
 });
 
-describe("streaming — per-record isolation + quiet on multi-record", () => {
+describe("streaming, per-record isolation + quiet on multi-record", () => {
   it("an MLLP stream with one unparseable frame isolates it and exits 65", async () => {
     const stream = new Uint8Array([...frame(HL7_MSG), ...frame("NOT AN HL7 MESSAGE")]);
     const r = await run(["parse", "s.mllp"], bytesDeps(stream));
@@ -286,7 +286,7 @@ describe("streaming — per-record isolation + quiet on multi-record", () => {
   });
 
   it("a truncated trailing MLLP frame is a data error (65), never a silent-dropped message", async () => {
-    // One complete frame, then a VT that opens a second message with no closing FS/CR — the streaming
+    // One complete frame, then a VT that opens a second message with no closing FS/CR: the streaming
     // de-framer would buffer and silently drop it. It must be a value-free data error, not exit 0.
     const truncated = new Uint8Array([...frame(HL7_MSG), 0x0b, ...enc.encode("MSH|^~\\&|C|D\r")]);
     const r = await run(["parse", "s.mllp"], bytesDeps(truncated));
@@ -334,7 +334,7 @@ describe("inspect is value-free for the PHI-bearing breadth formats", () => {
   });
 });
 
-describe("completion — a static, value-free script per shell", () => {
+describe("completion: a static, value-free script per shell", () => {
   for (const shell of ["bash", "zsh", "fish"]) {
     it(`emits a ${shell} completion script (exit 0)`, async () => {
       const r = await run(["completion", shell], bytesDeps(new Uint8Array()));

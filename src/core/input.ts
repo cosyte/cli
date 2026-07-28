@@ -1,12 +1,12 @@
 /**
  * The shared **input + format resolution** every file-consuming command runs before it touches a
  * wrapped parser: resolve the `<file|->` argument, read its bytes (a file, or stdin for `-`), reject
- * empty input, then resolve the format — an explicit `--format` override (validated) or conservative
- * content autodetection — and confirm the format is actually wired in this build. Factored out of the
+ * empty input, then resolve the format: an explicit `--format` override (validated) or conservative
+ * content autodetection, and confirm the format is actually wired in this build. Factored out of the
  * commands so `parse`/`validate`/`inspect`/`fmt` share one identical, value-free front door and the
  * exit-code contract is applied in exactly one place.
  *
- * Every failure is a value-free {@link CliError} rendered to a {@link RunResult} — a missing argument
+ * Every failure is a value-free {@link CliError} rendered to a {@link RunResult}: a missing argument
  * is a usage error (`2`), an unreadable file a no-input error (`66`), empty/undetected/unwired input a
  * data error (`65`). None ever echoes an input byte.
  *
@@ -22,7 +22,7 @@ import type { RunResult } from "./result.js";
 
 /** A successfully-resolved input: the format (guaranteed to support the requested op) and the bytes. */
 export interface ResolvedInput {
-  /** The resolved format — guaranteed to satisfy `supportsOp(format, op)` for the requested op. */
+  /** The resolved format: guaranteed to satisfy `supportsOp(format, op)` for the requested op. */
   readonly format: CosyteFormat;
   /** The input bytes (a whole file or a drained stdin buffer); guaranteed non-empty. */
   readonly bytes: Uint8Array;
@@ -48,7 +48,7 @@ export type InputResolution =
  * @returns `{ ok: true, input }` when the bytes read and the format resolved to a parser supporting
  *   `op`; else `{ ok: false, result }` with a value-free usage/no-input/data-error {@link RunResult}.
  * @throws Propagates a **non-`CliError`** read failure unchanged, so the dispatcher maps it to
- *   `CLI_INTERNAL` (a `CliError` read failure — e.g. a missing file — is caught and returned).
+ *   `CLI_INTERNAL` (a `CliError` read failure, e.g. a missing file, is caught and returned).
  * @example
  * ```ts
  * import { resolveInput } from "@cosyte/cli";

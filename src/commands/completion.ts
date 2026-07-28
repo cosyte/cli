@@ -1,9 +1,9 @@
 /**
  * `cosyte completion <bash|zsh|fish>`
  *
- * Print a shell completion script for `cosyte`, generated from the command tree, to **stdout** — the
+ * Print a shell completion script for `cosyte`, generated from the command tree, to **stdout**: the
  * user pipes it into their shell (`source <(cosyte completion bash)`) or saves it to their completions
- * directory. The script is static and value-free: it names commands, subcommand tokens, and flags —
+ * directory. The script is static and value-free: it names commands, subcommand tokens, and flags,
  * never any input. An unknown or missing shell is a usage error (exit `2`), never a silent no-op.
  *
  * @packageDocumentation
@@ -87,7 +87,7 @@ function isShell(value: string): value is Shell {
 
 /** The per-shell script generators. Each is static text built from {@link COMMANDS} + {@link FLAGS}. */
 const SCRIPTS: Readonly<Record<Shell, () => string>> = {
-  bash: () => `# cosyte bash completion — source <(cosyte completion bash)
+  bash: () => `# cosyte bash completion: source <(cosyte completion bash)
 _cosyte() {
   local cur prev cmds flags
   cur="\${COMP_WORDS[COMP_CWORD]}"
@@ -102,7 +102,7 @@ _cosyte() {
 complete -F _cosyte cosyte
 `,
   zsh: () => `#compdef cosyte
-# cosyte zsh completion — source <(cosyte completion zsh)
+# cosyte zsh completion: source <(cosyte completion zsh)
 _cosyte() {
   local -a cmds flags
   cmds=(${COMMANDS.map((c) => `'${c}'`).join(" ")})
@@ -123,7 +123,7 @@ compdef _cosyte cosyte
     const flagLines = FLAGS.filter((f) => f.startsWith("--")).map(
       (f) => `complete -c cosyte -l '${f.slice(2)}'`,
     );
-    return `# cosyte fish completion — cosyte completion fish | source
+    return `# cosyte fish completion: cosyte completion fish | source
 ${lines.join("\n")}
 ${flagLines.join("\n")}
 `;

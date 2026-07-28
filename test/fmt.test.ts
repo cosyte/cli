@@ -17,7 +17,7 @@ function deps(file: Uint8Array, stdin: Uint8Array = new Uint8Array()): RunDeps {
   return { readFile: () => Promise.resolve(file), readStdin: () => Promise.resolve(stdin) };
 }
 
-describe("fmt — canonical re-serialization via the wrapped serializer", () => {
+describe("fmt: canonical re-serialization via the wrapped serializer", () => {
   it("HL7: emits the library's spec-clean, CR-separated serialization on stdout, exit 0", async () => {
     const { parseHL7 } = await import("@cosyte/hl7");
     const r = await fmtCommand(["adt.hl7"], deps(HL7));
@@ -59,7 +59,7 @@ describe("fmt — canonical re-serialization via the wrapped serializer", () => 
   });
 });
 
-describe("fmt — fail-safe: no partial emit on unparseable input", () => {
+describe("fmt fail-safe: no partial emit on unparseable input", () => {
   it("an unparseable input is a data error (65) with empty stdout, never half a message", async () => {
     const r = await fmtCommand(
       ["bad.hl7", "--format", "hl7"],

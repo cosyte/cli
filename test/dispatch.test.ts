@@ -9,7 +9,7 @@ const noDeps: RunDeps = {
   readStdin: () => Promise.resolve(new Uint8Array()),
 };
 
-describe("run — top-level dispatch", () => {
+describe("run: top-level dispatch", () => {
   it("no arguments prints help on stdout, exit 0", async () => {
     const r = await run([], noDeps);
     expect(r.exit).toBe(EXIT.OK);

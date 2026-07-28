@@ -1,6 +1,6 @@
 # Releasing `@cosyte/cli`
 
-How the `cosyte` CLI (and its twin `cosyte-mcp` server — one package, two bins) gets to npm, and the
+How the `cosyte` CLI (and its twin `cosyte-mcp` server, one package, two bins) gets to npm, and the
 gotchas worth not rediscovering. The suite-wide mechanics live in the umbrella
 `config/RELEASING.md`; this file is the CLI-specific overlay.
 
@@ -9,10 +9,10 @@ gotchas worth not rediscovering. The suite-wide mechanics live in the umbrella
 1. **Flipping the repo public** (`PUB-FLIP`).
 2. **The real `npm publish`.**
 
-Both are standing human gates. Everything up to them — the changeset, the version PR, the publish
-**dry-run**, provenance/OIDC config, this doc — is agent-shippable. The publish itself is not.
+Both are standing human gates. Everything up to them (the changeset, the version PR, the publish
+**dry-run**, provenance/OIDC config, this doc) is agent-shippable. The publish itself is not.
 
-## Before the first publish is even possible — the vendor → npm dep swap
+## Before the first publish is even possible: the vendor → npm dep swap
 
 `@cosyte/cli` is the only package in the suite that **hard-depends on its siblings**: an `npx`-invoked
 `bin` cannot peer-depend on something the user pre-installed. Until `PUB-FLIP`, those deps are
@@ -24,21 +24,21 @@ Both are standing human gates. Everything up to them — the changeset, the vers
   (`dicom`/`x12`/`ccda`/`ncpdp`/`astm`/`mllp`, ADR 0025) and `@modelcontextprotocol/sdk` (ADR 0024).
 
 Refresh them with `pnpm vendor:refresh`. **At `PUB-FLIP` these `file:` specifiers must become real
-`@cosyte/*` npm ranges** — a published package cannot ship a `file:vendor/…tgz` dependency. This swap
+`@cosyte/*` npm ranges**: a published package cannot ship a `file:vendor/…tgz` dependency. This swap
 is a deliberate release step, not an automated one.
 
 ## The pipeline
 
 Releases run on [Changesets](https://github.com/changesets/changesets):
 
-1. A change lands with a changeset (`pnpm changeset`) — a `patch` on the **`0.0.x`-until-first-alpha**
+1. A change lands with a changeset (`pnpm changeset`): a `patch` on the **`0.0.x`-until-first-alpha**
    ladder (a published version is never moved back). The parsers publish at `0.0.1`; the CLI begins its
    public history at `0.0.1`.
 2. On push to `main` with pending changesets, `.github/workflows/release.yml` (a thin caller of the
    shared `cosyte/.github` release pipeline) opens/updates a **"Version Packages"** PR that consumes
    the changesets and bumps `version` + `CHANGELOG.md`.
 3. Merging that PR runs the workflow again; with no pending changesets it runs `pnpm run release`
-   (`changeset publish`) inside the **protected `release` environment** — the approval gate. Nothing
+   (`changeset publish`) inside the **protected `release` environment**: the approval gate. Nothing
    reaches npm without a deliberate human ack.
 
 `NPM_TOKEN` **must be an npm _Automation_ token** (a classic _Publish_ token demands a 2FA OTP CI
@@ -47,7 +47,7 @@ cannot supply, and the publish dies at the very last step with `EOTP`).
 ## Provenance & OIDC
 
 - `package.json#publishConfig` sets `"provenance": true`, and `release.yml` grants
-  `id-token: write` — so **provenance auto-attaches once the repo is public** (the shared pipeline
+  `id-token: write`, so **provenance auto-attaches once the repo is public** (the shared pipeline
   wires `NPM_CONFIG_PROVENANCE` to public visibility; no workflow edit needed at flip time).
 - **OIDC trusted publishing** (token-free) is the later step: configure the Trusted Publisher on npm
   for `@cosyte/cli` (org `cosyte`, repo `cli`, workflow `release.yml`, environment `release`), then

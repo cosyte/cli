@@ -16,7 +16,7 @@ function fileDeps(bytes: Uint8Array): RunDeps {
   return { readFile: () => Promise.resolve(bytes), readStdin: () => Promise.resolve(bytes) };
 }
 
-describe("map-codes — translate a code through a BYO FHIR ConceptMap", () => {
+describe("map-codes: translate a code through a BYO FHIR ConceptMap", () => {
   it("translates a matched source code → target coding on stdout, exit 0", async () => {
     const r = await mapCodesCommand(
       ["gender.json", "--system", GENDER_SYSTEM, "--code", "male"],

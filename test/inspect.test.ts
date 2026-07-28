@@ -12,7 +12,7 @@ const FIXTURES = join(import.meta.dirname, "__fixtures__");
 const HL7 = readFileSync(join(FIXTURES, "adt-a01.hl7"));
 const FHIR = readFileSync(join(FIXTURES, "patient.fhir.json"));
 
-/** Every sentinel value planted in the fixtures — none may appear in a structural summary. */
+/** Every sentinel value planted in the fixtures. None may appear in a structural summary. */
 const SENTINELS = ["ZZSENTINELLAST", "ZZSENTINELFIRST", "MRN-000123", "SYNTHETIC ST", "METROPOLIS"];
 
 function deps(file: Uint8Array, stdin: Uint8Array = new Uint8Array()): RunDeps {
@@ -23,8 +23,8 @@ function assertValueFree(text: string): void {
   for (const s of SENTINELS) expect(text).not.toContain(s);
 }
 
-describe("inspect — value-free structural summary", () => {
-  it("HL7: human summary with message type, version, segment counts — never a value", async () => {
+describe("inspect: value-free structural summary", () => {
+  it("HL7: human summary with message type, version, segment counts, never a value", async () => {
     const r = await inspectCommand(["adt.hl7"], deps(HL7));
     expect(r.exit).toBe(EXIT.OK);
     expect(r.stdout).toContain("ADT^A01"); // message type code (structural, not PHI)
@@ -113,7 +113,7 @@ describe("inspect — value-free structural summary", () => {
   });
 });
 
-describe("inspect — fail-safe exit codes", () => {
+describe("inspect: fail-safe exit codes", () => {
   it("unparseable input is a data error (65), value-free", async () => {
     const bad = new TextEncoder().encode("{ not json ZZSENTINELLAST");
     const r = await inspectCommand(["bad.json", "--format", "fhir"], deps(bad));

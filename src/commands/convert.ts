@@ -1,18 +1,18 @@
 /**
  * `cosyte convert <file|-> --to fhir [--json] [--quiet] [--no-color]`
  *
- * Convert an **HL7 v2** message to **FHIR R4** via **`@cosyte/transform`** — the
+ * Convert an **HL7 v2** message to **FHIR R4** via **`@cosyte/transform`**: the
  * consumer-of-consumers command. The CLI adds **no** mapping logic of its own: it parses the input
  * with `@cosyte/hl7`, hands the parsed message to `transform`'s `toFhir`, and serializes the resulting
  * FHIR `Bundle` with `@cosyte/fhir`. The mapping guarantees are the library's, graded by *its* gate;
  * `cosyte convert` equals `transform`'s programmatic output.
  *
  * The converted FHIR `Bundle` is the user's explicit request, so it goes to **stdout** (the data
- * channel). Every conversion problem is one of `transform`'s value-free {@link TransformIssue}s — a
+ * channel). Every conversion problem is one of `transform`'s value-free {@link TransformIssue}s: a
  * stable code, a severity, and a positional locator (a v2 index and an optional FHIRPath), **never** a
- * field value — surfaced on stderr (or as value-free JSON under `--json`). The load-bearing rule
+ * field value: surfaced on stderr (or as value-free JSON under `--json`). The load-bearing rule
  * (mirroring `validate`): a conversion that produces an **error-severity** issue exits **`1`**, never
- * `0` — the tool worked, but the conversion has a real problem a CI gate must see.
+ * `0`: the tool worked, but the conversion has a real problem a CI gate must see.
  *
  * `--to fhir` is required and is the only supported target (HL7 v2 → FHIR R4). The source must be
  * HL7 v2: a recognised-but-non-HL7 input (e.g. a FHIR document) is a value-free
@@ -61,7 +61,7 @@ interface Conversion {
  * @param posture - The resolved {@link PhiPosture} (governs only the opt-in unsafe excerpt on an HL7
  *   parse-failure diagnostic; the converted bundle and the value-free findings are unaffected).
  * @returns A {@link RunResult}: the converted FHIR `Bundle` on `stdout` (the data channel), value-free
- *   findings on `stderr` (or JSON under `--json`), and an exit code that carries the outcome — `0`
+ *   findings on `stderr` (or JSON under `--json`), and an exit code that carries the outcome: `0`
  *   clean · `1` an error-severity conversion issue · `65` the HL7 input could not be parsed or is not
  *   an HL7 v2 source · `66` no input · `2` usage.
  * @throws Never {@link CliError}; may propagate a truly unexpected error for the dispatcher to map to
@@ -126,7 +126,7 @@ export async function convertCommand(
   const { format, bytes } = resolved.input;
 
   // convert reads HL7 v2 and writes FHIR R4. A recognised-but-non-HL7 source (e.g. a FHIR document) is
-  // not a convertible input — a value-free data error, never a fake or identity "conversion".
+  // not a convertible input: a value-free data error, never a fake or identity "conversion".
   if (format !== "hl7") {
     return errorResult(
       new CliError(
@@ -166,11 +166,11 @@ type ConvertOutcome =
   | { readonly ok: false; readonly result: RunResult };
 
 /**
- * Parse the HL7 v2 bytes and convert to FHIR — every library **lazy-loaded** so this code loads only
+ * Parse the HL7 v2 bytes and convert to FHIR: every library **lazy-loaded** so this code loads only
  * when `convert` runs. Only the `parseHL7` call is inside the failure boundary: a genuine parser
  * rejection becomes a value-free `CLI_PARSE_FAILED` (65), with the single opt-in excerpt (under
  * `--unsafe-show-values`) flowing through the shared core/wrap chokepoint. The `toFhir` + serialize
- * step is deliberately outside it — `toFhir` never throws for a well-formed message, so any throw there
+ * step is deliberately outside it: `toFhir` never throws for a well-formed message, so any throw there
  * is an unexpected bug the dispatcher maps to `CLI_INTERNAL` (70), never mislabelled as a rejection.
  */
 async function runConvert(bytes: Uint8Array, posture: PhiPosture): Promise<ConvertOutcome> {
@@ -205,9 +205,9 @@ function toFinding(code: string, severity: string, v2Location: string, fhirPath?
 
 /**
  * Decide the conversion outcome from the library's value-free findings: whether any is
- * **error-severity** (which drives a non-zero exit — the load-bearing "a conversion error is never
+ * **error-severity** (which drives a non-zero exit: the load-bearing "a conversion error is never
  * exit 0" rule) and the value-free human report. The severity classification is
- * the library's — `@cosyte/transform` fixes each issue's severity; the CLI only reads it. Exported so
+ * the library's: `@cosyte/transform` fixes each issue's severity; the CLI only reads it. Exported so
  * the exit-verdict and report logic is unit-testable with synthetic findings, independent of which HL7
  * message happens to produce an error.
  *

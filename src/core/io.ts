@@ -4,7 +4,7 @@
  * this module only *reads*.
  *
  * The reader functions are injected into the command layer as {@link RunDeps} so the whole dispatch
- * path is testable without touching `process` — the real `process.stdin` wiring lives in the thin
+ * path is testable without touching `process`: the real `process.stdin` wiring lives in the thin
  * `bin` entry.
  *
  * @packageDocumentation
