@@ -16,7 +16,7 @@ function deps(file: Uint8Array, stdin: Uint8Array = new Uint8Array()): RunDeps {
   return { readFile: () => Promise.resolve(file), readStdin: () => Promise.resolve(stdin) };
 }
 
-describe("parse — command contract", () => {
+describe("parse: command contract", () => {
   it("parses HL7 (autodetected) to a typed JSON envelope, exit 0, value-free stderr", async () => {
     const r = await parseCommand(["adt.hl7"], deps(HL7));
     expect(r.exit).toBe(EXIT.OK);
@@ -72,7 +72,7 @@ describe("parse — command contract", () => {
   });
 });
 
-describe("parse — fail-safe exit-code contract", () => {
+describe("parse: fail-safe exit-code contract", () => {
   it("missing <file> argument is a usage error (exit 2)", async () => {
     const r = await parseCommand([], deps(HL7));
     expect(r.exit).toBe(EXIT.USAGE);
@@ -151,7 +151,7 @@ describe("parse — fail-safe exit-code contract", () => {
   });
 });
 
-describe("parse — pass-through of the wrapped library's warnings", () => {
+describe("parse: pass-through of the wrapped library's warnings", () => {
   it("surfaces FHIR issues as value-free envelope warnings (code + severity + expression)", async () => {
     // A high-precision decimal raises a read-time DECIMAL_PRECISION_AT_RISK issue (value-free).
     const withIssue = new TextEncoder().encode(
@@ -173,7 +173,7 @@ describe("parse — pass-through of the wrapped library's warnings", () => {
   });
 });
 
-describe("parse — value-free warning note", () => {
+describe("parse: value-free warning note", () => {
   it("emits a value-free warning COUNT on stderr when the parse recovered warnings, unless --quiet", async () => {
     // MLLP framing bytes trigger a documented HL7 warning without any PHI.
     const framed = Buffer.concat([Buffer.from([0x0b]), HL7, Buffer.from([0x1c, 0x0d])]);
@@ -188,7 +188,7 @@ describe("parse — value-free warning note", () => {
   });
 });
 
-describe("extractStableCode — only bare uppercase code tokens pass, never input bytes", () => {
+describe("extractStableCode: only bare uppercase code tokens pass, never input bytes", () => {
   it("returns a stable code token from an error-shaped value", () => {
     expect(extractStableCode({ code: "MALFORMED_JSON" })).toBe("MALFORMED_JSON");
     expect(extractStableCode({ code: "MISSING_MSH_1" })).toBe("MISSING_MSH_1");

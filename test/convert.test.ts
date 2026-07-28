@@ -23,7 +23,7 @@ const throwingDeps: RunDeps = {
   readStdin: () => Promise.resolve(new Uint8Array()),
 };
 
-describe("convert — HL7 v2 → FHIR via @cosyte/transform", () => {
+describe("convert: HL7 v2 → FHIR via @cosyte/transform", () => {
   it("converts an ADT^A01 to a FHIR message Bundle on stdout, exit 0", async () => {
     const r = await convertCommand(["adt.hl7", "--to", "fhir"], fileDeps(HL7));
     expect(r.exit).toBe(EXIT.OK);
@@ -45,7 +45,7 @@ describe("convert — HL7 v2 → FHIR via @cosyte/transform", () => {
     ]);
     const expected = serializeResource(toFhir(parseHL7(Buffer.from(HL7))).bundle);
     const r = await convertCommand(["adt.hl7", "--to", "fhir"], fileDeps(HL7));
-    // Normalize the only non-deterministic part — transform's random fullUrl/reference UUIDs — so the
+    // Normalize the only non-deterministic part (transform's random fullUrl/reference UUIDs) so the
     // property under test is "the CLI serializes the library's bundle verbatim, adding no shaping",
     // not "two independent conversions allocate the same UUIDs" (they never do).
     const normalize = (s: string): string => s.replace(/urn:uuid:[0-9a-f-]+/g, "urn:uuid:X");
@@ -147,7 +147,7 @@ describe("convert — HL7 v2 → FHIR via @cosyte/transform", () => {
 
   it("an error-severity transform issue drives a non-zero exit (1), bundle still on stdout", async () => {
     // This minimal ORU^R01 produces a resource the library flags as invalid (an error-severity
-    // TRANSFORM_RESOURCE_INVALID) — the load-bearing rule: a conversion error is never exit 0.
+    // TRANSFORM_RESOURCE_INVALID): the load-bearing rule: a conversion error is never exit 0.
     const oru = new TextEncoder().encode(
       "MSH|^~\\&|A|B|C|D|20240101120000||ORU^R01|1|P|2.5\rPID|1||X^^^H^MR||DOE^JANE||19800101|F\rOBR|1|||CBC\rOBX|1|NM|WBC||7.5|10*3/uL|||||F\r",
     );
@@ -163,7 +163,7 @@ describe("convert — HL7 v2 → FHIR via @cosyte/transform", () => {
   });
 });
 
-describe("convertOutcome — the error-severity verdict + value-free report", () => {
+describe("convertOutcome: the error-severity verdict + value-free report", () => {
   it("an error-severity finding drives hasError (→ the command exits non-zero)", () => {
     const findings: Finding[] = [
       { code: "TRANSFORM_RESOURCE_INVALID", severity: "error", location: "PID → Patient" },

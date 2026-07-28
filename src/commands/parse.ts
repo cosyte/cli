@@ -2,16 +2,16 @@
  * `cosyte parse <file|-> [--format …] [--ndjson] [--json] [--quiet] [--no-color]`
  *
  * Read a file (or stdin via `-`), **autodetect the format by content** (or honour `--format`), route to
- * the wrapped parser via the lazy per-format registry (`core/parsers.ts`) — so `cosyte parse msg.hl7`
- * never loads the DICOM or X12 code — and emit the parsed model as **typed JSON on stdout**. Every
+ * the wrapped parser via the lazy per-format registry (`core/parsers.ts`) (so `cosyte parse msg.hl7`
+ * never loads the DICOM or X12 code) and emit the parsed model as **typed JSON on stdout**. Every
  * failure is a value-free diagnostic on stderr with a stable `CLI_*` code and the documented exit code.
  *
  * **Multi-message / streaming.** A single message emits one pretty (or compact under `--json`)
- * JSON envelope, exactly as before. A **multi-record** input emits **NDJSON** — one compact envelope
- * per line — with per-record isolation: a record that fails to parse becomes a value-free
+ * JSON envelope, exactly as before. A **multi-record** input emits **NDJSON** (one compact envelope
+ * per line) with per-record isolation: a record that fails to parse becomes a value-free
  * `{ record, error }` line and the stream continues, and the overall exit is a data error (`65`) if any
  * record failed. Two inputs are multi-record: an **MLLP** stream (each VT-framed frame is an enclosed
- * HL7 message) and any input under **`--ndjson`** (each non-empty line is a record — the FHIR bulk-data
+ * HL7 message) and any input under **`--ndjson`** (each non-empty line is a record: the FHIR bulk-data
  * convention).
  *
  * The CLI adds **no** parsing of its own: it routes, reads, and shapes output; `cosyte parse` equals the
@@ -68,9 +68,9 @@ const PARSE_OPTIONS = {
  * @param deps - Injected input readers ({@link RunDeps}).
  * @param posture - The resolved {@link PhiPosture}. Defaults to {@link VALUE_FREE}; under
  *   `--unsafe-show-values` a bounded excerpt of the offending input is appended to a `CLI_PARSE_FAILED`
- *   diagnostic (the single, opt-in value-echoing surface) — single-record mode only.
+ *   diagnostic (the single, opt-in value-echoing surface): single-record mode only.
  * @returns A {@link RunResult}: the typed-JSON model (or NDJSON records) on `stdout`, a value-free note
- *   (or nothing) on `stderr`, and the resolved exit code. Never throws a {@link CliError} — it resolves
+ *   (or nothing) on `stderr`, and the resolved exit code. Never throws a {@link CliError}: it resolves
  *   it to a result; unexpected exceptions are caught by the dispatcher and mapped to `CLI_INTERNAL`.
  * @throws Never {@link CliError}; may propagate a truly unexpected error for the dispatcher to map.
  * @example

@@ -12,7 +12,7 @@ import {
 import { CliError } from "../src/core/diagnostics.js";
 
 /**
- * Direct unit tests of the per-format registry's guards and value-free helpers — the defensive
+ * Direct unit tests of the per-format registry's guards and value-free helpers: the defensive
  * `supportsOp`-guarded branches and the position formatter that keeps findings value-free.
  */
 
@@ -46,7 +46,7 @@ describe("the capability matrix + its guards", () => {
   });
 });
 
-describe("valueFreeLocator — indices only, never a value", () => {
+describe("valueFreeLocator: indices only, never a value", () => {
   it("builds a dotted locator from number-valued props", () => {
     expect(valueFreeLocator({ segmentIndex: 3, elementIndex: 2 })).toBe(
       "segmentIndex[3].elementIndex[2]",
@@ -64,7 +64,7 @@ describe("valueFreeLocator — indices only, never a value", () => {
   });
 });
 
-describe("deframeMllp — transport de-framing", () => {
+describe("deframeMllp: transport de-framing", () => {
   it("de-frames each VT/FS frame into its HL7 payload", async () => {
     const f = (s: string): number[] => [0x0b, ...enc.encode(s), 0x1c, 0x0d];
     const stream = new Uint8Array([...f("MSH|^~\\&|A"), ...f("MSH|^~\\&|B")]);

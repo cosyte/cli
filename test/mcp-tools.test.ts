@@ -6,7 +6,7 @@ import { dispatchTool, TOOL_DEFS } from "../src/mcp/tools.js";
 /**
  * Unit tests for the SDK-free MCP tool surface (`src/mcp/tools.ts`). The tools are the *second adapter*
  * over the same command core; these tests prove the dispatch/mapping without any `@modelcontextprotocol`
- * transport — the SDK wiring is covered separately in `mcp-server.test.ts`.
+ * transport: the SDK wiring is covered separately in `mcp-server.test.ts`.
  */
 
 // Synthetic, PHI-free fixtures (mirrors dispatch.test.ts).
@@ -25,7 +25,7 @@ describe("TOOL_DEFS", () => {
   });
 });
 
-describe("dispatchTool — success paths (shared core, value-free)", () => {
+describe("dispatchTool: success paths (shared core, value-free)", () => {
   it("parse returns the typed model, ok=true, exit 0", async () => {
     const r = await dispatchTool("parse", { content: FHIR_PATIENT });
     expect(r.isError).toBe(false);
@@ -68,7 +68,7 @@ describe("dispatchTool — success paths (shared core, value-free)", () => {
   });
 });
 
-describe("dispatchTool — value-free error paths", () => {
+describe("dispatchTool: value-free error paths", () => {
   it("a missing `content` argument is a value-free usage error", async () => {
     const r = await dispatchTool("parse", {});
     expect(r.isError).toBe(true);
@@ -102,7 +102,7 @@ describe("dispatchTool — value-free error paths", () => {
   });
 });
 
-describe("dispatchTool — PHI posture (no value ever reaches a tool error)", () => {
+describe("dispatchTool: PHI posture (no value ever reaches a tool error)", () => {
   const SENTINEL = "ZZZSENTINELPHI";
 
   it("an invalid resource's value-free findings never echo a field value", async () => {

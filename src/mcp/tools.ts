@@ -1,5 +1,5 @@
 /**
- * The **agent-facing tool surface** of the cosyte MCP server — the *second adapter* over the same
+ * The **agent-facing tool surface** of the cosyte MCP server: the *second adapter* over the same
  * `core`/`commands` the `cosyte` terminal command drives. This module
  * is deliberately **SDK-free**: it declares the tools (name, description, JSON-Schema input) and maps a
  * tool call onto the existing command handlers, returning a plain, value-free MCP-shaped result. The
@@ -8,12 +8,12 @@
  *
  * **The shared-core guarantee.** A tool does not re-implement anything: `parse` calls
  * {@link parseCommand}, `validate` calls {@link validateCommand}, etc., each with `--json` so the
- * library's result lands as machine JSON — so `cosyte parse` and the MCP `parse` tool agree by
+ * library's result lands as machine JSON, so `cosyte parse` and the MCP `parse` tool agree by
  * construction. The tool feeds the caller's `content` string in as if it were piped on stdin (`-`).
  *
- * **The PHI posture (load-bearing).** Every tool runs under the {@link VALUE_FREE} posture — there is
+ * **The PHI posture (load-bearing).** Every tool runs under the {@link VALUE_FREE} posture. There is
  * **no** `--unsafe-show-values` door on the agent surface. A tool's *result* carries the requested data
- * (the parsed model / converted bundle — the explicit request, the data channel), but a tool *error*
+ * (the parsed model / converted bundle: the explicit request, the data channel), but a tool *error*
  * carries only the value-free diagnostic the command already produced (a stable code + positional
  * context), never an input value.
  *
@@ -40,7 +40,7 @@ export interface McpTextContent {
 export interface McpToolMeta {
   /** The CLI exit code the underlying command resolved to (the documented exit-code contract). */
   readonly exit: number;
-  /** `true` iff the tool *call* succeeded (data was produced) — distinct from a negative verdict. */
+  /** `true` iff the tool *call* succeeded (data was produced): distinct from a negative verdict. */
   readonly ok: boolean;
 }
 
@@ -90,7 +90,7 @@ const FORMAT_PROP = {
 } as const;
 
 /**
- * The tools this server exposes — the read/convert operations that share the `core` cleanly and whose
+ * The tools this server exposes: the read/convert operations that share the `core` cleanly and whose
  * results are safe to hand an agent. `redact`/`deid` (gated on `@cosyte/deid`)
  * and `map-codes` are deliberately **not** exposed yet; they land when the terminal command's ground
  * layer and the tool's PHI/So shape are settled.
@@ -178,7 +178,7 @@ function stringArg(args: Readonly<Record<string, unknown>>, key: string): string
 /**
  * Map a command's {@link RunResult} onto a value-free {@link McpToolResult}. A command emits its data on
  * `stdout` (non-empty) and only ever leaves `stdout` empty on a **hard** failure (unparseable / no
- * input / usage / unavailable / internal) — so `stdout === ""` is exactly the "tool call failed" signal.
+ * input / usage / unavailable / internal), so `stdout === ""` is exactly the "tool call failed" signal.
  * A negative *verdict* (validate-invalid, a convert error-severity issue) still emits its JSON on
  * stdout, so it is a successful call whose value-free payload reports the verdict.
  */
@@ -194,7 +194,7 @@ function toToolResult(result: RunResult): McpToolResult {
   };
 }
 
-/** Build a value-free usage-error tool result (a bad/missing argument — never echoes the argument). */
+/** Build a value-free usage-error tool result (a bad/missing argument, never echoes the argument). */
 function usageError(message: string): McpToolResult {
   return {
     content: [{ type: "text", text: `cosyte: ${CLI_CODES.CLI_USAGE}: ${message}` }],
@@ -204,7 +204,7 @@ function usageError(message: string): McpToolResult {
 }
 
 /**
- * Map an unexpected thrown value to a **value-free** internal-error tool result — the agent-surface
+ * Map an unexpected thrown value to a **value-free** internal-error tool result: the agent-surface
  * mirror of the terminal dispatcher's `try/catch → toCliError` boundary (`core/run.ts`). {@link toCliError}
  * discards the original message, so a library exception that embedded input bytes can never reach the
  * client (which would otherwise see the SDK surface the raw `error.message`). Both adapters inherit the
@@ -224,7 +224,7 @@ function internalError(e: unknown): McpToolResult {
  * This is the agent-surface analogue of {@link run}: it validates the arguments, feeds the inline
  * `content` through the same command handlers the terminal uses (under the always-on {@link VALUE_FREE}
  * posture), and maps the {@link RunResult} onto an MCP result. An unknown tool name or a missing
- * `content` argument is a value-free usage error — never a thrown stack trace carrying input.
+ * `content` argument is a value-free usage error, never a thrown stack trace carrying input.
  *
  * @param name - The tool name (one of {@link TOOL_DEFS}).
  * @param args - The tool-call arguments object.

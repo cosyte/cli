@@ -1,5 +1,5 @@
 /**
- * The top-level **subcommand dispatcher** — a small hand-rolled router over Node's built-in
+ * The top-level **subcommand dispatcher**: a small hand-rolled router over Node's built-in
  * `util.parseArgs`, deliberately **third-party-framework-free** so the CLI core keeps zero third-party
  * runtime dependencies. It maps `argv[0]` to a command handler, serves `--help`
  * and `--version`, and turns any unexpected exception into a value-free `CLI_INTERNAL` result so a
@@ -23,8 +23,8 @@ import { extractPhiPosture } from "./phi.js";
 import type { RunResult } from "./result.js";
 import { VERSION } from "./version.js";
 
-/** The value-free `--help` text. Names commands, flags, and exit codes — never any input. */
-const HELP = `cosyte — a PHI-safe developer CLI over the @cosyte/* healthcare parsers
+/** The value-free `--help` text. Names commands, flags, and exit codes, never any input. */
+const HELP = `cosyte: a PHI-safe developer CLI over the @cosyte/* healthcare parsers
 
 Usage:
   cosyte <command> [options]
@@ -36,7 +36,7 @@ Commands:
   fmt <file|->        Canonically re-serialize via the parser's spec-clean serializer
   convert <file|->    Convert HL7 v2 → FHIR R4 via @cosyte/transform (use --to fhir)
   map-codes <cmap|->  Translate a code through a BYO FHIR ConceptMap via @cosyte/terminology
-  redact <file|->     De-identify a message (alias: deid) — gated on @cosyte/deid, not yet available
+  redact <file|->     De-identify a message (alias: deid): gated on @cosyte/deid, not yet available
   mcp                 Start the stdio MCP server (agent front door; also the cosyte-mcp bin)
   completion <shell>  Print a shell completion script (bash | zsh | fish)
 
@@ -48,7 +48,7 @@ Global:
 Common options (parse / validate / inspect / fmt):
   --format <fmt>    Override autodetection: hl7 | fhir | dicom | x12 | ccda | ncpdp | astm | mllp
                     (parse: hl7 fhir x12 astm ncpdp mllp · inspect: all · fmt: hl7 fhir x12 astm
-                     ccda ncpdp · validate: all but mllp — dicom/ccda parse & mllp fmt are deferred)
+                     ccda ncpdp · validate: all but mllp; dicom/ccda parse & mllp fmt are deferred)
   --json            Machine-readable JSON output (parse / validate / inspect / convert / map-codes)
   --ndjson          Treat each non-empty input line as a record; emit NDJSON (parse; FHIR bulk data)
   --quiet           Suppress value-free notes on stderr
@@ -70,7 +70,7 @@ Exit codes:
                          70  internal error
 
 PHI posture: the parsed model goes to stdout (the data channel you chose); every diagnostic on
-stderr is value-free — codes and positions only, never a field value — unless you pass the loud,
+stderr is value-free (codes and positions only, never a field value) unless you pass the loud,
 opt-in --unsafe-show-values (which permits a bounded input excerpt in a failure diagnostic).
 `;
 

@@ -8,7 +8,7 @@ import type { RunDeps } from "../src/core/io.js";
 
 /**
  * `redact`/`deid` is the one command whose job is to strip PHI. Until `@cosyte/deid` ships, it must be
- * an HONEST, typed `CLI_NOT_IMPLEMENTED` — never a fake success, never a partial scrub presented as
+ * an HONEST, typed `CLI_NOT_IMPLEMENTED`, never a fake success, never a partial scrub presented as
  * de-identified (the cardinal false-safety hazard). It must also never touch the input it cannot yet
  * safely strip: these deps reject on any read, so a passing test proves the input was never read.
  */
@@ -17,7 +17,7 @@ const throwOnRead: RunDeps = {
   readStdin: () => Promise.reject(new Error("redact must never read input")),
 };
 
-describe("redact/deid — honest NOT_IMPLEMENTED gated on @cosyte/deid", () => {
+describe("redact/deid: honest NOT_IMPLEMENTED gated on @cosyte/deid", () => {
   it("the de-id seam reports unavailable (the gate the command reads before touching input)", () => {
     const status = deidStatus();
     expect(status.available).toBe(false);

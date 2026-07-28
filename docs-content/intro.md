@@ -7,7 +7,7 @@ sidebar_position: 1
 # @cosyte/cli
 
 `cosyte` is a **PHI-safe developer CLI** over the `@cosyte/*` healthcare parsers. Pipe a raw message
-from a hospital feed into the terminal and get typed, structured JSON back in one line — without
+from a hospital feed into the terminal and get typed, structured JSON back in one line, without
 writing code, without reading the spec, and **without ever being handed a confident wrong value or a
 silent success on a malformed message**.
 
@@ -16,7 +16,7 @@ cat adt.hl7 | cosyte parse -
 ```
 
 `@cosyte/cli` is a **`bin` package**, not a library: its primary artifact is the `cosyte` command on
-your `PATH`. It is a thin, honest skin over libraries that already own correctness — it routes, reads,
+your `PATH`. It is a thin, honest skin over libraries that already own correctness: it routes, reads,
 shapes output, and owns two disciplines of its own: a documented **exit-code contract** and a
 **value-free diagnostic** posture (never a field value on stderr).
 
@@ -37,12 +37,12 @@ cat message.hl7 | cosyte parse -    # from a pipeline
 cosyte parse --format hl7 msg.txt   # override autodetection
 ```
 
-The exit code carries the outcome — `0` success, `65` unparseable/undetected, `66` missing file — so
+The exit code carries the outcome (`0` success, `65` unparseable/undetected, `66` missing file) so
 `cosyte parse` is safe to branch on in CI. See [Quickstart](./quickstart).
 
 ## Next
 
-- [Installation](./installation) — `npx`, global install, prerequisites.
-- [Quickstart](./quickstart) — the one-line parse, stdin, and the programmatic API.
-- [MCP server](./mcp) — expose the same parse/validate/convert core to an LLM/agent.
-- **API Reference** — every programmatic export, generated from source.
+- [Installation](./installation): `npx`, global install, prerequisites.
+- [Quickstart](./quickstart): the one-line parse, stdin, and the programmatic API.
+- [MCP server](./mcp): expose the same parse/validate/convert core to an LLM/agent.
+- **API Reference**: every programmatic export, generated from source.

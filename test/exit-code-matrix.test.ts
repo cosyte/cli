@@ -12,13 +12,13 @@ import { run } from "../src/core/run.js";
  * pipelines and shell scripts branch on. This table pins one representative (command, input-class)
  * invocation for **every** code in the contract, driven end-to-end through the top-level {@link run}
  * dispatcher. A regression that turns an invalid-input exit `1` into a `0`, or that renumbers a code,
- * fails here — that is the whole point. The load-bearing rule the matrix guards: the CLI never prints
+ * fails here. That is the whole point. The load-bearing rule the matrix guards: the CLI never prints
  * a reassuring line and exits `0` on input it could not handle.
  */
 
 const HL7 = "MSH|^~\\&|A|B|C|D|20240101||ADT^A01|1|P|2.5\r";
 const VALID_FHIR = '{"resourceType":"Patient","id":"x","gender":"male"}';
-/** Parseable but outside the required binding — a real invalid verdict, not an unparseable input. */
+/** Parseable but outside the required binding: a real invalid verdict, not an unparseable input. */
 const INVALID_FHIR = '{"resourceType":"Patient","gender":"masculine"}';
 
 const enc = (s: string): Uint8Array => new TextEncoder().encode(s);
@@ -28,7 +28,7 @@ function deps(bytes: Uint8Array): RunDeps {
   return { readFile: () => Promise.resolve(bytes), readStdin: () => Promise.resolve(bytes) };
 }
 
-/** A dep whose stdin read throws a NON-CliError — the only way to reach the internal-error path. */
+/** A dep whose stdin read throws a NON-CliError: the only way to reach the internal-error path. */
 const throwingStdin: RunDeps = {
   readFile: () => Promise.reject(new Error("boom")),
   readStdin: () => Promise.reject(new Error("boom")),
@@ -42,7 +42,7 @@ interface Case {
 }
 
 const MATRIX: readonly Case[] = [
-  // 0 — success / valid verdict.
+  // 0: success / valid verdict.
   { name: "--version", argv: ["--version"], deps: deps(new Uint8Array()), exit: EXIT.OK },
   {
     name: "parse a valid HL7 message",
@@ -62,14 +62,14 @@ const MATRIX: readonly Case[] = [
     deps: deps(enc(HL7)),
     exit: EXIT.OK,
   },
-  // 1 — operation-level failure (a real, expected CI signal: parseable but invalid).
+  // 1: operation-level failure (a real, expected CI signal: parseable but invalid).
   {
     name: "validate a parseable-but-invalid FHIR resource → INVALID, never 0",
     argv: ["validate", "p.json", "--format", "fhir"],
     deps: deps(enc(INVALID_FHIR)),
     exit: EXIT.INVALID,
   },
-  // 2 — usage error.
+  // 2: usage error.
   {
     name: "an unknown command",
     argv: ["frobnicate"],
@@ -88,7 +88,7 @@ const MATRIX: readonly Case[] = [
     deps: deps(enc(HL7)),
     exit: EXIT.USAGE,
   },
-  // 65 — data error (unparseable / undetected / unsupported).
+  // 65: data error (unparseable / undetected / unsupported).
   {
     name: "an undetectable format",
     argv: ["parse", "m.txt"],
@@ -107,7 +107,7 @@ const MATRIX: readonly Case[] = [
     deps: deps(enc(HL7)),
     exit: EXIT.DATAERR,
   },
-  // 66 — no input (unreadable file), surfaced value-free by the injected reader.
+  // 66, no input (unreadable file), surfaced value-free by the injected reader.
   {
     name: "an unreadable file",
     argv: ["parse", "gone.hl7"],
@@ -120,7 +120,7 @@ const MATRIX: readonly Case[] = [
     },
     exit: EXIT.NOINPUT,
   },
-  // 69 — unavailable (a capability gated on a not-yet-built ground layer).
+  // 69: unavailable (a capability gated on a not-yet-built ground layer).
   {
     name: "redact before @cosyte/deid ships",
     argv: ["redact", "m.hl7"],
@@ -133,7 +133,7 @@ const MATRIX: readonly Case[] = [
     deps: deps(enc(HL7)),
     exit: EXIT.UNAVAILABLE,
   },
-  // 70 — internal error (an unexpected exception), distinct from a handled bad input.
+  // 70: internal error (an unexpected exception), distinct from a handled bad input.
   {
     name: "a non-CliError thrown from the input reader",
     argv: ["parse", "-"],
@@ -142,7 +142,7 @@ const MATRIX: readonly Case[] = [
   },
 ];
 
-describe("exit-code golden matrix — the documented contract is locked", () => {
+describe("exit-code golden matrix: the documented contract is locked", () => {
   for (const c of MATRIX) {
     it(`${c.name} → exit ${String(c.exit)}`, async () => {
       const r = await run([...c.argv], c.deps);

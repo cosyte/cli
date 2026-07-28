@@ -8,7 +8,7 @@ import type { RunDeps } from "../src/core/io.js";
 
 /**
  * The load-bearing PHI safety layer (cli roadmap §7): the parsed model goes to **stdout** (the
- * explicit data channel), but **no input value ever reaches stderr** — under any command, flag, or
+ * explicit data channel), but **no input value ever reaches stderr**: under any command, flag, or
  * failure mode. Our synthetic fixtures carry sentinel identifiers; this suite proves they appear only
  * on the stdout data channel and never in a diagnostic.
  */
@@ -36,7 +36,7 @@ function assertNoSentinelOnStderr(stderr: string): void {
   for (const s of SENTINELS) expect(stderr).not.toContain(s);
 }
 
-describe("PHI leak matrix — stderr is value-free across every mode", () => {
+describe("PHI leak matrix: stderr is value-free across every mode", () => {
   const cases: { name: string; argv: string[]; bytes: Uint8Array }[] = [
     { name: "hl7 default", argv: ["parse", "m.hl7"], bytes: HL7 },
     { name: "hl7 --json", argv: ["parse", "m.hl7", "--json"], bytes: HL7 },
@@ -105,7 +105,7 @@ describe("PHI leak matrix — stderr is value-free across every mode", () => {
   });
 
   it("`map-codes` pointed at a PHI-laden (non-ConceptMap) file fails value-free on BOTH channels", async () => {
-    // map-codes reads a ConceptMap (reference data). A PHI-laden HL7 file is not one — it must reject
+    // map-codes reads a ConceptMap (reference data). A PHI-laden HL7 file is not one. It must reject
     // with a stable code and never echo the file's bytes on either channel.
     const r = await run(["map-codes", "m.hl7", "--code", "male"], fileDeps(HL7));
     assertNoSentinelOnStderr(r.stderr);
@@ -115,8 +115,8 @@ describe("PHI leak matrix — stderr is value-free across every mode", () => {
   });
 });
 
-describe("PHI leak matrix — validate / inspect are value-free on BOTH channels", () => {
-  // `validate` and `inspect` emit diagnostics / a structural summary, never the message data — so
+describe("PHI leak matrix: validate / inspect are value-free on BOTH channels", () => {
+  // `validate` and `inspect` emit diagnostics / a structural summary, never the message data, so
   // unlike `parse`/`fmt` (whose stdout IS the data channel), neither channel may carry a sentinel.
   const cases: { name: string; argv: string[]; bytes: Uint8Array }[] = [
     { name: "validate hl7", argv: ["validate", "m.hl7"], bytes: HL7 },
@@ -137,7 +137,7 @@ describe("PHI leak matrix — validate / inspect are value-free on BOTH channels
   }
 });
 
-describe("PHI leak matrix — fmt keeps stderr value-free (stdout IS the data channel)", () => {
+describe("PHI leak matrix: fmt keeps stderr value-free (stdout IS the data channel)", () => {
   // `fmt`'s stdout is a re-serialization of the message (values included, by request); only its
   // secondary channel (stderr) must be value-free.
   for (const c of [

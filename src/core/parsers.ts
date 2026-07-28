@@ -1,10 +1,10 @@
 /**
- * The **per-format parser adapter registry** — the single place the CLI routes a resolved format to
+ * The **per-format parser adapter registry**: the single place the CLI routes a resolved format to
  * its wrapped `@cosyte/*` parser, for each of the four wrapping operations (`parse` / `inspect` /
  * `fmt` / `validate`). One lazy, value-free registry, so the wrapper boundary lives in exactly one
  * file.
  *
- * **Capability is per (format, operation).** Not every parser faithfully supports every operation —
+ * **Capability is per (format, operation).** Not every parser faithfully supports every operation:
  * DICOM's model is binary (no faithful JSON `parse`, no text `fmt`), C-CDA's canonical form is XML (no
  * library-blessed JSON `parse`), MLLP is a transport container (de-framed to HL7, `parse`/`inspect`
  * only). {@link OP_SUPPORT} is the honest matrix; an unsupported (format, op) is a value-free
@@ -13,7 +13,7 @@
  * **Lazy + optional.** Every parser is imported dynamically inside its branch, so `cosyte parse msg.hl7`
  * never loads the DICOM or X12 code. The six breadth parsers are `optionalDependencies`: if
  * one is absent the dynamic import is caught and degrades to a value-free `CLI_PARSER_UNAVAILABLE`
- * (exit `69`) rather than an unhandled crash — the CLI core still works with any of them missing.
+ * (exit `69`) rather than an unhandled crash: the CLI core still works with any of them missing.
  *
  * @packageDocumentation
  */
@@ -31,7 +31,7 @@ export type ParseWarning = { readonly code: string } & Readonly<Record<string, u
 
 /** The result of wrapping a parser's `parse`: the library's parsed model + its value-free warnings. */
 export interface ParseResult {
-  /** The wrapped library's parsed model — emitted verbatim as JSON on the data channel. */
+  /** The wrapped library's parsed model: emitted verbatim as JSON on the data channel. */
   readonly model: unknown;
   /** The parser's value-free warnings (code + position). */
   readonly warnings: readonly ParseWarning[];
@@ -80,7 +80,7 @@ export interface X12Summary {
   readonly format: "x12";
   readonly groupCount: number;
   readonly transactionCount: number;
-  /** Count of each transaction-set identifier code (ST-01), e.g. `{ "834": 1 }` — value-free codes. */
+  /** Count of each transaction-set identifier code (ST-01), e.g. `{ "834": 1 }`: value-free codes. */
   readonly transactionSetIds: Readonly<Record<string, number>>;
   readonly segmentCount: number;
   readonly warningCount: number;
@@ -110,9 +110,9 @@ export interface CcdaSummary {
 /** Value-free structural summary of a DICOM dataset (classification UIDs + element count). */
 export interface DicomSummary {
   readonly format: "dicom";
-  /** The SOP Class UID (a standard OID identifying the object type — value-free classification). */
+  /** The SOP Class UID (a standard OID identifying the object type: value-free classification). */
   readonly sopClassUid: string | null;
-  /** The Transfer Syntax UID (encoding classification — value-free). */
+  /** The Transfer Syntax UID (encoding classification: value-free). */
   readonly transferSyntaxUid: string | null;
   readonly elementCount: number;
   readonly warningCount: number;
@@ -122,14 +122,14 @@ export interface DicomSummary {
 export interface NcpdpSummary {
   readonly format: "ncpdp";
   readonly standard: "SCRIPT";
-  /** The SCRIPT message type (e.g. `NewRx`, `CancelRx` — a value-free classification). */
+  /** The SCRIPT message type (e.g. `NewRx`, `CancelRx`: a value-free classification). */
   readonly messageType: string | null;
-  /** The SCRIPT version (e.g. `2017071` — value-free). */
+  /** The SCRIPT version (e.g. `2017071`: value-free). */
   readonly version: string | null;
   readonly warningCount: number;
 }
 
-/** Value-free structural summary of an MLLP stream (frame count only — the payloads are HL7). */
+/** Value-free structural summary of an MLLP stream (frame count only; the payloads are HL7). */
 export interface MllpSummary {
   readonly format: "mllp";
   readonly frameCount: number;
@@ -152,11 +152,11 @@ export type InspectSummary =
 /**
  * The honest per-format operation matrix. A (format, op) pair absent here is a value-free
  * `CLI_FORMAT_UNSUPPORTED`, never a faked result. The unsupported cells and why:
- * - **dicom** `parse`/`fmt` — the model is binary (no faithful JSON view; `serializeDicom` emits a
+ * - **dicom** `parse`/`fmt`. The model is binary (no faithful JSON view; `serializeDicom` emits a
  *   Part-10 byte stream, not text). `inspect`/`validate` are supported.
- * - **ccda** `parse` — the canonical form is XML; there is no library-blessed JSON model, so `fmt`
+ * - **ccda** `parse`: the canonical form is XML; there is no library-blessed JSON model, so `fmt`
  *   (XML re-serialize) is the faithful surface. `inspect`/`fmt`/`validate` are supported.
- * - **mllp** `fmt`/`validate` — MLLP is a transport container the CLI de-frames to HL7; `parse` yields
+ * - **mllp** `fmt`/`validate`: MLLP is a transport container the CLI de-frames to HL7; `parse` yields
  *   the enclosed HL7 message(s) and `inspect` reports the frame count.
  *
  * @example
@@ -197,7 +197,7 @@ export function supportsOp(format: CosyteFormat, op: Op): boolean {
 }
 
 /**
- * The formats that support `op`, as a sorted, value-free list — used to build the "does not support"
+ * The formats that support `op`, as a sorted, value-free list: used to build the "does not support"
  * diagnostic so the user is told which formats *do* support the operation they asked for.
  *
  * @param op - The wrapping operation.
@@ -217,7 +217,7 @@ export function formatsSupporting(op: Op): readonly CosyteFormat[] {
 
 /**
  * Render an arbitrary parser **position** object as a value-free locator string, keeping **only**
- * number-valued own properties (the parsers' positions are index-only) — e.g. `{ segmentIndex: 3,
+ * number-valued own properties (the parsers' positions are index-only): e.g. `{ segmentIndex: 3,
  * elementIndex: 2 }` → `segmentIndex[3].elementIndex[2]`. A non-number field (which a position should
  * never carry) is dropped, so a stray value can never reach a diagnostic. Falls back to `"?"` when no
  * numeric index is present.
@@ -251,7 +251,7 @@ function anyError(findings: readonly Finding[]): boolean {
 
 /**
  * Lazy-import an **optional** parser package, mapping an *absent* package to a value-free
- * `CLI_PARSER_UNAVAILABLE` (exit `69`) — the graceful-degradation path for the `optionalDependencies`
+ * `CLI_PARSER_UNAVAILABLE` (exit `69`): the graceful-degradation path for the `optionalDependencies`
  * breadth parsers. A genuine import that succeeds passes straight through; any error whose
  * shape is "module not found" becomes the value-free CLI error. Other errors propagate unchanged.
  *
@@ -285,7 +285,7 @@ export async function loadOptional<T>(format: CosyteFormat, load: () => Promise<
   }
 }
 
-/** True iff `e` is a "module not found" failure — by Node's `code`, or the standard resolver message. */
+/** True iff `e` is a "module not found" failure, by Node's `code`, or the standard resolver message. */
 function isModuleNotFound(e: unknown): boolean {
   if (typeof e !== "object" || e === null) return false;
   const code = "code" in e ? e.code : undefined;
@@ -301,7 +301,7 @@ function isModuleNotFound(e: unknown): boolean {
  * is emitted verbatim on the data channel; the CLI adds no parsing of its own.
  *
  * @param format - A format for which `supportsOp(format, "parse")` is true.
- * @param bytes - The single record's bytes (already de-framed for MLLP — callers pass `"hl7"` there).
+ * @param bytes - The single record's bytes (already de-framed for MLLP: callers pass `"hl7"` there).
  * @returns The parsed model + value-free warnings.
  * @throws {CliError} `CLI_PARSER_UNAVAILABLE` if the optional parser is absent; the wrapped parser's
  *   own rejection propagates for the command's value-free failure boundary to catch.
@@ -372,7 +372,7 @@ export async function parseFormat(format: CosyteFormat, bytes: Uint8Array): Prom
 /* ── inspect ─────────────────────────────────────────────────────────────────────────────────── */
 
 /**
- * Build the value-free structural summary of one input of `format` — counts and structural type codes
+ * Build the value-free structural summary of one input of `format`: counts and structural type codes
  * only, never a field value.
  *
  * @param format - A format for which `supportsOp(format, "inspect")` is true.
@@ -579,7 +579,7 @@ export async function fmtFormat(format: CosyteFormat, bytes: Uint8Array): Promis
 
 /**
  * Run the format's validation surface and return a value-free {@link Verdict}. For the Postel's-Law
- * lenient parsers, a **parseable** input is valid — recovered deviations are non-fatal warnings the
+ * lenient parsers, a **parseable** input is valid: recovered deviations are non-fatal warnings the
  * library surfaces, never a stricter verdict the CLI invents. FHIR additionally runs `validateResource`
  * and is invalid on any error/fatal-severity issue.
  *
@@ -665,16 +665,16 @@ export async function validateFormat(format: CosyteFormat, bytes: Uint8Array): P
 
 /**
  * De-frame an MLLP byte stream into its enclosed HL7 payloads via `@cosyte/mllp`'s `FrameReader`. MLLP
- * is a transport container, not a document format — each frame's payload is an HL7 v2 message the CLI
+ * is a transport container, not a document format: each frame's payload is an HL7 v2 message the CLI
  * then parses/inspects with the `hl7` adapter. Multi-frame streams are the CLI's multi-message surface.
  *
  * @param bytes - The MLLP-framed input.
  * @returns The de-framed HL7 payloads (in stream order) + a value-free framing-warning count.
  * **Truncation is a data error, never a silent drop.** The `FrameReader` is a streaming decoder: an
  * unterminated trailing frame (a VT opened with no closing FS/CR) is left buffered and delivered by
- * *no* callback — so feeding a whole file and reading only `onFrame` would silently lose the partial
+ * *no* callback, so feeding a whole file and reading only `onFrame` would silently lose the partial
  * message with a green exit. We therefore detect an open trailing frame at the byte level (the last
- * VT sits after the last FS — MLLP payloads are HL7 v2 text and never carry the `0x0B`/`0x1C` framing
+ * VT sits after the last FS: MLLP payloads are HL7 v2 text and never carry the `0x0B`/`0x1C` framing
  * bytes) and reject the whole stream as a value-free `CLI_PARSE_FAILED` data error.
  *
  * @throws {CliError} `CLI_PARSER_UNAVAILABLE` if `@cosyte/mllp` is absent; `CLI_PARSE_FAILED` (exit
@@ -723,7 +723,7 @@ function finding(code: string, severity: string, location: string, constraint?: 
   return { code, severity, location: loc };
 }
 
-/** The value-free error for an internal (guarded-upstream) unsupported (format, op) — a programming bug. */
+/** The value-free error for an internal (guarded-upstream) unsupported (format, op): a programming bug. */
 function unsupportedInternal(format: CosyteFormat, op: Op): CliError {
   return new CliError(
     CLI_CODES.CLI_FORMAT_UNSUPPORTED,

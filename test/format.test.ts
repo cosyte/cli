@@ -13,13 +13,13 @@ import { OP_SUPPORT } from "../src/core/parsers.js";
 
 const enc = (s: string): Uint8Array => new TextEncoder().encode(s);
 
-describe("detectFormat — confident matches route right", () => {
+describe("detectFormat: confident matches route right", () => {
   it("detects HL7 from an MSH-framed message", () => {
     const r = detectFormat(enc("MSH|^~\\&|A|B|C|D|20240101||ADT^A01|1|P|2.5\r"));
     expect(r).toStrictEqual({ format: "hl7", confidence: "certain", candidates: ["hl7"] });
   });
 
-  it("detects HL7 through leading whitespace (but NOT a VT-framed stream — that is mllp)", () => {
+  it("detects HL7 through leading whitespace (but NOT a VT-framed stream. That is mllp)", () => {
     expect(detectFormat(enc("  MSH|^~\\&|A")).format).toBe("hl7");
     // A leading 0x0B VT byte is the MLLP frame marker; it must route to mllp, never hl7 (disjoint).
     const framed = new Uint8Array([0x0b, ...enc("MSH|^~\\&|A")]);
@@ -40,7 +40,7 @@ describe("detectFormat — confident matches route right", () => {
   });
 });
 
-describe("detectFormat — the six CLI-6 breadth formats (conservative, disjoint)", () => {
+describe("detectFormat: the six CLI-6 breadth formats (conservative, disjoint)", () => {
   it("detects X12 from a leading ISA interchange header", () => {
     expect(detectFormat(enc("ISA*00*          *00*          *ZZ*SENDER")).format).toBe("x12");
   });
@@ -77,7 +77,7 @@ describe("detectFormat — the six CLI-6 breadth formats (conservative, disjoint
   });
 });
 
-describe("detectFormat — HL7 field-separator edge cases", () => {
+describe("detectFormat: HL7 field-separator edge cases", () => {
   it("does NOT claim a bare 'MSH' with no following field separator", () => {
     expect(detectFormat(enc("MSH")).confidence).toBe("none");
   });
@@ -91,7 +91,7 @@ describe("detectFormat — HL7 field-separator edge cases", () => {
   });
 });
 
-describe("classifyCandidates — the routing contract, incl. the ambiguity branch", () => {
+describe("classifyCandidates: the routing contract, incl. the ambiguity branch", () => {
   it("exactly one candidate → certain", () => {
     expect(classifyCandidates(["hl7"])).toStrictEqual({
       format: "hl7",
@@ -116,7 +116,7 @@ describe("classifyCandidates — the routing contract, incl. the ambiguity branc
   });
 });
 
-describe("detectionError — value-free data errors for non-certain detection", () => {
+describe("detectionError: value-free data errors for non-certain detection", () => {
   it("none → CLI_FORMAT_UNDETECTED (exit 65)", () => {
     const e = detectionError(classifyCandidates([]));
     expect(e.code).toBe("CLI_FORMAT_UNDETECTED");
@@ -132,7 +132,7 @@ describe("detectionError — value-free data errors for non-certain detection", 
   });
 });
 
-describe("detectFormat — fail-safe on ambiguity/no-match/empty", () => {
+describe("detectFormat: fail-safe on ambiguity/no-match/empty", () => {
   it("returns none for empty input", () => {
     expect(detectFormat(new Uint8Array())).toStrictEqual({
       format: null,
@@ -155,7 +155,7 @@ describe("detectFormat — fail-safe on ambiguity/no-match/empty", () => {
   });
 });
 
-describe("detectFormat — property: never throws, never guesses a non-wired format", () => {
+describe("detectFormat property: never throws, never guesses a non-wired format", () => {
   it("returns a well-formed result for arbitrary bytes and never a certain non-candidate", () => {
     fc.assert(
       fc.property(fc.uint8Array(), (bytes) => {

@@ -7,10 +7,10 @@ import { createMcpServer, SERVER_INFO } from "../src/mcp/server.js";
 /**
  * Integration test for the MCP stdio adapter (`src/mcp/server.ts`), driven over the SDK's in-process
  * transport (cli roadmap §6 "MCP tool tests"). A real {@link Client} connects to the server through a
- * linked in-memory transport pair, lists the tools, and calls them — exercising the ListTools and
+ * linked in-memory transport pair, lists the tools, and calls them: exercising the ListTools and
  * CallTool handlers the same way an LLM client would, without spawning a subprocess.
  */
-describe("cosyte MCP server — in-process client/server", () => {
+describe("cosyte MCP server, in-process client/server", () => {
   let client: Client;
   let closeAll: () => Promise<void>;
 

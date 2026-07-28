@@ -2,11 +2,11 @@
  * `cosyte inspect <file|-> [--format …] [--json] [--quiet] [--no-color]`
  *
  * A human-readable, **value-free-by-default** structural summary of a message: its type, structural
- * counts, and a warning count — the "what shape is this?" answer, without ever printing a field
+ * counts, and a warning count: the "what shape is this?" answer, without ever printing a field
  * value. Unlike `parse`, whose stdout is the parsed model (the data channel), `inspect`'s
  * stdout is a *structural* summary composed only of counts and structural type **codes** (an HL7 message
  * type like `ADT^A01`, a FHIR `resourceType` like `Patient`, an X12 transaction-set id like `834`, a
- * DICOM SOP Class UID, an NCPDP `NewRx`) — classification, never PHI. `--json` emits the same value-free
+ * DICOM SOP Class UID, an NCPDP `NewRx`): classification, never PHI. `--json` emits the same value-free
  * summary as machine JSON. The per-format summaries are built by the shared registry (`core/parsers.ts`).
  *
  * @packageDocumentation
@@ -90,7 +90,7 @@ export async function inspectCommand(
 }
 
 /**
- * Render a value-free human structural summary. Only counts and structural type codes — never a value.
+ * Render a value-free human structural summary. Only counts and structural type codes, never a value.
  * Exported for direct branch testing of the per-format render (not re-exported from the package root).
  *
  * @param summary - The value-free {@link InspectSummary} to render.

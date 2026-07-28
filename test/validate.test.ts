@@ -20,7 +20,7 @@ function deps(file: Uint8Array, stdin: Uint8Array = new Uint8Array()): RunDeps {
   return { readFile: () => Promise.resolve(file), readStdin: () => Promise.resolve(stdin) };
 }
 
-describe("validate — verdict in the exit code", () => {
+describe("validate: verdict in the exit code", () => {
   it("a valid HL7 message → exit 0, value-free 'valid' summary", async () => {
     const r = await validateCommand(["adt.hl7"], deps(HL7));
     expect(r.exit).toBe(EXIT.OK);
@@ -89,7 +89,7 @@ describe("validate — verdict in the exit code", () => {
   });
 });
 
-describe("validate — the verdict matches the library, never invented", () => {
+describe("validate: the verdict matches the library, never invented", () => {
   it("`validate`'s exit 0/1 equals @cosyte/fhir validateResource().valid", async () => {
     const { parseResource, validateResource } = await import("@cosyte/fhir");
     for (const bytes of [FHIR, INVALID_FHIR]) {
@@ -101,7 +101,7 @@ describe("validate — the verdict matches the library, never invented", () => {
   });
 });
 
-describe("validate — fail-safe exit codes distinguish invalid from unparseable", () => {
+describe("validate: fail-safe exit codes distinguish invalid from unparseable", () => {
   it("unparseable input is a DATA error (65), NOT an invalid verdict (1)", async () => {
     const r = await validateCommand(
       ["bad.json", "--format", "fhir"],
@@ -136,7 +136,7 @@ describe("validate — fail-safe exit codes distinguish invalid from unparseable
   });
 });
 
-describe("validate — profile is gated, never faked", () => {
+describe("validate: profile is gated, never faked", () => {
   it("--profile is an honest CLI_NOT_IMPLEMENTED (69); the input is never read", async () => {
     let read = false;
     const spying: RunDeps = {
@@ -153,7 +153,7 @@ describe("validate — profile is gated, never faked", () => {
   });
 });
 
-describe("validate — PHI posture on a parse failure", () => {
+describe("validate: PHI posture on a parse failure", () => {
   it("value-free by default; the offending input appears only under --unsafe-show-values", async () => {
     const bad = new TextEncoder().encode('{"secret":"ZZSENTINELLAST"}');
     const safe = await validateCommand(["bad.hl7", "--format", "hl7"], deps(bad));

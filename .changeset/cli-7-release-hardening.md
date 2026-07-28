@@ -13,11 +13,11 @@ matrix pinning every documented exit code. The CLI is feature-complete and its c
 - **Exit-code golden matrix.** `test/exit-code-matrix.test.ts` pins one representative invocation for
   every code in the `0/1/2/65/66/69/70` contract, driven end-to-end through `run`, so a regression that
   turns an invalid-input exit `1` into a `0` (or renumbers a code) fails CI. The exit-code map and the
-  stable `CLI_*` diagnostic codes are a stability surface — renaming one is a breaking change.
+  stable `CLI_*` diagnostic codes are a stability surface: renaming one is a breaking change.
 - **Publish dry-run proven.** A new `smoke` gate (`scripts/smoke.mjs`, wired into `verify.sh`) exercises
   the built dual ESM/CJS `.` and `./mcp` subpaths and **both** `cosyte` / `cosyte-mcp` bins under
   `node`; `npm publish --dry-run` assembles a clean tarball; `attw` stays a publish gate.
 - **Honesty + release docs.** `docs-content/limitations.md`, a man-page-style
   `docs-content/reference-commands.md`, and `RELEASING.md` (the one-package-two-bins publish,
-  provenance/OIDC, the vendored-`file:`→npm dep swap, and the two standing founder stops — public-flip
+  provenance/OIDC, the vendored-`file:`→npm dep swap, and the two standing founder stops: public-flip
   and `npm publish`).

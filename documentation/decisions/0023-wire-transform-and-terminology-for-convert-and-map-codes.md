@@ -1,4 +1,4 @@
-# 0023 — Wire `@cosyte/transform` + `@cosyte/terminology` as hard runtime deps for `convert` / `map-codes` (cap 2 → 4)
+# 0023: Wire `@cosyte/transform` + `@cosyte/terminology` as hard runtime deps for `convert` / `map-codes` (cap 2 → 4)
 
 - **Status:** Accepted (2026-07-22)
 - **Scope:** `@cosyte/cli`
@@ -14,16 +14,16 @@
 Phase 4 (CLI-4) adds the two **consumer-of-consumers** commands the roadmap sequenced last among the
 build commands, because they are gated on higher-layer libraries rather than the parsers:
 
-- **`cosyte convert <file> --to fhir`** — HL7 v2 → FHIR R4 via **`@cosyte/transform`**.
-- **`cosyte map-codes <conceptmap> --code … [--system …]`** — ConceptMap `$translate` via
+- **`cosyte convert <file> --to fhir`**: HL7 v2 → FHIR R4 via **`@cosyte/transform`**.
+- **`cosyte map-codes <conceptmap> --code … [--system …]`**: ConceptMap `$translate` via
   **`@cosyte/terminology`** (BYO ConceptMap).
 
 At the time the roadmap was written both libraries were nascent (`transform` a scaffold, `terminology`
-vapor), so Phase 4 was written to **defer and flag** a command whose library was not ready — never a
+vapor), so Phase 4 was written to **defer and flag** a command whose library was not ready, never a
 fake success. **Both are now feature-complete** (`transform` converts the IG-mapped ADT/ORU/order/…
 message families and serializes a FHIR message `Bundle`; `terminology` loads a FHIR R4 ConceptMap and
 translates a coding, never fabricating a target). So both commands ship as **real** commands, not gated
-stubs — the deferred/unavailable path (ADR 0018) is already demonstrated by `redact` and
+stubs: the deferred/unavailable path (ADR 0018) is already demonstrated by `redact` and
 `validate --profile`, and is not re-created here where the ground layer genuinely exists.
 
 Consuming these two libraries is exactly the posture ADR 0021 established for the parsers: an
@@ -42,9 +42,9 @@ to **4**.
 2. **Both are lazy-loaded per command** (a dynamic `import()` inside the command handler), so the
    `cosyte parse` / `validate` / `inspect` / `fmt` paths never load transform or terminology, and a
    `convert` invocation never loads terminology (or vice versa). Startup stays fast; each invocation
-   loads only what it needs — the same discipline ADR 0021 §3 set for the parsers.
+   loads only what it needs: the same discipline ADR 0021 §3 set for the parsers.
 
-3. **The umbrella `verify-policy.json` cap on `cli` runtime deps is raised 2 → 4** — a deliberate,
+3. **The umbrella `verify-policy.json` cap on `cli` runtime deps is raised 2 → 4**: a deliberate,
    per-command raise recorded here and in the CHANGELOG (the umbrella edit itself is made by the
    umbrella owner, not from this repo). The count is exactly the four first-party siblings; the CLI
    core's **third-party** runtime-dep surface stays **zero** (`util.parseArgs` + a hand-rolled
@@ -53,7 +53,7 @@ to **4**.
 
 4. **The CLI adds no mapping/terminology logic of its own** (roadmap §5). `convert` parses with
    `@cosyte/hl7`, hands the parsed message to `transform.toFhir`, and serializes the bundle with
-   `@cosyte/fhir` — `cosyte convert` equals `transform`'s programmatic output. `map-codes` loads the
+   `@cosyte/fhir`: `cosyte convert` equals `transform`'s programmatic output. `map-codes` loads the
    user's ConceptMap and forwards `terminology.translate` faithfully. Both surface the library's
    value-free issues/outcomes (a stable code + a positional locator, never a field value) and carry the
    outcome in the exit code: a **`convert` error-severity issue exits `1`** (the "a conversion error is
@@ -66,7 +66,7 @@ to **4**.
   (`cli → {parsers, transform, terminology}`) stays one-way and acyclic; lazy per-command loading keeps
   the `parse` fast path free of the higher-layer code.
 - **Negative / cost.** Two more committed vendored tarballs to refresh when a consumed sibling surface
-  changes (a deliberate, gated act — re-run verify + the gate-refuter, since a `transform`/`terminology`
+  changes (a deliberate, gated act: re-run verify + the gate-refuter, since a `transform`/`terminology`
   API change can break a wrapper). The dep cap is now 4; wiring the remaining parsers into `convert`'s
   siblings later is a further deliberate raise, never a silent bump.
 - **Boundary.** This is still the developer-tooling `bin` tier only. `transform` keeps its peer-dep

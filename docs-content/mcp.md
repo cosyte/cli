@@ -9,10 +9,10 @@ sidebar_position: 5
 `@cosyte/cli` ships a second front door over the **same** core as the `cosyte` command: a
 [Model Context Protocol](https://modelcontextprotocol.io) server that lets an LLM/agent parse, validate,
 inspect, and convert healthcare messages as **callable tools**. The terminal and the agent share one
-codebase, one PHI posture, and one set of results — the MCP `parse` tool returns exactly what
+codebase, one PHI posture, and one set of results: the MCP `parse` tool returns exactly what
 `cosyte parse` returns.
 
-> The server is a **local stdio subprocess**, implicitly trusted by whoever launches it — not a hosted
+> The server is a **local stdio subprocess**, implicitly trusted by whoever launches it, not a hosted
 > network endpoint. It is stateless per call.
 
 ## Register it
@@ -48,8 +48,8 @@ Every tool takes a `content` string (the raw message); `parse`/`validate`/`inspe
 ## PHI posture on the agent surface
 
 The value-free discipline is **hardened** for agents: there is **no `--unsafe-show-values` door** over
-MCP. A tool _result_ carries the requested data (the parsed model, the converted Bundle — the explicit
-request). A tool _error_ carries only a value-free diagnostic — a stable code and a position, never a
+MCP. A tool _result_ carries the requested data (the parsed model, the converted Bundle: the explicit
+request). A tool _error_ carries only a value-free diagnostic: a stable code and a position, never a
 name, DOB, MRN, or field value. A parsed-but-invalid `validate` is a **successful** call reporting the
 verdict (not a tool error); only a hard failure (unparseable input, a usage mistake) is flagged as an
 error.

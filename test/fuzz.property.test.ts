@@ -7,13 +7,13 @@ import { run } from "../src/core/run.js";
 import { dispatchTool } from "../src/mcp/tools.js";
 
 /**
- * CLI-7 release-hardening fuzz of the CLI's two input boundaries — the terminal (`run`, over the
+ * CLI-7 release-hardening fuzz of the CLI's two input boundaries: the terminal (`run`, over the
  * argv + stdin byte stream) and the agent surface (`dispatchTool`, over a tool name + arguments).
  *
- * The bar (cli roadmap §6 "Fuzz — required, this is an input boundary"): arbitrary/adversarial argv
+ * The bar (cli roadmap §6 "Fuzz: required, this is an input boundary"): arbitrary/adversarial argv
  * vectors and input bytes NEVER crash the CLI into an unhandled exception with a stack trace carrying
  * input. Every invocation degrades to a typed result with a documented exit code and a value-free
- * secondary channel — never a thrown Error, never a raw `at …` stack frame on stderr / in a tool's
+ * secondary channel, never a thrown Error, never a raw `at …` stack frame on stderr / in a tool's
  * text.
  *
  * The case count scales via `CLI_FUZZ_RUNS` so the nightly Fuzz workflow (`.github/workflows/fuzz.yml`)
@@ -22,10 +22,10 @@ import { dispatchTool } from "../src/mcp/tools.js";
 
 const FUZZ_RUNS = Number(process.env["CLI_FUZZ_RUNS"] ?? "300");
 
-/** The documented exit-code contract (`core/exit-codes.ts`) — every invocation must resolve to one. */
+/** The documented exit-code contract (`core/exit-codes.ts`): every invocation must resolve to one. */
 const EXIT_CODES = new Set<number>(Object.values(EXIT));
 
-/** A Node stack-trace frame — `\n    at <fn> (<file>:<line>)`. None may ever reach a user channel. */
+/** A Node stack-trace frame: `\n    at <fn> (<file>:<line>)`. None may ever reach a user channel. */
 const STACK_FRAME = /\n\s+at\s/;
 
 /** Feed the SAME fuzzed bytes to both a file read and a stdin read (the two ways input enters). */
@@ -79,12 +79,12 @@ const argvArb = fc.array(
   { maxLength: 8 },
 );
 
-describe("fuzz — the argv + stdin boundary never throws and never leaks a stack trace", () => {
+describe("fuzz: the argv + stdin boundary never throws and never leaks a stack trace", () => {
   it("run() over arbitrary argv and input bytes always resolves to a documented, value-free result", async () => {
     await fc.assert(
       fc.asyncProperty(argvArb, fc.uint8Array({ maxLength: 512 }), async (argv, bytes) => {
         const r = await run([...argv], fuzzDeps(bytes));
-        // A well-formed RunResult with a documented exit code — never an unhandled throw.
+        // A well-formed RunResult with a documented exit code, never an unhandled throw.
         expect(typeof r.stdout).toBe("string");
         expect(typeof r.stderr).toBe("string");
         expect(EXIT_CODES.has(r.exit)).toBe(true);
@@ -114,7 +114,7 @@ describe("fuzz — the argv + stdin boundary never throws and never leaks a stac
   });
 });
 
-describe("fuzz — the MCP tool boundary never throws and never leaks a stack trace", () => {
+describe("fuzz: the MCP tool boundary never throws and never leaks a stack trace", () => {
   const toolNames = [
     "parse",
     "validate",
@@ -139,7 +139,7 @@ describe("fuzz — the MCP tool boundary never throws and never leaks a stack tr
     await fc.assert(
       fc.asyncProperty(fc.constantFrom(...toolNames), argsArb, async (name, args) => {
         const r = await dispatchTool(name, args);
-        // Structurally an MCP CallToolResult with value-free metadata — never a thrown Error.
+        // Structurally an MCP CallToolResult with value-free metadata, never a thrown Error.
         expect(typeof r.isError).toBe("boolean");
         expect(Array.isArray(r.content)).toBe(true);
         expect(EXIT_CODES.has(r.structuredContent.exit)).toBe(true);

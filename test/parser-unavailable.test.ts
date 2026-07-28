@@ -7,9 +7,9 @@ import { EXIT } from "../src/core/exit-codes.js";
 /**
  * The graceful-degradation path for the six `optionalDependencies` breadth parsers (ADR 0025): if an
  * optional parser package is **absent**, the dynamic import is caught and mapped to a value-free
- * `CLI_PARSER_UNAVAILABLE` (exit `69`) — the CLI core never crashes on a missing optional parser.
+ * `CLI_PARSER_UNAVAILABLE` (exit `69`): the CLI core never crashes on a missing optional parser.
  */
-describe("loadOptional — an absent optional parser becomes a value-free CLI error (exit 69)", () => {
+describe("loadOptional: an absent optional parser becomes a value-free CLI error (exit 69)", () => {
   const notFound = (msg: string, code?: string): Error => {
     const e = new Error(msg);
     if (code !== undefined) (e as NodeJS.ErrnoException).code = code;

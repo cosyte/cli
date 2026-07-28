@@ -13,7 +13,7 @@ function deps(file: Uint8Array, stdin: Uint8Array = new Uint8Array()): RunDeps {
   return { readFile: () => Promise.resolve(file), readStdin: () => Promise.resolve(stdin) };
 }
 
-describe("resolveInput — the shared input + format front door", () => {
+describe("resolveInput: the shared input + format front door", () => {
   it("resolves a file to a wired format + bytes (autodetected)", async () => {
     const r = await resolveInput("p.json", undefined, deps(FHIR), "parse");
     expect(r.ok).toBe(true);

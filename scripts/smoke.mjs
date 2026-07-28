@@ -3,7 +3,7 @@
 //
 // Three things a source-only suite cannot catch, exercised against `dist/` (not `src/`):
 //   1. The `.` subpath library API imports as ESM *and* requires as CJS, and both drive a real
-//      `run(["--version"])` + `detectFormat(...)` to the same answer — a broken dual build (a bad
+//      `run(["--version"])` + `detectFormat(...)` to the same answer: a broken dual build (a bad
 //      `exports` map, an ESM-only construct leaking into CJS, a missing entry) fails here.
 //   2. The `./mcp` subpath (the agent front door) imports/requires both ways and dispatches a tool.
 //   3. Both `bin` executables actually run under `node`: `cosyte --version`, `cosyte parse -` over a
@@ -127,13 +127,13 @@ async function main() {
   );
 
   if (failures > 0) {
-    console.error(`smoke: FAIL — ${failures} check(s) failed`);
+    console.error(`smoke: FAIL, ${failures} check(s) failed`);
     process.exit(1);
   }
-  console.log("smoke: ok — dual ESM/CJS `.` + `./mcp`, and both bins, all green");
+  console.log("smoke: ok, dual ESM/CJS `.` + `./mcp`, and both bins, all green");
 }
 
 main().catch((e) => {
-  console.error(`smoke: FAIL — ${e?.stack ?? String(e)}`);
+  console.error(`smoke: FAIL, ${e?.stack ?? String(e)}`);
   process.exit(1);
 });

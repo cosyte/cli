@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 /**
  * SDK-isolation gate (ADR 0021 / 0022, cli roadmap §Phase 5 acceptance). The
  * `@modelcontextprotocol/sdk` is the CLI's single third-party runtime dependency and must be reachable
- * **only** through the `./mcp` subpath — so a `cosyte parse` invocation never loads it. This test
+ * **only** through the `./mcp` subpath, so a `cosyte parse` invocation never loads it. This test
  * proves the boundary statically: no module under `src/core` or `src/commands` (the shared fast path)
  * may import the SDK or the `mcp/` tree, and the `.` barrel (`src/index.ts`) must not re-export it.
  * The `cosyte` bin reaches the server only via a **dynamic** `import()`, kept lazy on the `mcp` branch.
@@ -26,7 +26,7 @@ function tsFiles(dir: string): string[] {
 
 const SDK = "@modelcontextprotocol/sdk";
 
-describe("MCP SDK isolation — the fast path never loads the SDK", () => {
+describe("MCP SDK isolation: the fast path never loads the SDK", () => {
   it("no src/core or src/commands module imports the SDK or the mcp/ tree", () => {
     const guarded = [...tsFiles(join(SRC, "core")), ...tsFiles(join(SRC, "commands"))];
     expect(guarded.length).toBeGreaterThan(0);

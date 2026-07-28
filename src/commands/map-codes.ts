@@ -5,10 +5,10 @@
  * Translate a single source coding through a **BYO FHIR R4 ConceptMap** via
  * **`@cosyte/terminology`**. The positional argument is the ConceptMap document (a file, or `-` for
  * stdin); `--system` + `--code` (and optional `--version`/`--display`) name the source coding to
- * translate. The CLI adds **no** mapping content of its own — `terminology` is content-free and
+ * translate. The CLI adds **no** mapping content of its own: `terminology` is content-free and
  * never fabricates a target; the CLI loads the user's map and forwards the translation faithfully.
  *
- * A ConceptMap and a terminology code are **reference data, not PHI** — so the translation result
+ * A ConceptMap and a terminology code are **reference data, not PHI**, so the translation result
  * (the matched target coding(s), or the value-free "unmapped" signal) is the user's explicit request
  * and goes to **stdout**. The exit code carries the outcome so it is usable as a gate: **`0`** at
  * least one match · **`1`** no mapping found (the never-fabricate `TERM_TRANSLATE_UNMAPPED` outcome) ·
@@ -47,7 +47,7 @@ const MAP_CODES_OPTIONS = {
  *   ConceptMap document.
  * @returns A {@link RunResult}: the translation result on `stdout` (matched target coding(s) or the
  *   value-free unmapped signal), a value-free note on `stderr` (unless `--quiet`), and an exit code
- *   carrying the outcome — `0` mapped · `1` unmapped · `65` unloadable ConceptMap · `66` no input ·
+ *   carrying the outcome: `0` mapped · `1` unmapped · `65` unloadable ConceptMap · `66` no input ·
  *   `2` usage.
  * @throws Never {@link CliError}; may propagate a truly unexpected error for the dispatcher to map to
  *   `CLI_INTERNAL`.
@@ -162,7 +162,7 @@ type TranslateOutcome =
 /**
  * Load the BYO ConceptMap (lazy-loading `@cosyte/terminology`) and translate the source coding.
  * Malformed JSON and an unloadable ConceptMap both resolve to a value-free `CLI_MAP_INVALID` data
- * error — the map's bytes are never echoed, only the stable terminology-loader code (when the thrown
+ * error: the map's bytes are never echoed, only the stable terminology-loader code (when the thrown
  * value carried one, e.g. `TERM_CONCEPTMAP_MALFORMED`).
  */
 async function translateVia(bytes: Uint8Array, coding: Coding): Promise<TranslateOutcome> {

@@ -18,7 +18,7 @@ cosyte parse --json message.hl7 | jq '.model'   # compact output for a pipeline
 ```
 
 The output is a stable envelope: the detected `format`, the parsed `model`, and any value-free
-`warnings` the wrapped parser recovered (each a stable code plus a position — never a field value).
+`warnings` the wrapped parser recovered (each a stable code plus a position, never a field value).
 
 ## Validate, inspect, format
 
@@ -30,13 +30,13 @@ cosyte inspect message.hl7     # a value-free structural summary (type + segment
 cat messy.json | cosyte fmt -  # canonical re-serialization via the library's spec-clean serializer
 ```
 
-`validate` is the CI gate — a validation failure is **never** exit `0`. Its findings (and `inspect`'s
-summary) carry only codes, severities, and positional locators — never a field value.
+`validate` is the CI gate: a validation failure is **never** exit `0`. Its findings (and `inspect`'s
+summary) carry only codes, severities, and positional locators, never a field value.
 
-## Autodetection is conservative — it never guesses
+## Autodetection is conservative: it never guesses
 
 Detection sniffs the leading bytes' content, not the file extension: an `MSH|…` message is HL7, a JSON
-object with a `resourceType` is FHIR. If nothing matches, `parse` does **not** guess — it exits with a
+object with a `resourceType` is FHIR. If nothing matches, `parse` does **not** guess: it exits with a
 data error (`65`) and asks for `--format`:
 
 ```ts runnable
@@ -50,12 +50,12 @@ detectFormat(enc.encode("not a healthcare message")).confidence; // => "none"
 
 ## The exit-code contract
 
-Every command is safe to branch on in CI — the exit code carries the outcome:
+Every command is safe to branch on in CI. The exit code carries the outcome:
 
 | Code | Meaning                                                     |
 |------|------------------------------------------------------------|
 | `0`  | success / valid (`validate`)                               |
-| `1`  | invalid — `validate` found a parseable-but-bad message     |
+| `1`  | invalid: `validate` found a parseable-but-bad message     |
 | `2`  | usage error (unknown flag, missing argument)               |
 | `65` | data error (unparseable input, or format undetected)       |
 | `66` | no input (missing/unreadable file)                         |
@@ -73,5 +73,5 @@ EXIT.NOINPUT; // => 66
 
 ## Next
 
-- [Core Concepts](./concepts-archetype) — the wrapper boundary, the exit-code contract, the PHI posture.
-- **API Reference** — every programmatic export, generated from source.
+- [Core Concepts](./concepts-archetype): the wrapper boundary, the exit-code contract, the PHI posture.
+- **API Reference**: every programmatic export, generated from source.

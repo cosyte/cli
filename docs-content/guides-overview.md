@@ -16,9 +16,9 @@ question.
 > (a value-free structural summary), `fmt` (canonical re-serialization), `convert` (HL7 v2 → FHIR R4 via
 > `@cosyte/transform`), `map-codes` (ConceptMap `$translate` via `@cosyte/terminology`), `redact`/`deid`
 > (an honest gated stub, exit `69`, until `@cosyte/deid` ships), and `completion` (a shell completion
-> script). Support is honest **per (format, operation)** — a parser that does not faithfully support a
+> script). Support is honest **per (format, operation)**: a parser that does not faithfully support a
 > command (DICOM `parse`/`fmt`, C-CDA `parse`, MLLP `fmt`/`validate`) is a value-free
-> `CLI_FORMAT_UNSUPPORTED`, never a fake. PHI discipline runs throughout — value-free by default, the
+> `CLI_FORMAT_UNSUPPORTED`, never a fake. PHI discipline runs throughout: value-free by default, the
 > opt-in `--unsafe-show-values`, never a PHI temp file. A `cosyte-mcp` MCP server exposes the same core
 > to an LLM/agent. A command is only documented here once its behavior ships and its example passes the
 > doc/code-agreement check.
@@ -33,7 +33,7 @@ cat adt.hl7 | cosyte parse - --json | jq '.model.segments[0]'
 
 ## Branch on the outcome in CI
 
-The exit code is the contract — no need to grep stdout:
+The exit code is the contract, no need to grep stdout:
 
 ```bash
 if cosyte parse "$file" > /dev/null 2> err.log; then
@@ -54,9 +54,9 @@ cosyte parse --format hl7 weird-extension.txt
 
 ## Debug a rejected message (and mind the PHI)
 
-A `CLI_PARSE_FAILED` line is value-free by default — a code and position, never the bytes. When you
+A `CLI_PARSE_FAILED` line is value-free by default: a code and position, never the bytes. When you
 are working locally and need to see what the parser choked on, add the loud, opt-in
-`--unsafe-show-values` (it is **PHI-exposing** — never on stderr you will share):
+`--unsafe-show-values` (it is **PHI-exposing**, never on stderr you will share):
 
 ```bash
 cosyte parse broken.hl7 --format hl7                       # value-free diagnostic
@@ -65,7 +65,7 @@ cosyte parse broken.hl7 --format hl7 --unsafe-show-values  # appends a bounded i
 
 ## Convert an HL7 v2 feed to FHIR in a pipeline
 
-`convert` wraps `@cosyte/transform` — the FHIR `Bundle` is on stdout, the value-free conversion issues
+`convert` wraps `@cosyte/transform`: the FHIR `Bundle` is on stdout, the value-free conversion issues
 on stderr, and an error-severity issue sets a non-zero exit:
 
 ```bash
@@ -84,7 +84,7 @@ cosyte map-codes gender.conceptmap.json \
 
 ## Use the programmatic core
 
-The same autodetection and exit-code contract are importable — useful when embedding the routing logic:
+The same autodetection and exit-code contract are importable, useful when embedding the routing logic:
 
 ```ts runnable
 import { detectFormat, EXIT } from "@cosyte/cli";

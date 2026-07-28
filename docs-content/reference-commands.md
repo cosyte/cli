@@ -30,7 +30,7 @@ cosyte-mcp                      # the stdio MCP server (also: cosyte mcp)
 
 | Flag             | Effect                                                                                                                                                         |
 | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `--format <fmt>` | Override autodetection: `hl7 \| fhir \| dicom \| x12 \| ccda \| ncpdp \| astm \| mllp`. Support is per (format, operation) — see [Limitations](./limitations). |
+| `--format <fmt>` | Override autodetection: `hl7 \| fhir \| dicom \| x12 \| ccda \| ncpdp \| astm \| mllp`. Support is per (format, operation): see [Limitations](./limitations). |
 | `--json`         | Machine-readable JSON output.                                                                                                                                  |
 | `--quiet`        | Suppress value-free notes on stderr (the exit code becomes the whole signal).                                                                                  |
 | `--no-color`     | Disable ANSI colour.                                                                                                                                           |
@@ -52,9 +52,9 @@ cosyte parse --ndjson bulk.ndjson | jq .
 
 ### `cosyte validate <file\|-> [--profile <name>]`
 
-Validate a message; **the exit code carries the verdict** — `0` valid, `1` invalid (parseable but
+Validate a message; **the exit code carries the verdict**: `0` valid, `1` invalid (parseable but
 non-conformant), `65` unparseable. Findings are value-free (a code + a positional location). `--profile`
-is reserved but gated to `CLI_NOT_IMPLEMENTED` (exit `69`) — no profiles are bundled.
+is reserved but gated to `CLI_NOT_IMPLEMENTED` (exit `69`), no profiles are bundled.
 
 ```bash
 cosyte validate patient.json && echo "valid"   # branches on exit 0/1
@@ -62,7 +62,7 @@ cosyte validate patient.json && echo "valid"   # branches on exit 0/1
 
 ### `cosyte inspect <file\|->`
 
-Print a **value-free** structural summary — the message/resource type, segment/entry counts, and a
+Print a **value-free** structural summary: the message/resource type, segment/entry counts, and a
 warning/issue count. Never emits a field value on either channel.
 
 ### `cosyte fmt <file\|->`
@@ -85,7 +85,7 @@ is not PHI.
 
 ### `cosyte redact <file\|->` (alias: `deid`)
 
-De-identify a message. **Gated on `@cosyte/deid` (not yet available)** — an honest
+De-identify a message. **Gated on `@cosyte/deid` (not yet available)**: an honest
 `CLI_NOT_IMPLEMENTED` (exit `69`). The input is not read. The CLI ships no built-in partial scrub.
 
 ### `cosyte completion <bash\|zsh\|fish>`
@@ -94,7 +94,7 @@ Print a static, value-free shell-completion script generated from the command tr
 
 ### `cosyte mcp` / `cosyte-mcp`
 
-Start the stdio MCP server — the agent front door, exposing `parse`/`validate`/`inspect`/`convert` as
+Start the stdio MCP server: the agent front door, exposing `parse`/`validate`/`inspect`/`convert` as
 tools over the same core. See [MCP server](./mcp).
 
 ## Exit codes
@@ -102,12 +102,12 @@ tools over the same core. See [MCP server](./mcp).
 | Code | Meaning                                                                                 |
 | ---- | --------------------------------------------------------------------------------------- |
 | `0`  | success / `validate` found the input **valid**                                          |
-| `1`  | operation-level failure — `validate` found the input **invalid** (a real CI signal)     |
-| `2`  | usage error — unknown command, bad flag, missing argument                               |
-| `65` | data error — input could not be parsed / format not detected / (format, op) unsupported |
-| `66` | no input — the file does not exist or is unreadable                                     |
-| `69` | unavailable — a capability is not yet built (e.g. `redact`, `--profile`)                |
-| `70` | internal error — an unexpected exception (a bug)                                        |
+| `1`  | operation-level failure: `validate` found the input **invalid** (a real CI signal)     |
+| `2`  | usage error: unknown command, bad flag, missing argument                               |
+| `65` | data error: input could not be parsed / format not detected / (format, op) unsupported |
+| `66` | no input: the file does not exist or is unreadable                                     |
+| `69` | unavailable: a capability is not yet built (e.g. `redact`, `--profile`)                |
+| `70` | internal error: an unexpected exception (a bug)                                        |
 
 The contract is a **stability surface**: renaming a code or a stable `CLI_*` diagnostic is a breaking
 change, and it is locked by an exit-code golden matrix in the test suite.

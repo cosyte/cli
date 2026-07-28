@@ -1,25 +1,25 @@
 /**
- * **Content-based format autodetection** — the feature that makes `cosyte parse <file>` feel magic,
+ * **Content-based format autodetection**: the feature that makes `cosyte parse <file>` feel magic,
  * and the one that must **fail safe**. Detection sniffs the leading bytes' *content*, never the file
  * extension: a `.txt` full of `MSH|^~\&…` is HL7; a `.json` with a `resourceType` is FHIR.
  *
  * The hazard is a wrong sniff routing bytes to the wrong parser and yielding confident garbage. So
  * detection is **conservative**: a single confident signature match parses; **zero or more than one**
- * match is *not* a guess — it is a typed `none`/`ambiguous` result the caller turns into a data-error
+ * match is *not* a guess. It is a typed `none`/`ambiguous` result the caller turns into a data-error
  * exit asking for `--format`. This is the parsers' "never a confident wrong value" rule at the
  * routing layer.
  *
  * All eight cosyte formats carry a signature: **hl7** (`MSH` + field separator), **mllp**
- * (a leading `0x0B` VT frame byte — an MLLP-framed stream, de-framed to its enclosed HL7), **fhir** (a
+ * (a leading `0x0B` VT frame byte: an MLLP-framed stream, de-framed to its enclosed HL7), **fhir** (a
  * JSON object declaring `resourceType`), **x12** (a leading `ISA` interchange header), **astm** (a
  * leading `H` record whose second byte is the field delimiter), **ccda** (a `<ClinicalDocument>` root),
  * **ncpdp** (a `<Message>` root in the NCPDP SCRIPT namespace), and **dicom** (the `DICM` magic at byte
- * 128). The signatures are **conservative and, on realistic inputs, mutually exclusive** — the
+ * 128). The signatures are **conservative and, on realistic inputs, mutually exclusive**: the
  * distinctive-lead formats (`MSH`, `ISA`, `H`+delimiter, `<ClinicalDocument>`, `<Message>`+ncpdp, the
  * `DICM` magic, `0x0B` VT, `{…"resourceType"`) don't overlap on a real message of any one type. They
- * are **not** disjoint in the absolute sense — a pathological input could satisfy two (an MLLP frame
+ * are **not** disjoint in the absolute sense: a pathological input could satisfy two (an MLLP frame
  * enclosing a `<ClinicalDocument>` payload matches both `mllp` and `ccda`; a text file whose byte 128
- * is `DICM` matches both) — which is exactly why the **`ambiguous` branch is load-bearing, not dead
+ * is `DICM` matches both), which is exactly why the **`ambiguous` branch is load-bearing, not dead
  * code**: any co-match is a *detected* ambiguity (a value-free data error asking for `--format`),
  * **never a silent mis-route**.
  *
@@ -34,9 +34,9 @@ export type CosyteFormat = "hl7" | "fhir" | "dicom" | "x12" | "ccda" | "ncpdp" |
 
 /**
  * How confident autodetection is:
- * - `certain` — exactly one signature matched (`format` names it);
- * - `ambiguous` — more than one matched (`format` is `null`; `candidates` names them);
- * - `none` — nothing matched (`format` is `null`; `candidates` is empty).
+ * - `certain`: exactly one signature matched (`format` names it);
+ * - `ambiguous`: more than one matched (`format` is `null`; `candidates` names them);
+ * - `none`: nothing matched (`format` is `null`; `candidates` is empty).
  *
  * `format` is `null` unless `confidence` is `certain`, so a non-certain result can never be mistaken
  * for a routable format.
@@ -56,11 +56,11 @@ interface Signature {
   readonly match: (prefix: string, bytes: Uint8Array) => boolean;
 }
 
-/** How many leading bytes to decode for text sniffing. Small — signatures live in the first line. */
+/** How many leading bytes to decode for text sniffing. Small: signatures live in the first line. */
 const SNIFF_BYTES = 512;
 
 /** Strip a leading UTF-8 BOM and any leading ASCII whitespace for a tolerant sniff. Deliberately does
- * **not** strip the MLLP `0x0B` VT frame byte (`\v`) — that byte is the mllp signature, so consuming it
+ * **not** strip the MLLP `0x0B` VT frame byte (`\v`): that byte is the mllp signature, so consuming it
  * here would collide the hl7 and mllp signatures on a framed message. */
 function leadingText(bytes: Uint8Array): string {
   const slice = bytes.subarray(0, SNIFF_BYTES);
@@ -69,7 +69,7 @@ function leadingText(bytes: Uint8Array): string {
   return text;
 }
 
-/** Trim only regular leading whitespace (space/tab/CR/LF/FF) — never the `0x0B` VT MLLP frame byte. */
+/** Trim only regular leading whitespace (space/tab/CR/LF/FF), never the `0x0B` VT MLLP frame byte. */
 function trimLeading(prefix: string): string {
   return prefix.replace(/^[ \t\r\n\f]+/, "");
 }
@@ -85,7 +85,7 @@ function isDelimiter(ch: string | undefined): boolean {
  * HL7 v2: the message begins with an `MSH` segment whose 4th character is the field separator
  * (conventionally `|`) followed by the encoding characters. Conservative: requires `MSH` + a
  * non-alphanumeric single-char field separator. An MLLP-framed message (leading `0x0B`) is **not**
- * claimed here — it is the `mllp` signature — because {@link trimLeading} preserves the VT byte.
+ * claimed here (it is the `mllp` signature) because {@link trimLeading} preserves the VT byte.
  */
 function looksLikeHl7(prefix: string): boolean {
   const s = trimLeading(prefix);
@@ -94,7 +94,7 @@ function looksLikeHl7(prefix: string): boolean {
 
 /**
  * MLLP: a Minimal Lower Layer Protocol frame opens with the `0x0B` VT byte. This is a **transport
- * framing**, not a document format — the CLI de-frames it and parses the enclosed HL7 v2 payload(s).
+ * framing**, not a document format: the CLI de-frames it and parses the enclosed HL7 v2 payload(s).
  * The check is on the **raw first byte**, so it is disjoint from every text signature.
  */
 function looksLikeMllp(_prefix: string, bytes: Uint8Array): boolean {
@@ -114,7 +114,7 @@ function looksLikeFhir(prefix: string): boolean {
 
 /**
  * X12 EDI: an interchange opens with the fixed 3-byte `ISA` segment id immediately followed by the
- * element separator (a non-alphanumeric byte — `*` conventionally, but delimiter-agnostic).
+ * element separator (a non-alphanumeric byte: `*` conventionally, but delimiter-agnostic).
  */
 function looksLikeX12(prefix: string): boolean {
   const s = trimLeading(prefix);
@@ -124,7 +124,7 @@ function looksLikeX12(prefix: string): boolean {
 /**
  * ASTM E1394/E1381 records: the first record is an `H` (header) whose second byte is the field
  * delimiter and whose next three bytes are the repeat / component / escape **delimiter declarations**
- * (all punctuation — classically `\^&`). Requiring the full 4-delimiter block, not just `H` + one
+ * (all punctuation: classically `\^&`). Requiring the full 4-delimiter block, not just `H` + one
  * delimiter, keeps a mundane `H:...`/`H!...` text line from being confidently mis-routed to ASTM (it
  * would instead be a value-free `CLI_FORMAT_UNDETECTED`). Distinct from HL7 (`MSH`) and X12 (`ISA`).
  */
@@ -143,7 +143,7 @@ function looksLikeCcda(prefix: string): boolean {
 /**
  * NCPDP SCRIPT: an ePrescribing message rooted at `<Message>` in the NCPDP SCRIPT namespace.
  * Requires **both** the `<Message>` root and the `ncpdp` namespace marker so a generic `<Message>`
- * XML is not mis-claimed (conservative — disjoint from C-CDA's `<ClinicalDocument>`).
+ * XML is not mis-claimed (conservative: disjoint from C-CDA's `<ClinicalDocument>`).
  */
 function looksLikeNcpdp(prefix: string): boolean {
   return /<Message[\s>]/.test(prefix) && /ncpdp/i.test(prefix);
@@ -157,7 +157,7 @@ function looksLikeDicom(_prefix: string, bytes: Uint8Array): boolean {
   );
 }
 
-/** The signature registry — disjoint by construction across all eight cosyte formats. */
+/** The signature registry: disjoint by construction across all eight cosyte formats. */
 const SIGNATURES: readonly Signature[] = [
   { format: "hl7", match: (prefix) => looksLikeHl7(prefix) },
   { format: "mllp", match: (prefix, bytes) => looksLikeMllp(prefix, bytes) },
@@ -198,7 +198,7 @@ export function detectFormat(bytes: Uint8Array): DetectResult {
 /**
  * Classify a list of matched candidate formats into a {@link DetectResult}: exactly one → `certain`,
  * zero → `none`, two-or-more → `ambiguous` (all with `format` `null` unless certain). Split out and
- * exported so the **ambiguity** contract is directly testable — it is otherwise unreachable while
+ * exported so the **ambiguity** contract is directly testable. It is otherwise unreachable while
  * every signature is disjoint, and it must stay a *detected* ambiguity, never a mis-route.
  *
  * @param candidates - The formats whose signatures matched the input.
@@ -220,7 +220,7 @@ export function classifyCandidates(candidates: readonly CosyteFormat[]): DetectR
 }
 
 /**
- * Build the value-free {@link CliError} for a **non-certain** detection — the data error the caller
+ * Build the value-free {@link CliError} for a **non-certain** detection: the data error the caller
  * returns instead of guessing a parser. `ambiguous` names the matching candidates (a value-free code
  * list); `none` asks for `--format`. Both map to the data-error exit (`65`). Never echoes input bytes.
  *

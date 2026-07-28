@@ -4,13 +4,13 @@
  * Parse the input, run the **wrapped parser's own validation/conformance surface**, and let the
  * **exit code carry the verdict** so `cosyte validate` is usable as a CI gate: **`0` valid, `1`
  * invalid** (parseable but non-conformant), `65` unparseable, `66` no input, `2` usage. The
- * load-bearing rule — the CLI never prints a reassuring line and exits `0` on an invalid message.
+ * load-bearing rule: the CLI never prints a reassuring line and exits `0` on an invalid message.
  *
  * Findings are **value-free**: a stable code, a severity, and a positional locator (a FHIRPath, or an
- * HL7 segment/field index) — never a field value. By default they render on **stderr**; `--json`
+ * HL7 segment/field index), never a field value. By default they render on **stderr**; `--json`
  * emits the same value-free verdict + findings as machine JSON on stdout. The CLI invents **no**
  * verdict of its own: FHIR validity is `@cosyte/fhir`'s `validateResource().valid` (plus any
- * error-severity read issue); HL7 validity is "parseable" — its parser is Postel's-Law lenient and its
+ * error-severity read issue); HL7 validity is "parseable": its parser is Postel's-Law lenient and its
  * warnings are, by the library's design, non-fatal deviations (surfaced, never failing).
  *
  * @packageDocumentation
@@ -90,7 +90,7 @@ export async function validateCommand(
   }
 
   // Profile-based validation is a pass-through to the wrapped library's profile surface, but the CLI
-  // bundles no profiles and cannot yet load one — so honouring `--profile` today would either fake a
+  // bundles no profiles and cannot yet load one, so honouring `--profile` today would either fake a
   // verdict or silently ignore the flag (falsely implying a profile was applied). Both are forbidden
   // (ADR 0018): report a value-free "unavailable" and exit 69, without reading the input.
   if (values.profile !== undefined) {
@@ -98,7 +98,7 @@ export async function validateCommand(
       new CliError(
         CLI_CODES.CLI_NOT_IMPLEMENTED,
         EXIT.UNAVAILABLE,
-        "profile-based validation is not yet available — the CLI bundles no profiles and cannot yet " +
+        "profile-based validation is not yet available: the CLI bundles no profiles and cannot yet " +
           "load one; validating against `--profile` is gated on that surface. Re-run without --profile " +
           "for base validation.",
       ),
@@ -122,7 +122,7 @@ export async function validateCommand(
   const exit = verdict.valid ? EXIT.OK : EXIT.INVALID;
 
   if (values.json === true) {
-    // Machine output on the data channel — value-free (codes/severities/locations only).
+    // Machine output on the data channel: value-free (codes/severities/locations only).
     const body = { format, valid: verdict.valid, findings: verdict.findings };
     return { stdout: `${JSON.stringify(body)}\n`, stderr: "", exit };
   }
