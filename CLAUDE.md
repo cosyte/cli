@@ -145,13 +145,66 @@ a summary.
   (`test:fuzz`, nightly-scaled by `CLI_FUZZ_RUNS`), an **exit-code golden matrix**, and a built-package
   **`smoke`** (dual ESM/CJS `.` + `./mcp` subpaths and both bins under `node`). The thin `bin/` process
   adapter is coverage-excluded at source (a `/* v8 ignore */` block over the argv/stdin/exit glue).
-- **CI/CD:** thin callers of the reusable `cosyte/.github` workflows.
+- **CI/CD:** thin callers of the reusable `cosyte/.github` workflows. **The checks BIND**; see
+  "Branch protection" below.
 - **Runtime deps:** `@cosyte/hl7` + `@cosyte/fhir` + `@cosyte/transform` + `@cosyte/terminology`
   (first-party, hard, vendored — ADR 0021 + 0023), capped at **4**. The six CLI-6 breadth parsers
   (`dicom`/`x12`/`ccda`/`ncpdp`/`astm`/`mllp`) are vendored **`optionalDependencies`**, lazy-loaded per
   format and **outside** that cap (ADR 0025); the MCP `@modelcontextprotocol/sdk` is likewise optional
   (ADR 0024). **Zero third-party** in the CLI core (`util.parseArgs`, no framework).
 - **License:** MIT.
+
+## Branch protection (and the limits of this claim)
+
+`main` is protected by the repository ruleset **`ci-required-checks`** (id `19907924`,
+`source_type: Repository`, `enforcement: active`, conditions `~DEFAULT_BRANCH`). Rules: `deletion`,
+`non_fast_forward`, `required_status_checks`. Before it existed, every check this repo ran was
+advisory: `ci`, `codeql`, `scorecard` and `fuzz` could all be red and the merge still landed on
+`main`, and `main` is the branch that publishes.
+
+Required contexts, each pinned to **`integration_id: 15368`** (the `github-actions` app) so that a
+commit status of the same name posted by any other actor with write access cannot satisfy it:
+
+| context                                    |
+| ------------------------------------------ |
+| `ci / verify (22, ubuntu-latest)`          |
+| `ci / verify (24, ubuntu-latest)`          |
+| `ci / actionlint`                          |
+| `codeql / analyze (javascript-typescript)` |
+
+These are the names GitHub actually reports, read off real check runs, **not** off a workflow's
+`name:` field. Requiring a context nothing emits does not fail a PR; it leaves it pending and
+unmergeable forever. Neither `ci.yml` nor `codeql.yml` carries a `paths:` filter, so no PR can skip
+one.
+
+**What is deliberately NOT required, and why each would be a defect:**
+
+- **`scorecard / analysis`** runs on `push` to `main` and on a schedule, never on `pull_request`.
+  Requiring it would strand every PR pending forever.
+- **`fuzz`** is `schedule` + `workflow_dispatch` only, for the same reason. The same property suite
+  runs inside `ci / verify` at a lower case count, so the PR path is covered by a context that
+  does arrive.
+- **`release / release`** runs on `push` to `main`. It is not a PR gate.
+- The **`CodeQL`** check posted by the Advanced Security app (id `57789`) reports **alert state**,
+  not whether the analysis ran. `codeql / analyze` already gates that.
+
+**A required job gates all of its steps.** Splitting a step out of `ci / verify` into its own job
+silently un-requires it, with no error and no warning. There is a banner on `ci.yml` where someone
+would trip it.
+
+**▶ Scope of the claim, stated plainly: a ruleset makes a red check BLOCK a merge. It does not make
+the check correct, and nothing inside this repository can observe its own ruleset.** Delete the
+ruleset and this test suite stays green while this section keeps asserting protection. It is not
+verifiable from inside the repo, by `verify.sh`, or by any gate here. Verify it the only way that
+works:
+
+```bash
+gh api repos/cosyte/cli/rulesets
+```
+
+Two things recorded as **unproven** rather than fine: no fork PR has ever run here, so neither the
+first-time-contributor approval gate nor whether `codeql / analyze` can report on a fork token
+(which cannot hold `security-events: write`) has been observed.
 
 ## Engineering Guardrails
 

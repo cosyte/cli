@@ -25,7 +25,7 @@ Detection sniffs the leading bytes: HL7 needs an `MSH|…` start, FHIR needs a J
 ## `CLI_FORMAT_AMBIGUOUS` (exit 65)
 
 More than one signature matched. Disambiguate with `--format`. (With only HL7 and FHIR wired this
-cannot yet occur — the branch exists so a future overlapping signature is a *detected* ambiguity, not
+cannot yet occur — the branch exists so a future overlapping signature is a _detected_ ambiguity, not
 a silent mis-route.)
 
 ## `CLI_FORMAT_UNSUPPORTED` (exit 65)
@@ -34,7 +34,7 @@ The format was recognised, but its parser does not support the operation you ask
 **per (format, operation)**: `x12`/`astm`/`ncpdp` support parse/inspect/fmt/validate; `ccda` supports
 inspect/fmt/validate (parse is deferred — XML is the canonical `fmt` form); `dicom` supports
 inspect/validate (parse/fmt deferred — the model is binary); `mllp` supports parse/inspect. The message
-names which formats *do* support the operation. The command is never faked to a success it cannot deliver.
+names which formats _do_ support the operation. The command is never faked to a success it cannot deliver.
 
 ## `CLI_PARSER_UNAVAILABLE` (exit 69)
 
@@ -80,7 +80,7 @@ loud, opt-in `--unsafe-show-values` — it appends a bounded excerpt of the offe
 only setting under which a value reaches a secondary surface, and it affects failure diagnostics only —
 a successful parse still keeps values on stdout alone.
 
-## Known limitations (Phase 6)
+## Known limitations
 
 - All eight formats are wired, but **per (format, operation)**: `x12`/`astm`/`ncpdp` support
   parse/inspect/fmt/validate; `ccda` supports inspect/fmt/validate (no `parse` — XML is the canonical
