@@ -2,9 +2,9 @@
 "@cosyte/cli": patch
 ---
 
-Phase 4 (CLI-4): the consumer-of-consumers commands — `cosyte convert` (HL7 v2 → FHIR R4 via
-`@cosyte/transform`) and `cosyte map-codes` (ConceptMap `$translate` via `@cosyte/terminology`, BYO
-ConceptMap). `convert <file> --to fhir` parses with `@cosyte/hl7`, converts via `transform.toFhir`, and
+`cosyte convert` turns HL7 v2 into FHIR R4 and `cosyte map-codes` translates a code through a
+ConceptMap you supply, with no mapping or terminology logic of the CLI's own. `convert` runs via
+`@cosyte/transform`; `map-codes` runs `$translate` via `@cosyte/terminology`. `convert <file> --to fhir` parses with `@cosyte/hl7`, converts via `transform.toFhir`, and
 emits the serialized FHIR message `Bundle` on stdout; the library's value-free issues go to stderr and
 an error-severity issue drives a non-zero exit (`1`), never exit `0`. `map-codes <conceptmap> --code …
 [--system …]` loads the user's FHIR ConceptMap and forwards `terminology.translate` faithfully —
