@@ -171,11 +171,21 @@ commit status of the same name posted by any other actor with write access canno
 | `ci / verify (24, ubuntu-latest)`          |
 | `ci / actionlint`                          |
 | `codeql / analyze (javascript-typescript)` |
+| `no-internal-refs`                         |
 
 These are the names GitHub actually reports, read off real check runs, **not** off a workflow's
 `name:` field. Requiring a context nothing emits does not fail a PR; it leaves it pending and
-unmergeable forever. Neither `ci.yml` nor `codeql.yml` carries a `paths:` filter, so no PR can skip
-one.
+unmergeable forever. None of `ci.yml`, `codeql.yml` or `no-internal-refs.yml` carries a `paths:`
+filter, so no PR can skip one.
+
+**`no-internal-refs` is the one that is NOT `<workflow> / <job>`, and the shape is worth knowing.**
+`ci / verify (22, ubuntu-latest)` is prefixed because `verify` runs inside a _called_ reusable
+workflow, so the context is `<caller job id> / <called job name> (matrix)`. `no-internal-refs` is an
+ordinary job in this repo's own workflow, so its check-run name is just the **job id**. That means
+**renaming the job silently detaches the required check**: the ruleset keeps naming a context nothing
+emits, every PR goes pending forever, and nothing errors or warns. Rename the job and the ruleset
+together, or neither. It was added to the ruleset on 2026-07-28, after the first real check run
+existed and its name was read back off that run.
 
 **What is deliberately NOT required, and why each would be a defect:**
 
