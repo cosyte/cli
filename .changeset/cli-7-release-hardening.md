@@ -2,8 +2,8 @@
 "@cosyte/cli": patch
 ---
 
-Phase 7 (CLI-7): **release hardening** — the final roadmap phase; the CLI is feature-complete. No new
-runtime command surface. This phase makes the package publish-ready and locks its contracts.
+Release hardening: no new command surface, with a fuzz gate over both input boundaries and a golden
+matrix pinning every documented exit code. The CLI is feature-complete and its contracts are locked.
 
 - **Fuzz gate over the two input boundaries.** `test/fuzz.property.test.ts` fuzzes the terminal (`run`,
   over arbitrary argv vectors + stdin bytes) and the agent surface (`dispatchTool`, over an arbitrary
