@@ -1,4 +1,4 @@
-# 0022, One repo, two bins: the `cosyte` CLI and the (future) `cosyte-mcp` MCP server share one core
+# 0022: One repo, two bins, the `cosyte` CLI and the (future) `cosyte-mcp` MCP server sharing one core
 
 - **Status:** Accepted (2026-07-21)
 - **Scope:** `@cosyte/cli`

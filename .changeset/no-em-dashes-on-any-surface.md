@@ -17,5 +17,3 @@ supported", and rewrite every user-visible text surface so none of them uses an 
   completion scripts, and the messages for `redact`/`deid` and the reserved `--profile` flag are
   rephrased. Every stable code, exit code, flag name, and JSON field is untouched, so anything
   branching on the exit code or parsing `--json` is unaffected.
-- **A new `no-emdash` check runs on every pull request**, over all tracked files and over the pull
-  request title, body, and commit messages. `pnpm check:no-emdash` runs the file half locally.

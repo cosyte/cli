@@ -95,9 +95,8 @@ subpath still exports a small programmatic `core` API (`detectFormat`, `EXIT`, `
   only executes ` ```ts runnable ` blocks, and `prettier`'s glob covers `src/**`, `test/**`, `scripts/**`
   and root `*.{json,md,yml}` but **NOT `docs-content/`**. Fixed by replacing the marker with the words
   `not supported`. **Before sweeping any repo, grep for an em dash used as a table cell or a list marker
-  first** (`\|\s*\x{2014}\s*[\|\(]` found exactly the three lines here) and convert those by hand, to a
-  WORD,
-  before running any bulk transform. A marker that means "no" must survive as a word, never as
+  first** (`\|\s*\x{2014}\s*[\|\(]` found exactly the three lines here) and convert those to a WORD,
+  by hand, before running any bulk transform. A marker that means "no" must survive as a word, never as
   punctuation.
   **A second measurement lesson from the same review, because this item's history is wrong counts
   propagating through briefs:** the first draft of these notes said "37 of the 87 are not markdown",
