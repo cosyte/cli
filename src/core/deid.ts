@@ -7,18 +7,17 @@
  * `@cosyte/deid` is **unpublished**, and the wrapped
  * parsers (`@cosyte/hl7`, `@cosyte/fhir`) expose **no de-identification API** — they redact only
  * their own *diagnostics*, not the parsed model. So there is nothing to delegate to today, and adding
- * `@cosyte/deid` would breach the CLI's runtime-dep cap (2) and depend on unbuilt code.
+ * `@cosyte/deid` would depend on unbuilt code.
  *
  * A tempting alternative — a "minimal built-in Safe-Harbor pass over the obvious PHI loci" (e.g. the
  * HL7 `PID` segment, `Patient.name`/`Patient.address` in FHIR) — is **deliberately rejected**. Real
  * messages carry PHI far beyond those loci: HL7 `NK1`/`GT1`/`IN1`/`OBX`/`NTE`, FHIR extensions and
  * contained resources, free-text notes. A redactor that scrubs the obvious fields and emits output
- * that *looks* de-identified while silently leaving PHI behind is a **false-safety impression** — the
- * cardinal hazard the deid roadmap and cli roadmap §7 forbid. A `redact` that under-redacts is worse
- * than no `redact`.
+ * that *looks* de-identified while silently leaving PHI behind is a **false-safety impression**. A
+ * `redact` that under-redacts is worse than no `redact`.
  *
  * So `redact` is an **honest, typed `CLI_NOT_IMPLEMENTED`** (never a fake success, never a partial
- * scrub presented as de-identified — ADR 0018: never invent a capability the ground layer lacks),
+ * scrub presented as de-identified — never invent a capability the ground layer lacks),
  * gated on `@cosyte/deid`, with this seam as its one drop-in point. When `@cosyte/deid` lands and is
  * conformance-graded, {@link deidStatus} flips to `available` and the command reads the input, calls
  * the delegated de-identifier, and emits the de-identified model — the command surface (`redact`,
@@ -48,7 +47,7 @@ export interface DeidAvailability {
 
 /**
  * Report the current de-identification availability. Today it is always unavailable (see the module
- * docs); this is the single line that flips when `@cosyte/deid` is wired in a later phase.
+ * docs); this is the single line that flips when `@cosyte/deid` is wired.
  *
  * @returns The {@link DeidAvailability} — `{ available: false, reason }` until `@cosyte/deid` ships.
  * @example

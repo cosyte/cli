@@ -4,10 +4,9 @@
  * Read a file (or stdin via `-`), **autodetect the format by content** (or honour `--format`), route to
  * the wrapped parser via the lazy per-format registry (`core/parsers.ts`) — so `cosyte parse msg.hl7`
  * never loads the DICOM or X12 code — and emit the parsed model as **typed JSON on stdout**. Every
- * failure is a value-free diagnostic on stderr with a stable `CLI_*` code and the documented exit code
- * (cli roadmap §4.3, §7).
+ * failure is a value-free diagnostic on stderr with a stable `CLI_*` code and the documented exit code.
  *
- * **Multi-message / streaming (CLI-6).** A single message emits one pretty (or compact under `--json`)
+ * **Multi-message / streaming.** A single message emits one pretty (or compact under `--json`)
  * JSON envelope, exactly as before. A **multi-record** input emits **NDJSON** — one compact envelope
  * per line — with per-record isolation: a record that fails to parse becomes a value-free
  * `{ record, error }` line and the stream continues, and the overall exit is a data error (`65`) if any

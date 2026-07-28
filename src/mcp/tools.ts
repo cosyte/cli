@@ -1,6 +1,6 @@
 /**
  * The **agent-facing tool surface** of the cosyte MCP server — the *second adapter* over the same
- * `core`/`commands` the `cosyte` terminal command drives (ADR 0022, cli roadmap §Phase 5). This module
+ * `core`/`commands` the `cosyte` terminal command drives. This module
  * is deliberately **SDK-free**: it declares the tools (name, description, JSON-Schema input) and maps a
  * tool call onto the existing command handlers, returning a plain, value-free MCP-shaped result. The
  * `@modelcontextprotocol/sdk` wiring lives one layer up in `./server.ts`, so the tool *logic* is unit-
@@ -15,7 +15,7 @@
  * **no** `--unsafe-show-values` door on the agent surface. A tool's *result* carries the requested data
  * (the parsed model / converted bundle — the explicit request, the data channel), but a tool *error*
  * carries only the value-free diagnostic the command already produced (a stable code + positional
- * context), never an input value (cli roadmap §7, §Phase 5).
+ * context), never an input value.
  *
  * @packageDocumentation
  */
@@ -91,7 +91,7 @@ const FORMAT_PROP = {
 
 /**
  * The tools this server exposes — the read/convert operations that share the `core` cleanly and whose
- * results are safe to hand an agent (cli roadmap §Phase 5). `redact`/`deid` (gated on `@cosyte/deid`)
+ * results are safe to hand an agent. `redact`/`deid` (gated on `@cosyte/deid`)
  * and `map-codes` are deliberately **not** exposed yet; they land when the terminal command's ground
  * layer and the tool's PHI/So shape are settled.
  */

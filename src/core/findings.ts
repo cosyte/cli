@@ -1,7 +1,7 @@
 /**
  * The CLI's **value-free finding** shape and the positional locators that populate it. A finding says
  * *what kind* of thing was observed (a stable code + severity) and *where* (a positional locator) —
- * **never** the offending value (cli roadmap §7). Shared by `validate` (conformance findings) and
+ * **never** the offending value. Shared by `validate` (conformance findings) and
  * `inspect` (structural summary) so both render locations identically and value-free.
  *
  * @packageDocumentation

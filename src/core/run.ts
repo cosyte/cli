@@ -1,7 +1,7 @@
 /**
  * The top-level **subcommand dispatcher** — a small hand-rolled router over Node's built-in
  * `util.parseArgs`, deliberately **third-party-framework-free** so the CLI core keeps zero third-party
- * runtime dependencies (cli roadmap §4.1). It maps `argv[0]` to a command handler, serves `--help`
+ * runtime dependencies. It maps `argv[0]` to a command handler, serves `--help`
  * and `--version`, and turns any unexpected exception into a value-free `CLI_INTERNAL` result so a
  * stack trace carrying input can never reach the terminal.
  *

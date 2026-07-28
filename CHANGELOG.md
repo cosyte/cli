@@ -196,6 +196,50 @@ parse` invocation never loads it; the core works with the SDK absent (`--omit=op
 
 ### Changed
 
+- **The published type declarations no longer carry internal project bookkeeping.** `dist/index.d.ts`
+  and `dist/mcp.d.ts` (and their `.d.cts` twins) are compiled from the JSDoc on every exported symbol,
+  and that JSDoc was citing item identifiers (`CLI-6`), ADR numbers (`ADR 0018`, `0021`, `0022`,
+  `0025`), the meta-repo roadmap in prose and by path (`cli roadmap §7`,
+  `operations/roadmaps/cli.md`), and phase language (`§Phase 4`, `Phase-5`, "in a later phase"). All
+  of it rendered on hover for anyone who installed the package. **Measured on `62fba77` with the rule
+  set that ships alongside: 61 occurrences across 23 tracked `src/` files, producing 56 across the
+  three declaration files a consumer receives (43 in `dist/index.d.ts`, 12 in `dist/mcp.d.ts` and 1
+  in the shared `dist/io-*.d.ts` chunk both entries import), each mirrored in its `.d.cts` twin. Now
+  0 on every one of them.** (The shared chunk is easy to miss and was missed once here: a count that
+  scans only the named entry points under-reports.) Every removal is a cut, not a rewrite: the
+  surrounding guarantees (value-free stderr, the never-a-fake `CLI_FORMAT_UNSUPPORTED`, the gated
+  `redact`, the exit-code contract) are worded exactly as strongly as before. Internal traceability
+  stays where the convention puts it: this file, the changesets, the commits and the roadmap.
+- **A dependency-budget figure left `src/core/deid.ts` too.** The module said wiring `@cosyte/deid`
+  "would breach the CLI's runtime-dep cap (2)". Only the number was stale: the cap has been 4 since
+  `convert`/`map-codes` landed, and the constraint itself still holds, because the package declares
+  exactly 4 hard runtime dependencies and a fifth would indeed breach it. The clause went because a
+  dependency-budget figure is internal bookkeeping a consumer cannot act on, not because the
+  constraint lapsed. The reasons that actually ground the refusal to ship a built-in redactor are
+  untouched: `@cosyte/deid` is unpublished, the wrapped parsers expose no de-identification API, and
+  a partial scrub would present a false-safety impression.
+- **`CosyteFormat`'s documentation no longer understates autodetection.** It read as though content
+  detection recognised only HL7 v2 and FHIR, with the other six accepted by `--format` but "not yet
+  wired", which has not been true since all eight formats gained signatures. The stale sentence is
+  removed rather than restated.
+- **A gate now enforces the public-surface rule, which is why the class stops regrowing.**
+  `scripts/check-no-internal-refs.sh` (`pnpm check:no-internal-refs`, on the `verify.sh cli` ladder)
+  plus `.github/workflows/no-internal-refs.yml` port the shape of `hl7`'s gate
+  ([hl7#62](https://github.com/cosyte/hl7/pull/62), [hl7#64](https://github.com/cosyte/hl7/pull/64))
+  and `ncpdp`'s ([ncpdp#36](https://github.com/cosyte/ncpdp/pull/36)) rather than the file. Four
+  passes: the public markdown surface line by line and paragraph-joined, the npm metadata, `src/`
+  doc comments, and `src/` string literals (the pass that would have caught the two identifiers this
+  package printed to a user's terminal). Seven rules. Re-derived for this repo: the scan surface, a
+  standards-designation exclusion list covering **all eight** formats (this is the package where
+  `HL7-V2`, `FHIR-R4`, `DICOM-SR`, `NCPDP-SCRIPT`, `X12-837P`, `CCDA-R2.1`, `MSH-2`, `NM1-03`,
+  `439-E4` and `ICD-10-CM` are live at once, so the `WORD-N` trap is at its widest), and a seventh
+  rule no sibling has, a **prose roadmap citation**, which was 30 of the 61 and which `hl7`'s
+  path-keyed rule cannot see. Both self-test halves run on every invocation: positive samples prove
+  each rule still matches, negative samples prove none has been widened into the `WORD-N` shape that
+  would delete the reference material the CLI's docs exist to provide. `CHANGELOG.md` is excluded on
+  purpose, as it is in `hl7` and `ncpdp`: it ships inside the npm tarball, yet the convention names it
+  as one of the places identifiers belong. That contradiction is ecosystem-wide, and it is recorded
+  here rather than settled by one repo.
 - **`redact`/`deid` no longer names an internal tracking identifier on any consumer surface.** The
   `CLI_NOT_IMPLEMENTED` text printed when de-identification is unavailable carried an internal work
   item that means nothing to anyone running the command, and the same identifier reached the

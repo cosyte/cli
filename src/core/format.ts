@@ -6,10 +6,10 @@
  * The hazard is a wrong sniff routing bytes to the wrong parser and yielding confident garbage. So
  * detection is **conservative**: a single confident signature match parses; **zero or more than one**
  * match is *not* a guess — it is a typed `none`/`ambiguous` result the caller turns into a data-error
- * exit asking for `--format`. This is the parsers' "never a confident wrong value" rule at the routing
- * layer (cli roadmap §3).
+ * exit asking for `--format`. This is the parsers' "never a confident wrong value" rule at the
+ * routing layer.
  *
- * All eight cosyte formats now carry a signature (CLI-6): **hl7** (`MSH` + field separator), **mllp**
+ * All eight cosyte formats carry a signature: **hl7** (`MSH` + field separator), **mllp**
  * (a leading `0x0B` VT frame byte — an MLLP-framed stream, de-framed to its enclosed HL7), **fhir** (a
  * JSON object declaring `resourceType`), **x12** (a leading `ISA` interchange header), **astm** (a
  * leading `H` record whose second byte is the field delimiter), **ccda** (a `<ClinicalDocument>` root),
@@ -29,10 +29,7 @@
 import { CLI_CODES, CliError } from "./diagnostics.js";
 import { EXIT } from "./exit-codes.js";
 
-/**
- * The set of formats the `cosyte` command names. Detection currently recognises **hl7** and **fhir**;
- * the others are accepted by `--format` but reported as not-yet-wired (never faked) until their phase.
- */
+/** The set of formats the `cosyte` command names. */
 export type CosyteFormat = "hl7" | "fhir" | "dicom" | "x12" | "ccda" | "ncpdp" | "astm" | "mllp";
 
 /**
@@ -41,8 +38,8 @@ export type CosyteFormat = "hl7" | "fhir" | "dicom" | "x12" | "ccda" | "ncpdp" |
  * - `ambiguous` — more than one matched (`format` is `null`; `candidates` names them);
  * - `none` — nothing matched (`format` is `null`; `candidates` is empty).
  *
- * This refines the roadmap's `{ format; confidence }` sketch: `format` is `null` unless `confidence`
- * is `certain`, so a non-certain result can never be mistaken for a routable format.
+ * `format` is `null` unless `confidence` is `certain`, so a non-certain result can never be mistaken
+ * for a routable format.
  */
 export interface DetectResult {
   /** The detected format, or `null` when `confidence` is not `certain`. */
@@ -160,7 +157,7 @@ function looksLikeDicom(_prefix: string, bytes: Uint8Array): boolean {
   );
 }
 
-/** The signature registry — disjoint by construction across all eight cosyte formats (CLI-6). */
+/** The signature registry — disjoint by construction across all eight cosyte formats. */
 const SIGNATURES: readonly Signature[] = [
   { format: "hl7", match: (prefix) => looksLikeHl7(prefix) },
   { format: "mllp", match: (prefix, bytes) => looksLikeMllp(prefix, bytes) },
@@ -202,7 +199,7 @@ export function detectFormat(bytes: Uint8Array): DetectResult {
  * Classify a list of matched candidate formats into a {@link DetectResult}: exactly one → `certain`,
  * zero → `none`, two-or-more → `ambiguous` (all with `format` `null` unless certain). Split out and
  * exported so the **ambiguity** contract is directly testable — it is otherwise unreachable while
- * every signature is disjoint (Phase 1), and it must stay a *detected* ambiguity, never a mis-route.
+ * every signature is disjoint, and it must stay a *detected* ambiguity, never a mis-route.
  *
  * @param candidates - The formats whose signatures matched the input.
  * @returns The classified {@link DetectResult}.

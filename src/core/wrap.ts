@@ -4,7 +4,7 @@
  * unparseable input; its message (and, for HL7, its `snippet`) can embed the offending bytes, so the
  * CLI **never** surfaces that message. It surfaces only a stable, PHI-free code token (via
  * {@link extractStableCode}) plus the format name — the parsers' "warning = code + position, never a
- * value" rule at the CLI edge (cli roadmap §7).
+ * value" rule at the CLI edge.
  *
  * The one, opt-in exception is `--unsafe-show-values`, whose bounded excerpt is appended through the
  * lone chokepoint in `core/phi.ts` ({@link unsafeInputSuffix}) — so the "a value appears on a

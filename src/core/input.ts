@@ -4,7 +4,7 @@
  * empty input, then resolve the format — an explicit `--format` override (validated) or conservative
  * content autodetection — and confirm the format is actually wired in this build. Factored out of the
  * commands so `parse`/`validate`/`inspect`/`fmt` share one identical, value-free front door and the
- * exit-code contract is applied in exactly one place (cli roadmap §3, §4.3, §5).
+ * exit-code contract is applied in exactly one place.
  *
  * Every failure is a value-free {@link CliError} rendered to a {@link RunResult} — a missing argument
  * is a usage error (`2`), an unreadable file a no-input error (`66`), empty/undetected/unwired input a

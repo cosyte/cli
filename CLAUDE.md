@@ -171,11 +171,21 @@ commit status of the same name posted by any other actor with write access canno
 | `ci / verify (24, ubuntu-latest)`          |
 | `ci / actionlint`                          |
 | `codeql / analyze (javascript-typescript)` |
+| `no-internal-refs`                         |
 
 These are the names GitHub actually reports, read off real check runs, **not** off a workflow's
 `name:` field. Requiring a context nothing emits does not fail a PR; it leaves it pending and
-unmergeable forever. Neither `ci.yml` nor `codeql.yml` carries a `paths:` filter, so no PR can skip
-one.
+unmergeable forever. None of `ci.yml`, `codeql.yml` or `no-internal-refs.yml` carries a `paths:`
+filter, so no PR can skip one.
+
+**`no-internal-refs` is the one that is NOT `<workflow> / <job>`, and the shape is worth knowing.**
+`ci / verify (22, ubuntu-latest)` is prefixed because `verify` runs inside a _called_ reusable
+workflow, so the context is `<caller job id> / <called job name> (matrix)`. `no-internal-refs` is an
+ordinary job in this repo's own workflow, so its check-run name is just the **job id**. That means
+**renaming the job silently detaches the required check**: the ruleset keeps naming a context nothing
+emits, every PR goes pending forever, and nothing errors or warns. Rename the job and the ruleset
+together, or neither. It was added to the ruleset on 2026-07-28, after the first real check run
+existed and its name was read back off that run.
 
 **What is deliberately NOT required, and why each would be a defect:**
 
@@ -237,3 +247,46 @@ Mirrors the three disciplines in the meta-repo's `documentation/conventions.md` 
    code is a **breaking change** (scripts branch on them).
 3. **Crew + knowledgebase loop** — if the command surface, `CLI_*` codes, or exit-code map change,
    flag/update the matching `crew` healthcare skill + the KB product doc.
+4. **No internal project bookkeeping on a public surface** (founder directive, 2026-07-27). What a
+   consumer reads (`README.md`, `docs-content/`, the npm `description`, a release body, **the JSDoc
+   their editor renders on hover, and the diagnostic their terminal prints**) says what the software
+   does and what changed. Item identifiers (`CLI-6`), phase and wave language, ADR numbers, roadmap
+   citations (`cli roadmap §7`), meta-repo paths and "how this got built" commentary belong in the
+   changeset, `CHANGELOG.md`, the commit, the PR and the roadmap. It is a **translation** at the
+   boundary, not a deletion. Gated by `pnpm check:no-internal-refs`.
+
+   **Four surfaces, three different answers.** `/** */` doc comments compile into `dist/*.d.ts` and
+   `dist/*.d.cts` and render on hover, so they are **gated**, and in this repo they were by far the
+   largest violating surface. String literals reach a consumer as terminal diagnostic text, so they
+   are **gated too**: this package printed an internal work item inside `CLI_NOT_IMPLEMENTED` and an
+   ADR number inside `CLI_PARSER_UNAVAILABLE` before that pass existed. `//` and plain `/* */`
+   comments are **not gated** and identifiers are **welcome** in them, because **the convention says
+   source comments are a place identifiers belong**. That is the whole reason. **Do not justify that
+   boundary from what reaches `dist/`**: two drafts of the `ncpdp` copy tried, a refuter proved both
+   false, and two drafts of this paragraph made the same mistake again. Measured on this tree, at
+   `06abc86`: `dist` is `files[0]`, there is no `.npmignore`, and **24 of the 27** tracked `src/`
+   files appear whole in a build map's `sourcesContent` (`src/index.ts`, `src/core/result.ts` and
+   `src/mcp/index.ts` contribute only re-exports and types, so the bundler erases them). Two
+   sentences that read well and are **false**, so do not write them: "everything in `src/` ships",
+   and "the bundles carry `//` comments verbatim" (measured: of the 43 whole-line `//` comments in
+   tracked `src/*.ts`, exactly **one** survives into any emitted `.mjs`/`.cjs`). **The boundary rests
+   on the convention, not on either fact.** The line is not what a consumer receives; it is what a
+   consumer is **shown**.
+
+   **This repo is where the `WORD-N` trap is widest**, because the CLI wraps all eight formats and its
+   pages reach for every one of their vocabularies at once. `CLI-6` is ours; `HL7-V2`, `FHIR-R4`,
+   `DICOM-SR`, `NCPDP-SCRIPT`, `X12-837P`, `CCDA-R2.1`, `MSH-2`, `NM1-03`, `ST-01`, `439-E4` and
+   `ICD-10-CM` are reference material a consumer came here for. Never re-key a rule on the `WORD-N`
+   shape; the negative self-tests exist to make that attempt red.
+
+   **Two remediation rules that matter more here than anywhere else.** (1) **Repair the head**: a
+   sentence with an identifier stripped off the front reads worse than the text it replaced. (2)
+   **CUT, do not rewrite.** This package's whole posture is honesty about what it _cannot_ do: gated
+   stubs that exit `69` and never fake a scrub, value-free stderr, the per-(format, operation)
+   `OP_SUPPORT` matrix. Softening a stated limit into an implied capability while tidying a sentence
+   is a worse defect than the bookkeeping being removed. Delete the claim rather than replace it, and
+   revert a rewrite verbatim rather than repair it.
+
+   **What the gate cannot do:** it catches identifiers, not English sentences about our process, and
+   it reads `src/`, never `dist/` (untracked build output it cannot see without building). A new
+   programme prefix has to be added by hand. So the reviewer still owns half the rule.

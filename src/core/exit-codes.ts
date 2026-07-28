@@ -1,6 +1,6 @@
 /**
  * The `cosyte` CLI **exit-code contract** — a designed, documented surface that CI pipelines and
- * shell scripts branch on. Grounded in the Unix `sysexits.h` conventions (see the cli roadmap §4.3).
+ * shell scripts branch on. Grounded in the Unix `sysexits.h` conventions.
  *
  * The load-bearing rule: **the CLI never prints a reassuring line and exits `0` on input it could not
  * handle.** An undetectable format, an unreadable file, or a parser that throws each map to a
@@ -16,11 +16,10 @@
  * | `69` | `UNAVAILABLE` | a required capability is not yet available — e.g. `redact` before `@cosyte/deid` ships (EX_UNAVAILABLE) |
  * | `70` | `SOFTWARE` | internal error — an unexpected exception, i.e. a bug (EX_SOFTWARE)   |
  *
- * The load-bearing `validate` rule (cli roadmap §4.3, §Phase 3): a **parseable-but-invalid** message
- * is exit `1`, never exit `0` — the CLI must never print a reassuring line and exit green on a bad
- * message. Exit `65` is reserved for input that could not be **parsed** at all (a distinct signal from
- * "parsed, but does not conform"). Phase 1 (`parse`) used the non-`1`/`69` codes; Phase 2 added `69`
- * for the ground-layer-gated `redact`/`deid`; Phase 3 (`validate`) adds `1` for the invalid verdict.
+ * The load-bearing `validate` rule: a **parseable-but-invalid** message is exit `1`, never exit `0` —
+ * the CLI must never print a reassuring line and exit green on a bad message. Exit `65` is reserved
+ * for input that could not be **parsed** at all (a distinct signal from "parsed, but does not
+ * conform").
  *
  * @packageDocumentation
  */
