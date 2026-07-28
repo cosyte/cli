@@ -1,0 +1,62 @@
+version: 2
+
+# Nothing watched this repo's dependencies until CI-REQUIRED-CHECKS / DEPENDABOT-PR-QUEUE.
+# `@cosyte/cli` showing ZERO open Dependabot PRs meant "nothing is looking", not "nothing is
+# stale". This repo is public and, unlike the parsers, it ships an executable with a real
+# third-party runtime surface, so an unwatched dependency here is a shipped binary going stale.
+#
+# Two ecosystems, because the repo has exactly two dependency surfaces. Swept, not assumed:
+#   npm             package.json + pnpm-lock.yaml at the root, the ONLY manifest in the repo
+#   github-actions  .github/workflows/*.yml
+# There is no third. No Dockerfile, no Terraform, no submodules of its own, no pnpm workspace,
+# no second package.json, no Python/Go/Rust manifest.
+
+updates:
+  # npm. The `npm` ecosystem covers pnpm: Dependabot infers the package manager from the
+  # lockfile, which is `pnpm-lock.yaml`.
+  #
+  # WHAT DEPENDABOT CAN ACTUALLY SEE HERE, stated plainly so this entry is not mistaken for
+  # broader cover than it gives:
+  #
+  #   * The four hard `dependencies` (`@cosyte/hl7`, `@cosyte/fhir`, `@cosyte/transform`,
+  #     `@cosyte/terminology`) and six of the seven `optionalDependencies` are
+  #     `file:vendor/*.tgz` vendored tarballs. Dependabot does NOT resolve `file:` specs, so it
+  #     will never propose a bump for any of them. They are refreshed by hand with
+  #     `pnpm vendor:refresh`, and they become real `@cosyte/*` npm ranges at the publish flip
+  #     (a published package cannot ship a `file:` dep). Until then, keeping them current is a
+  #     human job and this config does not pretend otherwise.
+  #   * `@modelcontextprotocol/sdk` (exact-pinned) is the one third-party RUNTIME dependency
+  #     Dependabot can see and bump. It is kept OUT of the group below by an explicit
+  #     `exclude-patterns`, so a runtime bump on the MCP agent surface lands as its own
+  #     reviewable PR rather than being batched with build tooling. The exclusion is stated
+  #     rather than inferred on purpose: it must not depend on whether Dependabot happens to
+  #     classify an `optionalDependencies` entry as production or as development, because if
+  #     that classification went the other way the intent would fail silently.
+  #   * Everything in `devDependencies` is a real registry range and is grouped.
+  #
+  # NOTE: package.json carries `pnpm.overrides` pinning esbuild and js-yaml above advisory
+  # ranges. Dependabot does not manage those overrides. If it proposes a bump that makes one
+  # redundant, the override is removed by hand, never silently left to pin a version backwards.
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      dev-dependencies:
+        dependency-type: development
+        exclude-patterns:
+          - "@modelcontextprotocol/sdk"
+
+  # Keep GitHub Actions references current. Unlike the parser repos, this entry has work to do
+  # from day one: four of the five workflows (`ci`, `codeql`, `release`, `scorecard`) are thin
+  # callers of `cosyte/.github/.github/workflows/*.yml@main`, whose pinned action SHAs live
+  # upstream and are watched there, but `fuzz.yml` is a repo-LOCAL job that pins
+  # `actions/checkout`, `pnpm/action-setup` and `actions/setup-node` itself. Those are this
+  # repo's own to keep current, and a fuzz gate running on a deprecated runner action is the
+  # gate itself going stale.
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5

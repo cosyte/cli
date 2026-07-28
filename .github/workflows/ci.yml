@@ -14,6 +14,17 @@ permissions:
   contents: read
 
 jobs:
+  # ┌─────────────────────────────────────────────────────────────────────────────────────────┐
+  # │ A REQUIRED JOB GATES ALL OF ITS STEPS. The `ci-required-checks` ruleset on this repo     │
+  # │ requires the CONTEXTS `ci / verify (22, ubuntu-latest)`, `ci / verify (24,               │
+  # │ ubuntu-latest)` and `ci / actionlint`. Every gate the shared pipeline runs (typecheck,   │
+  # │ lint, format:check, PHI scan, test, gating coverage, build, attw, dual ESM/CJS smoke) is │
+  # │ a STEP inside `verify`, and is required only because that job is. Promote any one of     │
+  # │ them to its own job and it is silently NO LONGER REQUIRED: the ruleset names contexts,   │
+  # │ the new context is not in it, and nothing anywhere errors or warns. If you split a step  │
+  # │ out, add its context to the ruleset in the same change.                                 │
+  # └─────────────────────────────────────────────────────────────────────────────────────────┘
+  #
   # Universal gates from the shared pipeline (typecheck, lint, format, test, coverage, build, attw,
   # dual ESM/CJS smoke, actionlint) on the standard Node matrix. Repo-specific extra jobs (e.g. an
   # examples smoke, a starter-kit build) are added on top of this caller, never instead of it.

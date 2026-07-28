@@ -196,6 +196,24 @@ parse` invocation never loads it; the core works with the SDK absent (`--omit=op
 
 ### Changed
 
+- **`redact`/`deid` no longer names an internal tracking identifier on any consumer surface.** The
+  `CLI_NOT_IMPLEMENTED` text printed when de-identification is unavailable carried an internal work
+  item that means nothing to anyone running the command, and the same identifier reached the
+  published type declarations (`dist/index.d.ts` / `dist/index.d.cts`), where it surfaces in editor
+  tooltips. Both now state only the consumer-observable fact: the command delegates to
+  `@cosyte/deid`, which is unpublished, and the CLI ships no built-in redactor because a partial
+  scrub would present a false-safety impression. The stable `CLI_NOT_IMPLEMENTED` code and the exit
+  `69` are unchanged.
+- **`CLI_PARSER_UNAVAILABLE`'s message no longer cites an internal decision record.** The error
+  raised when an optional per-format parser is not installed pointed at an ADR number, which is
+  meaningless to a caller; it now just names the package to install. The stable
+  `CLI_PARSER_UNAVAILABLE` code and the exit `69` are unchanged. The same sweep removed the
+  remaining roadmap-phase language from `README.md` and `docs-content/troubleshooting.md`.
+- **The CI checks are now binding on `main`.** `ci / verify (22, ubuntu-latest)`,
+  `ci / verify (24, ubuntu-latest)`, `ci / actionlint` and `codeql / analyze (javascript-typescript)`
+  are required status checks, each pinned to the `github-actions` app, alongside branch deletion and
+  force-push protection. They were advisory before: a red check could not stop a merge. Dependabot
+  now watches the npm and GitHub Actions dependency surfaces weekly, which nothing did previously.
 - **Reshaped the package from the parser-library scaffold to a `bin` package.** Removed the archetype
   stubs (`parseCli`, `WARNING_CODES`, `FATAL_CODES`); replaced the library `src/index.ts` and the
   round-trip property test with the command tree, the programmatic `core` API, and command-contract /

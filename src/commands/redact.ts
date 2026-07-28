@@ -3,7 +3,7 @@
  * PHI, emitting a de-identified copy of the parsed model.
  *
  * **It is deliberately not implemented yet.** De-identification belongs to **`@cosyte/deid`**, which
- * is unpublished (`DEID-1` in flight), and the wrapped parsers expose no de-id API to delegate to. A
+ * is unpublished, and the wrapped parsers expose no de-id API to delegate to. A
  * built-in "minimal Safe-Harbor" pass over only the obvious PHI loci would leave PHI behind and
  * present a **false-safety impression** — the cardinal hazard `redact` exists to avoid. So this
  * command is an **honest, typed `CLI_NOT_IMPLEMENTED`** (never a fake success, never a partial scrub

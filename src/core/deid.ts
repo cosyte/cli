@@ -4,7 +4,7 @@
  *
  * ## Why the CLI ships no built-in redactor (the boundary decision)
  *
- * `@cosyte/deid` is **unpublished** (its first slice, `DEID-1`, is in flight), and the wrapped
+ * `@cosyte/deid` is **unpublished**, and the wrapped
  * parsers (`@cosyte/hl7`, `@cosyte/fhir`) expose **no de-identification API** — they redact only
  * their own *diagnostics*, not the parsed model. So there is nothing to delegate to today, and adding
  * `@cosyte/deid` would breach the CLI's runtime-dep cap (2) and depend on unbuilt code.
@@ -29,8 +29,8 @@
 
 /** The value-free reason `redact`/`deid` reports while the ground-layer library is unavailable. */
 export const DEID_UNAVAILABLE_REASON =
-  "redact/deid is not yet available — it delegates to @cosyte/deid, which is unpublished (DEID-1 in " +
-  "flight). The CLI ships no built-in redactor: a partial Safe-Harbor scrub over only the obvious PHI " +
+  "redact/deid is not yet available — it delegates to @cosyte/deid, which is unpublished. " +
+  "The CLI ships no built-in redactor: a partial Safe-Harbor scrub over only the obvious PHI " +
   "loci would leave PHI behind and present a false-safety impression, so nothing is emitted. This " +
   "command will produce a de-identified copy once @cosyte/deid ships and is vetted.";
 

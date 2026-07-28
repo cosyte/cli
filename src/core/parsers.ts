@@ -280,7 +280,7 @@ export async function loadOptional<T>(format: CosyteFormat, load: () => Promise<
         CLI_CODES.CLI_PARSER_UNAVAILABLE,
         EXIT.UNAVAILABLE,
         `the @cosyte/${format} parser is not installed; install it to use this format ` +
-          `(it is an optional dependency — see ADR 0025)`,
+          `(it is an optional dependency)`,
       );
     }
     throw e;
