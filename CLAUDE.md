@@ -257,11 +257,12 @@ commit status of the same name posted by any other actor with write access canno
 | `ci / actionlint`                          |
 | `codeql / analyze (javascript-typescript)` |
 | `no-internal-refs`                         |
+| `no-emdash`                                |
 
 These are the names GitHub actually reports, read off real check runs, **not** off a workflow's
 `name:` field. Requiring a context nothing emits does not fail a PR; it leaves it pending and
-unmergeable forever. None of `ci.yml`, `codeql.yml` or `no-internal-refs.yml` carries a `paths:`
-filter, so no PR can skip one.
+unmergeable forever. None of `ci.yml`, `codeql.yml`, `no-internal-refs.yml` or `no-emdash.yml`
+carries a `paths:` filter, so no PR can skip one.
 
 **`no-internal-refs` is the one that is NOT `<workflow> / <job>`, and the shape is worth knowing.**
 `ci / verify (22, ubuntu-latest)` is prefixed because `verify` runs inside a _called_ reusable
@@ -271,6 +272,15 @@ ordinary job in this repo's own workflow, so its check-run name is just the **jo
 emits, every PR goes pending forever, and nothing errors or warns. Rename the job and the ruleset
 together, or neither. It was added to the ruleset on 2026-07-28, after the first real check run
 existed and its name was read back off that run.
+
+**`no-emdash` is the second of that shape, added 2026-07-28 the same way.** Its workflow is titled
+`Em-dash gate` and a PR's checks list renders it as `Em-dash gate / no-emdash`, but **the context
+GitHub reports is the bare job id `no-emdash`**, which is what the ruleset names. Requiring either of
+the other two strings would leave every PR pending forever while the ruleset looked configured. The
+name was read off a real `pull_request` check run on `#20` before the ruleset was written, never off
+the workflow file, and writability was confirmed with the `PUT` itself rather than a `GET` (an
+Organization-sourced ruleset returns `200` to a `GET` and `404` to an identical-payload `PUT`;
+`19907924` is `source_type: Repository`, and it is the only ruleset this repo has).
 
 **What is deliberately NOT required, and why each would be a defect:**
 
