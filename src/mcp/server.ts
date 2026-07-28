@@ -1,14 +1,14 @@
 /**
  * The **stdio MCP server** — the JSON-RPC/stdio adapter over the same shared `core`/`commands` the
- * `cosyte` terminal command drives (ADR 0022, cli roadmap §Phase 5). This is the **only** module that
- * touches `@modelcontextprotocol/sdk`, so the SDK — the CLI's single third-party runtime dependency —
- * stays **isolated behind the `./mcp` subpath and lazy-loaded**: a `cosyte parse` invocation never
- * imports this file and therefore never loads the SDK (ADR 0021, proven by `mcp-isolation.test.ts`).
+ * `cosyte` terminal command drives. This is the **only** module that touches
+ * `@modelcontextprotocol/sdk`, so the SDK — the CLI's single third-party runtime dependency — stays
+ * **isolated behind the `./mcp` subpath and lazy-loaded**: a `cosyte parse` invocation never imports
+ * this file and therefore never loads the SDK (proven by `mcp-isolation.test.ts`).
  *
  * The server is a **local stdio subprocess**, implicitly trusted by the user/agent that launched it —
- * not a hosted network endpoint (cli roadmap §2 non-goal). It is **stateless per call**: each tool
- * request is one operation over the wrapped libraries, with the same value-free PHI posture the CLI
- * proves once and both adapters inherit.
+ * not a hosted network endpoint. It is **stateless per call**: each tool request is one operation
+ * over the wrapped libraries, with the same value-free PHI posture the CLI proves once and both
+ * adapters inherit.
  *
  * @packageDocumentation
  */

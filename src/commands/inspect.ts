@@ -2,8 +2,8 @@
  * `cosyte inspect <file|-> [--format …] [--json] [--quiet] [--no-color]`
  *
  * A human-readable, **value-free-by-default** structural summary of a message: its type, structural
- * counts, and a warning count — the "what shape is this?" answer, without ever printing a field value
- * (cli roadmap §2, §7). Unlike `parse`, whose stdout is the parsed model (the data channel), `inspect`'s
+ * counts, and a warning count — the "what shape is this?" answer, without ever printing a field
+ * value. Unlike `parse`, whose stdout is the parsed model (the data channel), `inspect`'s
  * stdout is a *structural* summary composed only of counts and structural type **codes** (an HL7 message
  * type like `ADT^A01`, a FHIR `resourceType` like `Patient`, an X12 transaction-set id like `834`, a
  * DICOM SOP Class UID, an NCPDP `NewRx`) — classification, never PHI. `--json` emits the same value-free

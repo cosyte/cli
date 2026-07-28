@@ -1,7 +1,7 @@
 /**
  * Input I/O for the CLI: read the bytes to operate on from a **file argument** or from **stdin**
- * (`-`), with a value-free failure mode. The CLI never writes a temp file and never logs to a file
- * (cli roadmap §7); this module only *reads*.
+ * (`-`), with a value-free failure mode. The CLI never writes a temp file and never logs to a file;
+ * this module only *reads*.
  *
  * The reader functions are injected into the command layer as {@link RunDeps} so the whole dispatch
  * path is testable without touching `process` — the real `process.stdin` wiring lives in the thin

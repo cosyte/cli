@@ -3,7 +3,7 @@
  * stable `CLI_*` code, a fixed exit code, and a **PHI-safe** message built only from positional /
  * structural context — a segment or field index, a byte offset, a file path, a format name, a warning
  * code. **A diagnostic never echoes an input value** (a name, a DOB, an MRN, a result). This is the
- * parsers' "warning = code + position, never a value" rule applied at the CLI edge (cli roadmap §7).
+ * parsers' "warning = code + position, never a value" rule applied at the CLI edge.
  *
  * @packageDocumentation
  */
@@ -41,7 +41,7 @@ export const CLI_CODES = {
    * format wired only for `inspect`). Names the format + operation, never the bytes. Exit `65`. */
   CLI_FORMAT_UNSUPPORTED: "CLI_FORMAT_UNSUPPORTED",
   /** The optional parser package for a recognised format is not installed. The six breadth parsers
-   * (dicom/x12/ccda/ncpdp/astm/mllp) are `optionalDependencies` (ADR 0025): normally installed, but if
+   * (dicom/x12/ccda/ncpdp/astm/mllp) are `optionalDependencies`: normally installed, but if
    * one is absent the CLI degrades to this value-free signal rather than crashing. Exit `69`. */
   CLI_PARSER_UNAVAILABLE: "CLI_PARSER_UNAVAILABLE",
   /** The wrapped parser rejected the input. Positional context only — never the offending bytes. Exit `65`. */

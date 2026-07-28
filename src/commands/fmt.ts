@@ -4,7 +4,7 @@
  * **Canonical re-serialization.** Parse the input and emit it back through the wrapped library's
  * **conservative, spec-clean serializer** — HL7 via `Hl7Message.toString()` (CR-separated, spec-clean
  * HL7), FHIR via `serializeResource` (canonical JSON, decimals byte-exact). The CLI **never
- * re-canonicalizes on its own** (cli roadmap §5): the output is exactly the wrapped serializer's, so
+ * re-canonicalizes on its own**: the output is exactly the wrapped serializer's, so
  * `fmt` round-trips a spec-clean input through the parser.
  *
  * `fmt`'s stdout **is** the data channel — a re-serialization of the message, values included, going to

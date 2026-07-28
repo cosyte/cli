@@ -2,8 +2,8 @@
  * `cosyte map-codes <conceptmap|-> --code <code> [--system <uri>] [--version <v>] [--display <d>]
  *   [--json] [--quiet]`
  *
- * Translate a single source coding through a **BYO FHIR R4 ConceptMap** via **`@cosyte/terminology`**
- * (cli roadmap §Phase 4). The positional argument is the ConceptMap document (a file, or `-` for
+ * Translate a single source coding through a **BYO FHIR R4 ConceptMap** via
+ * **`@cosyte/terminology`**. The positional argument is the ConceptMap document (a file, or `-` for
  * stdin); `--system` + `--code` (and optional `--version`/`--display`) name the source coding to
  * translate. The CLI adds **no** mapping content of its own — `terminology` is content-free and
  * never fabricates a target; the CLI loads the user's map and forwards the translation faithfully.

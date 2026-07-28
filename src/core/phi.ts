@@ -3,8 +3,8 @@
  * value may appear on a **secondary surface** (stderr, a diagnostic, a warning, a log line). The CLI
  * is **value-free by default**: every secondary surface carries only positional/structural context
  * (a stable code, a segment/field index, a byte offset, a file path, a format name) — never a name, a
- * DOB, an MRN, or a field value (cli roadmap §7). `stdout` is the **data channel** (the user's
- * explicit request) and is exempt — the posture governs everything *but* stdout.
+ * DOB, an MRN, or a field value. `stdout` is the **data channel** (the user's explicit request) and
+ * is exempt — the posture governs everything *but* stdout.
  *
  * `--unsafe-show-values` is the **single, explicit, loud door** to a value on a secondary surface. It
  * is off by default, PHI-exposing by design, and its effect flows through exactly one chokepoint here

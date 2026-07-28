@@ -3,7 +3,7 @@
  * tree is testable. The thin `bin` entry writes {@link RunResult.stdout} to `process.stdout`,
  * {@link RunResult.stderr} to `process.stderr`, and exits with {@link RunResult.exit}.
  *
- * The two channels carry the CLI's PHI posture (cli roadmap §7): **stdout is the data channel** (the
+ * The two channels carry the CLI's PHI posture: **stdout is the data channel** (the
  * user's explicit request — the parsed model), while **stderr is value-free** — codes and positions
  * only, never an input value.
  *

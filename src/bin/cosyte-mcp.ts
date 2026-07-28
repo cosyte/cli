@@ -4,7 +4,7 @@
  * thing: start the server on the real `process.stdin`/`process.stdout` and let the process stay alive
  * serving requests. All logic — the tool surface, the shared command core, the value-free PHI posture —
  * lives in the covered `mcp`/`core`/`commands` modules; this file is intentionally trivial and
- * coverage-excluded. It is the twin of `cosyte.ts` for the agent front door (ADR 0022).
+ * coverage-excluded. It is the twin of `cosyte.ts` for the agent front door.
  *
  * @packageDocumentation
  */

@@ -1,19 +1,17 @@
 /**
  * The **per-format parser adapter registry** — the single place the CLI routes a resolved format to
  * its wrapped `@cosyte/*` parser, for each of the four wrapping operations (`parse` / `inspect` /
- * `fmt` / `validate`). Before CLI-6 each command carried its own `format === "hl7" ? … : …` branch;
- * as the format count grew to eight that ceased to scale and scattered the wrapper boundary. This
- * module collapses them into one lazy, value-free registry so the wrapper boundary (cli roadmap §5)
- * lives in exactly one file the `gate-refuter` can read whole.
+ * `fmt` / `validate`). One lazy, value-free registry, so the wrapper boundary lives in exactly one
+ * file.
  *
  * **Capability is per (format, operation).** Not every parser faithfully supports every operation —
  * DICOM's model is binary (no faithful JSON `parse`, no text `fmt`), C-CDA's canonical form is XML (no
  * library-blessed JSON `parse`), MLLP is a transport container (de-framed to HL7, `parse`/`inspect`
  * only). {@link OP_SUPPORT} is the honest matrix; an unsupported (format, op) is a value-free
- * `CLI_FORMAT_UNSUPPORTED`, **never** a faked result (ADR 0018).
+ * `CLI_FORMAT_UNSUPPORTED`, **never** a faked result.
  *
  * **Lazy + optional.** Every parser is imported dynamically inside its branch, so `cosyte parse msg.hl7`
- * never loads the DICOM or X12 code. The six breadth parsers are `optionalDependencies` (ADR 0025): if
+ * never loads the DICOM or X12 code. The six breadth parsers are `optionalDependencies`: if
  * one is absent the dynamic import is caught and degrades to a value-free `CLI_PARSER_UNAVAILABLE`
  * (exit `69`) rather than an unhandled crash — the CLI core still works with any of them missing.
  *
@@ -152,8 +150,8 @@ export type InspectSummary =
 /* ── the capability matrix ───────────────────────────────────────────────────────────────────── */
 
 /**
- * The honest per-format operation matrix (CLI-6). A (format, op) pair absent here is a value-free
- * `CLI_FORMAT_UNSUPPORTED`, never a faked result. Deferred cells and why:
+ * The honest per-format operation matrix. A (format, op) pair absent here is a value-free
+ * `CLI_FORMAT_UNSUPPORTED`, never a faked result. The unsupported cells and why:
  * - **dicom** `parse`/`fmt` — the model is binary (no faithful JSON view; `serializeDicom` emits a
  *   Part-10 byte stream, not text). `inspect`/`validate` are supported.
  * - **ccda** `parse` — the canonical form is XML; there is no library-blessed JSON model, so `fmt`
@@ -254,7 +252,7 @@ function anyError(findings: readonly Finding[]): boolean {
 /**
  * Lazy-import an **optional** parser package, mapping an *absent* package to a value-free
  * `CLI_PARSER_UNAVAILABLE` (exit `69`) — the graceful-degradation path for the `optionalDependencies`
- * breadth parsers (ADR 0025). A genuine import that succeeds passes straight through; any error whose
+ * breadth parsers. A genuine import that succeeds passes straight through; any error whose
  * shape is "module not found" becomes the value-free CLI error. Other errors propagate unchanged.
  *
  * @template T - The imported module's type.
@@ -375,7 +373,7 @@ export async function parseFormat(format: CosyteFormat, bytes: Uint8Array): Prom
 
 /**
  * Build the value-free structural summary of one input of `format` — counts and structural type codes
- * only, never a field value (cli roadmap §7).
+ * only, never a field value.
  *
  * @param format - A format for which `supportsOp(format, "inspect")` is true.
  * @param bytes - The input bytes.
@@ -518,7 +516,7 @@ export async function inspectFormat(
 
 /**
  * Canonically re-serialize one input of `format` via the wrapped library's spec-clean serializer. The
- * CLI never re-canonicalizes on its own (cli roadmap §5); the output is exactly the serializer's.
+ * CLI never re-canonicalizes on its own; the output is exactly the serializer's.
  *
  * @param format - A format for which `supportsOp(format, "fmt")` is true.
  * @param bytes - The input bytes.
@@ -675,10 +673,9 @@ export async function validateFormat(format: CosyteFormat, bytes: Uint8Array): P
  * **Truncation is a data error, never a silent drop.** The `FrameReader` is a streaming decoder: an
  * unterminated trailing frame (a VT opened with no closing FS/CR) is left buffered and delivered by
  * *no* callback — so feeding a whole file and reading only `onFrame` would silently lose the partial
- * message with a green exit (the "partial silent success" the roadmap §Phase 6 forbids). We therefore
- * detect an open trailing frame at the byte level (the last VT sits after the last FS — MLLP payloads
- * are HL7 v2 text and never carry the `0x0B`/`0x1C` framing bytes) and reject the whole stream as a
- * value-free `CLI_PARSE_FAILED` data error.
+ * message with a green exit. We therefore detect an open trailing frame at the byte level (the last
+ * VT sits after the last FS — MLLP payloads are HL7 v2 text and never carry the `0x0B`/`0x1C` framing
+ * bytes) and reject the whole stream as a value-free `CLI_PARSE_FAILED` data error.
  *
  * @throws {CliError} `CLI_PARSER_UNAVAILABLE` if `@cosyte/mllp` is absent; `CLI_PARSE_FAILED` (exit
  *   `65`) on a truncated stream; a hard framing error propagates for the caller's value-free boundary.

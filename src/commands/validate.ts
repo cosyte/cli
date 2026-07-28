@@ -3,9 +3,8 @@
  *
  * Parse the input, run the **wrapped parser's own validation/conformance surface**, and let the
  * **exit code carry the verdict** so `cosyte validate` is usable as a CI gate: **`0` valid, `1`
- * invalid** (parseable but non-conformant), `65` unparseable, `66` no input, `2` usage (cli roadmap
- * §4.3, §Phase 3). The load-bearing rule — the CLI never prints a reassuring line and exits `0` on an
- * invalid message.
+ * invalid** (parseable but non-conformant), `65` unparseable, `66` no input, `2` usage. The
+ * load-bearing rule — the CLI never prints a reassuring line and exits `0` on an invalid message.
  *
  * Findings are **value-free**: a stable code, a severity, and a positional locator (a FHIRPath, or an
  * HL7 segment/field index) — never a field value. By default they render on **stderr**; `--json`

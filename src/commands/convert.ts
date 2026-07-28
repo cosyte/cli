@@ -1,8 +1,8 @@
 /**
  * `cosyte convert <file|-> --to fhir [--json] [--quiet] [--no-color]`
  *
- * Convert an **HL7 v2** message to **FHIR R4** via **`@cosyte/transform`** — the consumer-of-consumers
- * command (cli roadmap §Phase 4). The CLI adds **no** mapping logic of its own: it parses the input
+ * Convert an **HL7 v2** message to **FHIR R4** via **`@cosyte/transform`** — the
+ * consumer-of-consumers command. The CLI adds **no** mapping logic of its own: it parses the input
  * with `@cosyte/hl7`, hands the parsed message to `transform`'s `toFhir`, and serializes the resulting
  * FHIR `Bundle` with `@cosyte/fhir`. The mapping guarantees are the library's, graded by *its* gate;
  * `cosyte convert` equals `transform`'s programmatic output.
@@ -206,7 +206,7 @@ function toFinding(code: string, severity: string, v2Location: string, fhirPath?
 /**
  * Decide the conversion outcome from the library's value-free findings: whether any is
  * **error-severity** (which drives a non-zero exit — the load-bearing "a conversion error is never
- * exit 0" rule, cli roadmap §Phase 4) and the value-free human report. The severity classification is
+ * exit 0" rule) and the value-free human report. The severity classification is
  * the library's — `@cosyte/transform` fixes each issue's severity; the CLI only reads it. Exported so
  * the exit-verdict and report logic is unit-testable with synthetic findings, independent of which HL7
  * message happens to produce an error.
