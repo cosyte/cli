@@ -85,7 +85,7 @@ is not PHI.
 
 ### `cosyte redact <file\|->` (alias: `deid`)
 
-De-identify a message. **Gated on `@cosyte/deid` (not yet available)**: an honest
+De-identify a message. **Gated on `@cosyte/deid` (not yet wired)**: an honest
 `CLI_NOT_IMPLEMENTED` (exit `69`). The input is not read. The CLI ships no built-in partial scrub.
 
 ### `cosyte completion <bash\|zsh\|fish>`

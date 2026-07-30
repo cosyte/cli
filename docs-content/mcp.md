@@ -27,6 +27,10 @@ Add the server to your MCP client's configuration (Claude Desktop, an IDE agent,
 }
 ```
 
+> **This registration does not work yet.** `npx` installs the package first, and that install fails:
+> see [Installing fails today](./installation#installing-fails-today). Point `command` at a built
+> local checkout's `dist/bin/cosyte-mcp.mjs` instead.
+
 `cosyte mcp` starts the stdio server; the standalone `cosyte-mcp` bin is equivalent.
 
 ```bash

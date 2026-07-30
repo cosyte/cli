@@ -19,14 +19,15 @@ this file is maintained by hand (Changesets handles the version bump and publish
   fix must ship as a later version.
   - `README.md` gains a **"Known issue"** section stating what fails, the exact error, why, and that
     a source checkout is the only workaround. `docs-content/installation.md` gains the same under
-    **"Installing fails today"**. The broken `npx`-based MCP registration snippet is annotated.
+    **"Installing fails today"**. Both copies of the broken `npx`-based MCP registration snippet are
+    annotated (`README.md` and `docs-content/mcp.md`).
   - **Four false claims corrected.** (1) `README.md` said "not yet published to npm"; it is
     published. (2) It described swapping the vendored sibling deps for real `@cosyte/*` npm ranges as
     a step still to come "at that flip"; the flip already happened without the swap, which is the
     defect. (3) The same "not yet published" claim appeared in four `docs-content/` pages. (4) The
-    `redact`/`deid` terminal diagnostic, its JSDoc, and two docs pages said `@cosyte/deid` was
-    unpublished; it is published at `0.0.2`, and the accurate statement is that the CLI does not wire
-    it yet. Verified against the live registry rather than quoted.
+    `redact`/`deid` terminal diagnostic, its JSDoc, and **four** docs pages said `@cosyte/deid` was
+    unpublished or unshipped; it is published at `0.0.2`, and the accurate statement is that the CLI
+    does not wire it yet. Verified against the live registry rather than quoted.
   - **The "all eight formats" claim was checked and is correct**: `CosyteFormat` and `OP_SUPPORT` both
     enumerate exactly eight.
   - `RELEASING.md` records that the documented dependency-swap step was skipped, that a green
@@ -38,10 +39,11 @@ this file is maintained by hand (Changesets handles the version bump and publish
   would swap to real ranges today. `@cosyte/fhir` is unpublished (`FHIR-NPM-NAME`, an npm E403
   name-similarity rejection) and `@cosyte/transform@0.0.2` fails `E404` on its `@cosyte/fhir` peer,
   so neither can. An installable release is nonetheless reachable before that unblocks, because npm
-  tolerates an `optionalDependency` that fails to resolve (measured). It needs one code change first:
+  tolerates an `optionalDependency` that fails to resolve (measured). It needs a code change first:
   `@cosyte/fhir` and `@cosyte/transform` are imported with a raw `await import()`, so they must be
-  routed through `loadOptional()` to degrade to `CLI_PARSER_UNAVAILABLE` (exit `69`) rather than
-  crash. Not undertaken here.
+  routed through a guarded loader to degrade to `CLI_PARSER_UNAVAILABLE` (exit `69`) rather than
+  crash. `loadOptional()` cannot be reused unchanged: it takes a `CosyteFormat`, and `"transform"` is
+  not one, and its diagnostic hardcodes the word "parser". Not undertaken here.
 
 ### Added
 

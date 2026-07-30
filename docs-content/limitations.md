@@ -54,7 +54,7 @@ These are **non-goals**, not missing features: named so nothing over-trusts the 
 - **No capability its ground layer lacks, and never a faked one.** Where a wrapped library is not yet
   built, the command is **unavailable** (a distinct, value-free exit `69`), never stubbed to a fake
   success:
-  - **`redact` / `deid`** is gated on `@cosyte/deid` (not yet shipped): an honest
+  - **`redact` / `deid`** is gated on `@cosyte/deid` (not yet wired): an honest
     `CLI_NOT_IMPLEMENTED`. The CLI ships **no** built-in partial scrub that could give a false sense of
     safety.
   - **`validate --profile`** is reserved but gated (`CLI_NOT_IMPLEMENTED`) until the CLI can load a

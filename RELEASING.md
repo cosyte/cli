@@ -68,12 +68,22 @@ An installable release **is reachable before `FHIR-NPM-NAME` is resolved**, beca
 Moving `@cosyte/fhir` and `@cosyte/transform` to `optionalDependencies` with real ranges lets the
 install succeed with those two simply absent.
 
-**It needs one code change first, and shipping without it would be worse than the current break.**
+**It needs a code change first, and shipping without it would be worse than the current break.**
 `@cosyte/hl7` and `@cosyte/fhir` are imported with a raw `await import()` in `src/core/parsers.ts`
-and `src/commands/convert.ts`; only the six breadth parsers go through `loadOptional()`, which is what
-turns an absent package into the value-free `CLI_PARSER_UNAVAILABLE` (exit `69`). Route the
-`@cosyte/fhir` and `@cosyte/transform` imports through `loadOptional()` too, or an absent one crashes
-instead of degrading honestly. `@cosyte/hl7` stays a hard dep and needs no such treatment.
+(lines 327/412/542/602) and `src/commands/convert.ts` (179-180); only the six breadth parsers go
+through `loadOptional()`, which is what turns an absent package into the value-free
+`CLI_PARSER_UNAVAILABLE` (exit `69`). An absent `@cosyte/fhir` or `@cosyte/transform` would therefore
+crash rather than degrade honestly.
+
+**`loadOptional()` cannot be reused as-is, so scope this as more than a one-line change.** Its
+signature is `loadOptional<T>(format: CosyteFormat, …)` and `"transform"` is **not** a `CosyteFormat`
+(`src/core/format.ts:33` lists the eight wire formats only). Its diagnostic also hardcodes the word
+"parser" (`the @cosyte/${format} parser is not installed`), which is wrong for `transform`, a
+conversion library. So the work is: widen the helper (or add a sibling that takes a package name and
+a diagnostic), route the `fhir` and `transform` imports through it, and give `transform` a diagnostic
+that names it accurately. `@cosyte/hl7` stays a hard dep and needs no treatment.
+`src/commands/map-codes.ts:177` also raw-imports `@cosyte/terminology`, which is harmless while
+`terminology` publishes cleanly at `0.0.4`, but it is the same shape if that ever changes.
 
 ## The pipeline
 

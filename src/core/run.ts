@@ -36,7 +36,7 @@ Commands:
   fmt <file|->        Canonically re-serialize via the parser's spec-clean serializer
   convert <file|->    Convert HL7 v2 → FHIR R4 via @cosyte/transform (use --to fhir)
   map-codes <cmap|->  Translate a code through a BYO FHIR ConceptMap via @cosyte/terminology
-  redact <file|->     De-identify a message (alias: deid): gated on @cosyte/deid, not yet available
+  redact <file|->     De-identify a message (alias: deid): gated on @cosyte/deid, not yet wired
   mcp                 Start the stdio MCP server (agent front door; also the cosyte-mcp bin)
   completion <shell>  Print a shell completion script (bash | zsh | fish)
 

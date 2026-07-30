@@ -13,7 +13,7 @@
  * | `2`  | `USAGE`    | usage error: unknown command, bad flag, missing argument (EX_USAGE) |
  * | `65` | `DATAERR`  | data error: input could not be parsed / format not detected (EX_DATAERR) |
  * | `66` | `NOINPUT`  | no input: the file does not exist or is unreadable (EX_NOINPUT)     |
- * | `69` | `UNAVAILABLE` | a required capability is not yet available: e.g. `redact` before `@cosyte/deid` ships (EX_UNAVAILABLE) |
+ * | `69` | `UNAVAILABLE` | a required capability is not yet available: e.g. `redact` before `@cosyte/deid` is wired (EX_UNAVAILABLE) |
  * | `70` | `SOFTWARE` | internal error: an unexpected exception, i.e. a bug (EX_SOFTWARE)   |
  *
  * The load-bearing `validate` rule: a **parseable-but-invalid** message is exit `1`, never exit `0`.

@@ -49,7 +49,7 @@ export interface DeidAvailability {
  * Report the current de-identification availability. Today it is always unavailable (see the module
  * docs); this is the single line that flips when `@cosyte/deid` is wired.
  *
- * @returns The {@link DeidAvailability}: `{ available: false, reason }` until `@cosyte/deid` ships.
+ * @returns The {@link DeidAvailability}: `{ available: false, reason }` until `@cosyte/deid` is wired.
  * @example
  * ```ts
  * import { deidStatus } from "@cosyte/cli";
