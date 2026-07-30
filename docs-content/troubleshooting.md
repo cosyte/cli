@@ -56,7 +56,7 @@ echo it for you.
 
 ## `CLI_NOT_IMPLEMENTED` (exit 69)
 
-The command's ground-layer library is not yet built, so the command is **unavailable**, never a fake
+The command's ground-layer library is not yet wired, so the command is **unavailable**, never a fake
 success. Today this is `redact`/`deid`: de-identification belongs to `@cosyte/deid`, which the CLI does
 not wire yet, and the CLI will not ship a partial scrub that looks de-identified while leaving PHI
 behind. The command never reads your input. It becomes available once that integration lands and is

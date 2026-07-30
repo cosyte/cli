@@ -70,7 +70,8 @@ install succeed with those two simply absent.
 
 **It needs a code change first, and shipping without it would be worse than the current break.**
 `@cosyte/hl7` and `@cosyte/fhir` are imported with a raw `await import()` in `src/core/parsers.ts`
-(lines 327/412/542/602) and `src/commands/convert.ts` (179-180); only the six breadth parsers go
+(`@cosyte/fhir` at 327/412/542/602, `@cosyte/hl7` at 319/397/537/612) and `src/commands/convert.ts`
+(179-180); only the six breadth parsers go
 through `loadOptional()`, which is what turns an absent package into the value-free
 `CLI_PARSER_UNAVAILABLE` (exit `69`). An absent `@cosyte/fhir` or `@cosyte/transform` would therefore
 crash rather than degrade honestly.

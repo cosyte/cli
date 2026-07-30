@@ -24,10 +24,11 @@ this file is maintained by hand (Changesets handles the version bump and publish
   - **Four false claims corrected.** (1) `README.md` said "not yet published to npm"; it is
     published. (2) It described swapping the vendored sibling deps for real `@cosyte/*` npm ranges as
     a step still to come "at that flip"; the flip already happened without the swap, which is the
-    defect. (3) The same "not yet published" claim appeared in four `docs-content/` pages. (4) The
-    `redact`/`deid` terminal diagnostic, its JSDoc, and **four** docs pages said `@cosyte/deid` was
-    unpublished or unshipped; it is published at `0.0.2`, and the accurate statement is that the CLI
-    does not wire it yet. Verified against the live registry rather than quoted.
+    defect. (3) The same "not yet published" claim appeared in **three** `docs-content/` pages. (4)
+    The `redact`/`deid` terminal diagnostic, the `--help` text, three JSDoc blocks that compile into
+    `dist/*.d.ts`, and **five** docs pages said `@cosyte/deid` was unpublished, unshipped, or unbuilt;
+    it is published at `0.0.2`, and the accurate statement is that the CLI does not wire it yet. Every
+    count here was re-derived by census of the base tree, not estimated.
   - **The "all eight formats" claim was checked and is correct**: `CosyteFormat` and `OP_SUPPORT` both
     enumerate exactly eight.
   - `RELEASING.md` records that the documented dependency-swap step was skipped, that a green

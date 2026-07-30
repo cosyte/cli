@@ -48,7 +48,7 @@ export const EXIT = {
   DATAERR: 65,
   /** No input: the named file does not exist or is unreadable (`EX_NOINPUT`). */
   NOINPUT: 66,
-  /** Unavailable: a required capability is not yet built (e.g. `redact` before `@cosyte/deid`), a
+  /** Unavailable: a required capability is not yet wired (e.g. `redact` before `@cosyte/deid`), a
    * distinct non-zero signal that is never a fake success (`EX_UNAVAILABLE`). */
   UNAVAILABLE: 69,
   /** Internal error: an unexpected exception (a bug), distinct from a handled bad input (`EX_SOFTWARE`). */
