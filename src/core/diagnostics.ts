@@ -49,8 +49,8 @@ export const CLI_CODES = {
   /** The BYO ConceptMap supplied to `map-codes` is not valid JSON or not a loadable FHIR ConceptMap.
    * Names the stable terminology-loader code, never the map's bytes. Exit `65`. */
   CLI_MAP_INVALID: "CLI_MAP_INVALID",
-  /** A command whose ground-layer library is not yet built (e.g. `redact` before `@cosyte/deid`
-   * ships). Never a fake success: a distinct, value-free "unavailable" signal. Exit `69`. */
+  /** A command whose ground-layer library is not yet wired (e.g. `redact` before `@cosyte/deid` is
+   * wired). Never a fake success: a distinct, value-free "unavailable" signal. Exit `69`. */
   CLI_NOT_IMPLEMENTED: "CLI_NOT_IMPLEMENTED",
   /** An unexpected internal error (a bug). Exit `70`. */
   CLI_INTERNAL: "CLI_INTERNAL",

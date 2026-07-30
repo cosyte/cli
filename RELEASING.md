@@ -27,6 +27,65 @@ Refresh them with `pnpm vendor:refresh`. **At `PUB-FLIP` these `file:` specifier
 `@cosyte/*` npm ranges**: a published package cannot ship a `file:vendor/…tgz` dependency. This swap
 is a deliberate release step, not an automated one.
 
+### ▶ THIS STEP WAS SKIPPED, AND `0.0.1` IS BROKEN ON npm BECAUSE OF IT
+
+**`@cosyte/cli@0.0.1` published on 2026-07-29 with all ten `file:vendor/*.tgz` specifiers intact.**
+`vendor/` is not in `files`, and there is no `bundledDependencies`, so the tarball ships none of
+them. Every install route (`npm i`, `npm i -g`, `npx`) dies on the first one:
+
+```
+npm error code ENOENT
+npm error path node_modules/@cosyte/cli/vendor/cosyte-fhir-0.0.0.tgz
+```
+
+A published version is immutable (ADR 0001), so `0.0.1` cannot be repaired; the fix must be a later
+version. **Two lessons, both cheap to act on:**
+
+1. **`npm publish --dry-run` cannot catch this, and the checklist implied it could.** A dry-run packs
+   a tarball; it never resolves that tarball's dependencies from a registry. The gate that would have
+   caught it is `npm install` of the packed tarball **from a directory outside this repo**. Add that
+   before the next publish, and do not treat a green dry-run as install-proof.
+2. **The swap is now blocked, not merely pending.** `@cosyte/fhir` is unpublished (`E403`, an npm
+   name-similarity rejection, tracked as `FHIR-NPM-NAME`), and `@cosyte/transform@0.0.2` is published
+   but fails `E404` on its `@cosyte/fhir` peer, so neither can become a real range today.
+   `@cosyte/hl7` (`0.0.3`) and `@cosyte/terminology` (`0.0.4`) would swap over now, as would all six
+   breadth parsers. See "The route to an installable release" below.
+
+### The route to an installable release
+
+Verified against the live registry on 2026-07-30, not assumed:
+
+| dep                   | real range today?               | note                           |
+| --------------------- | ------------------------------- | ------------------------------ |
+| `@cosyte/hl7`         | yes (`0.0.3`)                   | hard dep                       |
+| `@cosyte/terminology` | yes (`0.0.4`)                   | hard dep                       |
+| six breadth parsers   | yes (all published)             | already `optionalDependencies` |
+| `@cosyte/fhir`        | **no** (`404`, `FHIR-NPM-NAME`) | hard dep                       |
+| `@cosyte/transform`   | **no** (`E404` on the peer)     | hard dep                       |
+
+An installable release **is reachable before `FHIR-NPM-NAME` is resolved**, because npm tolerates an
+`optionalDependency` that fails to resolve (measured: a `404` optional dep installs clean, exit `0`).
+Moving `@cosyte/fhir` and `@cosyte/transform` to `optionalDependencies` with real ranges lets the
+install succeed with those two simply absent.
+
+**It needs a code change first, and shipping without it would be worse than the current break.**
+`@cosyte/hl7` and `@cosyte/fhir` are imported with a raw `await import()` in `src/core/parsers.ts`
+(`@cosyte/fhir` at 327/412/542/602, `@cosyte/hl7` at 319/397/537/612) and `src/commands/convert.ts`
+(179-180); only the six breadth parsers go
+through `loadOptional()`, which is what turns an absent package into the value-free
+`CLI_PARSER_UNAVAILABLE` (exit `69`). An absent `@cosyte/fhir` or `@cosyte/transform` would therefore
+crash rather than degrade honestly.
+
+**`loadOptional()` cannot be reused as-is, so scope this as more than a one-line change.** Its
+signature is `loadOptional<T>(format: CosyteFormat, …)` and `"transform"` is **not** a `CosyteFormat`
+(`src/core/format.ts:33` lists the eight wire formats only). Its diagnostic also hardcodes the word
+"parser" (`the @cosyte/${format} parser is not installed`), which is wrong for `transform`, a
+conversion library. So the work is: widen the helper (or add a sibling that takes a package name and
+a diagnostic), route the `fhir` and `transform` imports through it, and give `transform` a diagnostic
+that names it accurately. `@cosyte/hl7` stays a hard dep and needs no treatment.
+`src/commands/map-codes.ts:177` also raw-imports `@cosyte/terminology`, which is harmless while
+`terminology` publishes cleanly at `0.0.4`, but it is the same shape if that ever changes.
+
 ## The pipeline
 
 Releases run on [Changesets](https://github.com/changesets/changesets):
@@ -75,10 +134,17 @@ would fail.
 
 ## The publish checklist (for the human at the gate)
 
-1. `PUB-FLIP` the repo public (founder stop 1).
+Steps 1 and 3 are **already done**: the repo is public, and both bin names were taken by `0.0.1`.
+Step 2 is the one that was skipped, and it is why this checklist now has a step 6.
+
+1. ~~`PUB-FLIP` the repo public (founder stop 1).~~ Done; the repo is public.
 2. Swap the vendored `file:` deps for real `@cosyte/*` npm ranges; `pnpm install`; re-run
-   `scripts/verify.sh cli`.
-3. Confirm the `cosyte` / `cosyte-mcp` bin names are free on npm.
+   `scripts/verify.sh cli`. **Blocked today** on two of the four hard deps: see "The route to an
+   installable release" above for what is reachable without waiting.
+3. ~~Confirm the `cosyte` / `cosyte-mcp` bin names are free on npm.~~ Done; `0.0.1` owns both.
 4. Land the release changeset; approve the **"Version Packages"** PR.
 5. Approve the protected `release` environment to publish (founder stop 2). Provenance attaches
    automatically.
+6. **Install the published version from outside this repo before calling it shipped**, in a clean
+   temp directory: `npm install @cosyte/cli@<version>`. A green `--dry-run` does not prove this, and
+   `0.0.1` is the proof that it does not.

@@ -1,13 +1,13 @@
 /**
  * The **de-identification seam**: the single, documented plug-in point where the `redact` / `deid`
- * command will delegate to **`@cosyte/deid`** once that library ships and is vetted.
+ * command will delegate to **`@cosyte/deid`** once that integration lands and is vetted.
  *
  * ## Why the CLI ships no built-in redactor (the boundary decision)
  *
- * `@cosyte/deid` is **unpublished**, and the wrapped
+ * The CLI does **not wire `@cosyte/deid` yet**, and the wrapped
  * parsers (`@cosyte/hl7`, `@cosyte/fhir`) expose **no de-identification API**: they redact only
- * their own *diagnostics*, not the parsed model. So there is nothing to delegate to today, and adding
- * `@cosyte/deid` would depend on unbuilt code.
+ * their own *diagnostics*, not the parsed model. So there is nothing for the CLI to delegate to
+ * today.
  *
  * A tempting alternative, a "minimal built-in Safe-Harbor pass over the obvious PHI loci" (e.g. the
  * HL7 `PID` segment, `Patient.name`/`Patient.address` in FHIR), is **deliberately rejected**. Real
@@ -18,7 +18,7 @@
  *
  * So `redact` is an **honest, typed `CLI_NOT_IMPLEMENTED`** (never a fake success, never a partial
  * scrub presented as de-identified, never invent a capability the ground layer lacks),
- * gated on `@cosyte/deid`, with this seam as its one drop-in point. When `@cosyte/deid` lands and is
+ * gated on `@cosyte/deid`, with this seam as its one drop-in point. When that integration lands and is
  * conformance-graded, {@link deidStatus} flips to `available` and the command reads the input, calls
  * the delegated de-identifier, and emits the de-identified model: the command surface (`redact`,
  * `deid`, `<file|->`, `--format`) already exists so that change is additive.
@@ -28,10 +28,10 @@
 
 /** The value-free reason `redact`/`deid` reports while the ground-layer library is unavailable. */
 export const DEID_UNAVAILABLE_REASON =
-  "redact/deid is not yet available. It delegates to @cosyte/deid, which is unpublished. " +
+  "redact/deid is not yet available. It delegates to @cosyte/deid, which the CLI does not wire yet. " +
   "The CLI ships no built-in redactor: a partial Safe-Harbor scrub over only the obvious PHI " +
   "loci would leave PHI behind and present a false-safety impression, so nothing is emitted. This " +
-  "command will produce a de-identified copy once @cosyte/deid ships and is vetted.";
+  "command will produce a de-identified copy once that integration lands and is vetted.";
 
 /**
  * Whether de-identification is available, and (while it is not) the value-free reason why. The one
@@ -49,7 +49,7 @@ export interface DeidAvailability {
  * Report the current de-identification availability. Today it is always unavailable (see the module
  * docs); this is the single line that flips when `@cosyte/deid` is wired.
  *
- * @returns The {@link DeidAvailability}: `{ available: false, reason }` until `@cosyte/deid` ships.
+ * @returns The {@link DeidAvailability}: `{ available: false, reason }` until `@cosyte/deid` is wired.
  * @example
  * ```ts
  * import { deidStatus } from "@cosyte/cli";

@@ -64,8 +64,8 @@ flag.
 ### `redact` / `deid`: honest, not faked
 
 The one command whose job is to strip PHI is **deliberately gated**. De-identification belongs to
-`@cosyte/deid` (unpublished); the wrapped parsers expose no de-id API. Rather than ship a partial
+`@cosyte/deid`, which the CLI does not wire yet; the wrapped parsers expose no de-id API. Rather than ship a partial
 Safe-Harbor scrub that would leave PHI behind while *looking* de-identified (a false-safety
 impression), `redact`/`deid` is a typed `CLI_NOT_IMPLEMENTED` (exit `69`) that never reads the input
-and never emits a partial scrub. It becomes real when `@cosyte/deid` ships. This is the same
+and never emits a partial scrub. It becomes real when that integration lands. This is the same
 discipline the wrapper boundary rests on: the CLI never invents a capability its ground layer lacks.
