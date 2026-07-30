@@ -9,8 +9,39 @@ this file is maintained by hand (Changesets handles the version bump and publish
 
 ## [Unreleased]
 
-The first pre-alpha release (`0.0.1`) will ship the initial public API surface. The package begins
-its public history at `0.0.x`, per the cosyte version ladder (`0.0.x` until first alpha).
+### Fixed
+
+- **The public surface now states that `0.0.1` is published and uninstallable (ASSETS-P8).** `0.0.1`
+  published on 2026-07-29 with all ten `file:vendor/*.tgz` dependency specifiers intact. `vendor/` is
+  not in `files` and there is no `bundledDependencies`, so every install route (`npm i`, `npm i -g`,
+  `npx`) fails with `ENOENT` on `node_modules/@cosyte/cli/vendor/cosyte-fhir-0.0.0.tgz`. Reproduced
+  in a clean directory. A published version is immutable (ADR 0001), so `0.0.1` stays broken and the
+  fix must ship as a later version.
+  - `README.md` gains a **"Known issue"** section stating what fails, the exact error, why, and that
+    a source checkout is the only workaround. `docs-content/installation.md` gains the same under
+    **"Installing fails today"**. The broken `npx`-based MCP registration snippet is annotated.
+  - **Four false claims corrected.** (1) `README.md` said "not yet published to npm"; it is
+    published. (2) It described swapping the vendored sibling deps for real `@cosyte/*` npm ranges as
+    a step still to come "at that flip"; the flip already happened without the swap, which is the
+    defect. (3) The same "not yet published" claim appeared in four `docs-content/` pages. (4) The
+    `redact`/`deid` terminal diagnostic, its JSDoc, and two docs pages said `@cosyte/deid` was
+    unpublished; it is published at `0.0.2`, and the accurate statement is that the CLI does not wire
+    it yet. Verified against the live registry rather than quoted.
+  - **The "all eight formats" claim was checked and is correct**: `CosyteFormat` and `OP_SUPPORT` both
+    enumerate exactly eight.
+  - `RELEASING.md` records that the documented dependency-swap step was skipped, that a green
+    `npm publish --dry-run` cannot catch this (it packs a tarball but never resolves its deps from a
+    registry), and adds a checklist step to install the published version from outside the repo.
+  - **Banner** added as the first line of `README.md`, matching the shape set by `hl7` and `x12`.
+- **The route to an installable release, recorded in `RELEASING.md` and verified against the
+  registry.** `@cosyte/hl7` (`0.0.3`), `@cosyte/terminology` (`0.0.4`) and all six breadth parsers
+  would swap to real ranges today. `@cosyte/fhir` is unpublished (`FHIR-NPM-NAME`, an npm E403
+  name-similarity rejection) and `@cosyte/transform@0.0.2` fails `E404` on its `@cosyte/fhir` peer,
+  so neither can. An installable release is nonetheless reachable before that unblocks, because npm
+  tolerates an `optionalDependency` that fails to resolve (measured). It needs one code change first:
+  `@cosyte/fhir` and `@cosyte/transform` are imported with a raw `await import()`, so they must be
+  routed through `loadOptional()` to degrade to `CLI_PARSER_UNAVAILABLE` (exit `69`) rather than
+  crash. Not undertaken here.
 
 ### Added
 

@@ -9,13 +9,15 @@ sidebar_position: 1
 Task-oriented recipes for the `cosyte` command. Each is a short, copy-pasteable answer to one real
 question.
 
-> **Status:** pre-alpha (`0.0.x`), not yet published to npm. The `cosyte` command wraps **all eight
+> **Status:** pre-alpha (`0.0.x`), published to npm at `0.0.1`. **That release cannot be installed**
+> (a packaging defect: see [Installation](./installation)), so run the CLI from a source checkout for
+> now. The `cosyte` command wraps **all eight
 > cosyte formats** (HL7 v2, FHIR R4, X12, ASTM, NCPDP SCRIPT, C-CDA, DICOM, MLLP) plus the
 > `@cosyte/transform` and `@cosyte/terminology` higher-layer libraries: `parse` (autodetect → typed JSON,
 > with NDJSON streaming for MLLP frames and `--ndjson`), `validate` (verdict in the exit code), `inspect`
 > (a value-free structural summary), `fmt` (canonical re-serialization), `convert` (HL7 v2 → FHIR R4 via
 > `@cosyte/transform`), `map-codes` (ConceptMap `$translate` via `@cosyte/terminology`), `redact`/`deid`
-> (an honest gated stub, exit `69`, until `@cosyte/deid` ships), and `completion` (a shell completion
+> (an honest gated stub, exit `69`, until the CLI wires `@cosyte/deid`), and `completion` (a shell completion
 > script). Support is honest **per (format, operation)**: a parser that does not faithfully support a
 > command (DICOM `parse`/`fmt`, C-CDA `parse`, MLLP `fmt`/`validate`) is a value-free
 > `CLI_FORMAT_UNSUPPORTED`, never a fake. PHI discipline runs throughout: value-free by default, the

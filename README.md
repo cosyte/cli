@@ -1,3 +1,5 @@
+![@cosyte/cli: the cosyte command, a PHI-safe front door that turns a raw hospital message into typed JSON in one line](https://cosyte.com/social/cosyte-banner-cli-1200x300.png)
+
 # @cosyte/cli
 
 > The **cosyte CLI**: a PHI-safe developer front door over the `@cosyte/*` healthcare parsers.
@@ -17,7 +19,37 @@ It is a thin, honest skin over libraries that already own correctness ([`@cosyte
 and owns two disciplines of its own: a documented **exit-code contract** and a **value-free
 diagnostic** posture.
 
-> **Status:** pre-alpha (`0.0.x`), **not yet published to npm**. The `cosyte` command wraps **all eight
+## Known issue: `0.0.1` is published but cannot be installed
+
+**`@cosyte/cli@0.0.1` is on npm and `npm install @cosyte/cli` fails.** It ends in an `ENOENT`, like
+this:
+
+```
+npm error code ENOENT
+npm error path node_modules/@cosyte/cli/vendor/cosyte-fhir-0.0.0.tgz
+npm error enoent ENOENT: no such file or directory
+```
+
+`npx @cosyte/cli …` and `npm install -g @cosyte/cli` fail the same way, and so does the `npx`-based
+MCP server registration below. There is no workaround from the consumer side. **Nothing is wrong with
+your setup, and re-running it will not help.**
+
+**Why.** The published manifest declares its ten `@cosyte/*` sibling packages as local file paths
+(`file:vendor/*.tgz`) rather than as npm version ranges. Those tarballs live in the git repository and
+are deliberately not part of the published package, so npm resolves the paths against a directory that
+does not exist in your `node_modules` and stops at the first one. It is a packaging defect in that
+release, not a fault in any command.
+
+**A published version is immutable, so `0.0.1` will stay broken.** The fix has to arrive as a later
+version, and it is blocked on something outside this package: `@cosyte/fhir` is not on npm yet (its
+name was rejected by the registry as too similar to an existing package, which is a naming problem
+rather than missing work), and `@cosyte/transform` is on npm but currently fails to install for the
+same reason, because it peer-depends on `@cosyte/fhir`. `@cosyte/hl7` and `@cosyte/terminology` are
+published and would swap over today. Until the naming issue is resolved, run the CLI from a source
+checkout (`pnpm install && pnpm build`, then invoke `dist/bin/cosyte.mjs`).
+
+> **Status:** pre-alpha (`0.0.x`), published to npm at `0.0.1`, which **cannot be installed** (see
+> above). The `cosyte` command wraps **all eight
 > cosyte formats** (**HL7 v2**, **FHIR R4**, **X12**, **ASTM**, **NCPDP SCRIPT**, **C-CDA**, **DICOM**,
 > and **MLLP**) plus the `@cosyte/transform` and `@cosyte/terminology` higher-layer libraries, with
 > conservative content-format autodetection and a documented exit-code contract:
@@ -34,8 +66,8 @@ diagnostic** posture.
 >   free issues on stderr, and a non-zero exit on an error-severity conversion issue.
 > - **`map-codes`**: translate a code through a BYO FHIR ConceptMap via `@cosyte/terminology`; the
 >   target coding(s) on stdout, or a value-free unmapped signal + exit `1`.
-> - **`redact` / `deid`**: gated to an honest `CLI_NOT_IMPLEMENTED` (exit `69`) until `@cosyte/deid`
->   ships; it never reads the input and never emits a partial scrub dressed up as de-identified.
+> - **`redact` / `deid`**: gated to an honest `CLI_NOT_IMPLEMENTED` (exit `69`) until the CLI wires
+>   `@cosyte/deid`; it never reads the input and never emits a partial scrub dressed up as de-identified.
 > - **`completion <bash|zsh|fish>`**: print a static shell completion script.
 >
 > **Support is honest per (format, operation)**: not every parser faithfully supports every command, so
@@ -45,16 +77,20 @@ diagnostic** posture.
 > as the single door to a value on a secondary surface, and never a temp file with PHI. An **MCP server**
 > (`cosyte-mcp`) exposes the same core to an LLM/agent as callable tools.
 >
-> The CLI is **feature-complete and release-hardened**: an argv+stdin+MCP fuzz
-> gate, an exit-code golden matrix, a built-package smoke of both bins, and a clean `npm publish`
-> dry-run. What remains is the two standing founder stops (flipping the repo public and the real
-> `npm publish`) plus swapping the vendored sibling deps for real `@cosyte/*` npm ranges at that flip.
-> See [RELEASING.md](./RELEASING.md).
+> The CLI is **feature-complete**: an argv+stdin+MCP fuzz gate, an exit-code golden matrix, a
+> built-package smoke of both bins, and a clean `npm publish` dry-run. Those gates cover the code, and
+> the code is not what is broken. The one release step they do not cover is the dependency swap
+> described above, which is why `0.0.1` published green and still cannot be installed: a dry-run
+> builds the tarball but never resolves it from a registry. **The swap is blocked, not scheduled**,
+> and it stays blocked until `@cosyte/fhir` can be published under a name npm accepts, which also
+> unblocks `@cosyte/transform`. See [RELEASING.md](./RELEASING.md).
 
 ## Run it
 
-> Not on npm yet. The commands below are how you'll install and run it **once it's published**.
-> Until then, run it from a local checkout (`pnpm build`, then invoke `dist/bin/cosyte.mjs`).
+> **None of the commands in this section work today.** `@cosyte/cli` is on npm, but every install
+> route fails with the `ENOENT` described in [the known issue](#known-issue-001-is-published-but-cannot-be-installed)
+> above. They are recorded here as the shape install will take once a fixed version can ship. Until
+> then, run it from a local checkout (`pnpm install && pnpm build`, then invoke `dist/bin/cosyte.mjs`).
 
 ```bash
 npx @cosyte/cli parse message.hl7   # no install; format autodetected → HL7 v2
@@ -207,13 +243,14 @@ cosyte parse broken.hl7 --format hl7 --unsafe-show-values  # appends a bounded i
 ## `cosyte redact` / `cosyte deid`
 
 De-identification is the one operation whose _job_ is to strip PHI. It is **not implemented yet, on
-purpose.** It belongs to [`@cosyte/deid`](https://github.com/cosyte/deid), which is not published, and
-the wrapped parsers expose no de-identification API. A built-in "minimal Safe-Harbor" pass over only
+purpose.** It belongs to [`@cosyte/deid`](https://github.com/cosyte/deid). That package is now
+published, but the CLI does not wire it yet, and the wrapped parsers expose no de-identification API of
+their own. A built-in "minimal Safe-Harbor" pass over only
 the obvious fields would leave PHI behind and _look_ de-identified while silently under-redacting: the
 exact false-safety hazard `redact` exists to avoid. So `cosyte redact <file>` is an honest, typed
 `CLI_NOT_IMPLEMENTED` (exit `69`, `EX_UNAVAILABLE`) that **never reads your input** and **never emits a
-partial scrub dressed up as safe**. It will produce a real de-identified copy once `@cosyte/deid`
-ships and is vetted.
+partial scrub dressed up as safe**. It will produce a real de-identified copy once the CLI wires
+`@cosyte/deid` and that integration is vetted.
 
 ## `cosyte completion`
 
@@ -238,6 +275,11 @@ subprocess**, not a hosted endpoint. Register it in an MCP client's config:
   }
 }
 ```
+
+> This registration **does not work yet**: `npx` has to install the package first, and that install
+> fails with the `ENOENT` described in
+> [the known issue](#known-issue-001-is-published-but-cannot-be-installed) above. To run the MCP
+> server today, point `command` at a built local checkout's `dist/bin/cosyte-mcp.mjs` instead.
 
 `cosyte mcp` and the standalone `cosyte-mcp` bin both start the stdio server. It exposes four tools
 (`parse`, `validate`, `inspect`, `convert`), each calling the same command the terminal runs, so the CLI
