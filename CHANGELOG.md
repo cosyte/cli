@@ -34,7 +34,6 @@ this file is maintained by hand (Changesets handles the version bump and publish
   - `RELEASING.md` records that the documented dependency-swap step was skipped, that a green
     `npm publish --dry-run` cannot catch this (it packs a tarball but never resolves its deps from a
     registry), and adds a checklist step to install the published version from outside the repo.
-  - **Banner** added as the first line of `README.md`, matching the shape set by `hl7` and `x12`.
 - **The route to an installable release, recorded in `RELEASING.md` and verified against the
   registry.** `@cosyte/hl7` (`0.0.3`), `@cosyte/terminology` (`0.0.4`) and all six breadth parsers
   would swap to real ranges today. `@cosyte/fhir` is unpublished (`FHIR-NPM-NAME`, an npm E403
@@ -47,6 +46,43 @@ this file is maintained by hand (Changesets handles the version bump and publish
   not one, and its diagnostic hardcodes the word "parser". Not undertaken here.
 
 ### Added
+
+- **`README.md` now opens with the shared Cosyte lockup in a `<picture>` block, above the H1.** The
+  dark-ground tile (`cosyte-lockup-tile-on-dark-1200x300.png`) sits behind a
+  `prefers-color-scheme: dark` media query and the light-ground tile
+  (`cosyte-lockup-tile-on-light-1200x300.png`) is the inner `<img>` fallback, so the mark is read on
+  a ground that matches the page it is read on. The `# @cosyte/cli` heading and the blockquote under
+  it are unchanged: the artwork reads "Cosyte" and the heading names the package, so nothing on the
+  page is duplicated. Both URLs were re-checked immediately before the push and returned
+  `200 image/png` (10513 bytes dark, 10455 light). The block was copied byte for byte out of
+  `@cosyte/hl7`'s `README.md` rather than retyped and diffed against it, because a transcription
+  error in one of these URLs is a broken image on a public package page.
+
+  **This replaces the per-package banner added earlier in the same unreleased window, and the reason
+  it replaces it is recorded rather than dropped.** That banner was a plain markdown image, chosen
+  over `<img>` or `<picture>` on the stated ground that whether npm's markdown sanitizer preserves a
+  `<picture>` element was unverified. That was an accurate account of what was known when it was
+  written, and it has since been measured: **GitHub honours the `prefers-color-scheme` switch**
+  (observed on `@cosyte/astm` in dark mode, where the rendered image's `currentSrc` resolves to the
+  on-dark tile and its parent element is `PICTURE`), and **on the npm package page the `<img>` is
+  hoisted out of its `<picture>` by the anchor wrapper** rather than the element being stripped, so
+  the light cut renders, which is the correct one there because npmjs.com has no dark mode. Those two
+  measurements were taken on `astm` and reported into this repo rather than re-taken here; what was
+  re-checked directly for `cli` is that both tile URLs return `200 image/png`. The failure mode is
+  safe either way: a renderer that strips `<source>` renders the inner `<img>`, so the worst case is
+  a light-ground mark on a dark page, never a missing or broken image.
+
+  **Why this is corrected rather than annotated in place.** `0.0.1` published on 2026-07-29, a day
+  before the banner landed, so no `@cosyte/cli` tarball has ever carried the banner or the sentence
+  announcing it. Annotating an entry no consumer received would publish an addition and its
+  replacement as two changes when only one was ever visible, so the banner entry is removed from this
+  release and its reasoning is carried here instead of being silently reversed.
+
+  The alt text describes the artwork, a plus mark set in two overlapping rounded squares beside the
+  Cosyte wordmark, rather than the package. It is what a screen reader on the npm page reads out and
+  what a reader gets when the image fails to load, so repeating the `@cosyte/cli` heading below it
+  would be a wasted line. The wording is the one eight sibling packages already carry, confirmed
+  against both rendered PNGs here rather than copied on trust.
 
 - **Phase 7: release hardening (the final roadmap phase; the CLI is feature-complete).** No new
   runtime command surface: this phase is publish-readiness.
