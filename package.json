@@ -1,6 +1,6 @@
 {
   "name": "@cosyte/cli",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "The cosyte CLI: a PHI-safe developer front door over the @cosyte/* healthcare parsers. Parse HL7 v2 / FHIR from a file or stdin to typed JSON, with a documented exit-code contract.",
   "keywords": [
     "cli",
