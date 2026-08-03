@@ -28,6 +28,7 @@ import { EXIT } from "../core/exit-codes.js";
 import type { Finding } from "../core/findings.js";
 import { resolveInput } from "../core/input.js";
 import type { RunDeps } from "../core/io.js";
+import { loadFhir, loadOptionalPackage } from "../core/parsers.js";
 import { VALUE_FREE, type PhiPosture } from "../core/phi.js";
 import type { RunResult } from "../core/result.js";
 import { parseFailureResult } from "../core/wrap.js";
@@ -172,12 +173,21 @@ type ConvertOutcome =
  * `--unsafe-show-values`) flowing through the shared core/wrap chokepoint. The `toFhir` + serialize
  * step is deliberately outside it: `toFhir` never throws for a well-formed message, so any throw there
  * is an unexpected bug the dispatcher maps to `CLI_INTERNAL` (70), never mislabelled as a rejection.
+ *
+ * Two of the three libraries are **not guaranteed present in an installed copy**, so both loads go
+ * through the optional-package boundary and an absent one becomes a value-free
+ * `CLI_PARSER_UNAVAILABLE` (69) rather than an unhandled resolver error. `@cosyte/hl7` is a hard
+ * dependency and needs no such treatment.
  */
 async function runConvert(bytes: Uint8Array, posture: PhiPosture): Promise<ConvertOutcome> {
   const [{ parseHL7 }, { toFhir }, { serializeResource }] = await Promise.all([
     import("@cosyte/hl7"),
-    import("@cosyte/transform"),
-    import("@cosyte/fhir"),
+    loadOptionalPackage(
+      "the @cosyte/transform conversion library is not installed; install it to use convert " +
+        "(it is an optional dependency, and it in turn requires @cosyte/fhir)",
+      () => import("@cosyte/transform"),
+    ),
+    loadFhir(),
   ]);
 
   let msg: ReturnType<typeof parseHL7>;

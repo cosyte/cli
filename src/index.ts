@@ -39,6 +39,7 @@ export {
   validateFormat,
   deframeMllp,
   loadOptional,
+  loadOptionalPackage,
   valueFreeLocator,
   type Op,
   type ParseResult,
