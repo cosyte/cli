@@ -11,6 +11,52 @@ this file is maintained by hand (Changesets handles the version bump and publish
 
 ### Fixed
 
+- **The `attw` publish gate no longer exits 0 on an untyped pack (ATTW-FALSE-GREEN-PORT).** The
+  `attw` script was the bare CLI (`attw --pack . --profile node16`), and
+  `@arethetypeswrong/cli@0.18.4`'s `getExitCode.js` opens with `if (!analysis.types) return 0`,
+  returning before the problem list is read. So a tarball carrying no declarations at all printed
+  "This package does not contain types." and **exited 0**, and `verify.sh` propagated that 0 as a
+  pass. Reproduced on this package with zero concurrency and the real `--profile node16`
+  invocation, twice: with `dist/` removed, and with all ten of the build's declaration files
+  deleted and its JS left in place. The second is the realistic window, because `tsup` writes JS in
+  one pass and declarations in a later one; instrumented on one build here at a 10ms poll, all
+  eight `.mjs`/`.cjs` files appeared on a single poll at 4.92s and all ten declarations on a single
+  later poll at 11.82s, a 6.90s interval. That interval moves with load (7.85s on a busier box);
+  the ordering, and the ten declarations landing together, do not. Not answered with a lock or a
+  build queue: the gate is now able to report that its own inputs were missing, whatever removed
+  them.
+  - `scripts/attw.mjs` (ported from the fix shipped in `@cosyte/terminology`) runs two nets around
+    the real binary. A **preflight** that every relative path `package.json` promises exists and is
+    non-empty, naming the missing file; and a **post-check** that promotes the untyped sentence to a
+    failure, which catches declarations that are on disk but excluded from the tarball. Every
+    argument this repo passes is forwarded, so `--profile node16` keeps its exact meaning: measured
+    here, without it `@cosyte/cli/mcp` fails `node10` resolution and `attw` exits 1.
+  - **The preflight also walks `bin`, which the ported original did not**, because this is a `bin`
+    package and the sibling it came from ships no executable. Measured: with `dist/bin/cosyte.mjs`
+    deleted and everything else built, `attw --pack . --profile node16` printed every subpath green
+    and exited 0 over a tarball with no `cosyte` command in it.
+  - **`--quiet`, `-q`, `--format`, `-f` and `--config-path` are refused by option name and not by
+    value**, as is a `.attw.json` setting `quiet` or `format` (`readConfig()` applies it after
+    argv). Each was measured here to remove the untyped sentence from the output while still
+    exiting 0. `--config-path` is refused on a measurement rather than the inference the original
+    recorded. **Two limits are disclosed rather than closed**, both measured: the match is on an
+    exact argv token, so commander's attached and clustered short forms `-fjson` and `-Pf json` get
+    through (`-qP` does not; the wrapper treats an empty transcript as a failure), and a declared
+    path not starting with `.` is skipped by the preflight. The invocation this replaced exited 0
+    on the same pack with no arguments at all.
+  - **A correction to the ported message.** `files: ["dist"]` packs all ten declarations `tsup`
+    emits while `package.json` names only four; the shared `dist/io-<hash>.d.*` **and the four
+    `dist/bin/*.d.*`** ride along unnamed, and `analysis.types` is true if the tarball carries any
+    declaration. Measured on this tree: losing the four declared declarations gives "No types"
+    problems and **exit 1** while any of the other six survives, and only losing all ten gives the
+    untyped sentence and **exit 0**. So a partial declaration loss is caught by `attw` itself and
+    only a total one is the false green. The preflight reports both outcomes instead of asserting
+    the exit 0, which the inherited wording would have done falsely.
+  - `test/scripts/attw-gate.test.ts` pins all of it against the real binary, including attw's own
+    exit 0, a negative control on a well-formed package, that a genuine attw failure still fails
+    with attw's own status, and that the profile flag survives the wrapper in both directions.
+  - `scripts/verify.sh` in the meta-repo is unchanged; its propagation was never at fault.
+
 - **The public surface now states that `0.0.1` is published and uninstallable (ASSETS-P8).** `0.0.1`
   published on 2026-07-29 with all ten `file:vendor/*.tgz` dependency specifiers intact. `vendor/` is
   not in `files` and there is no `bundledDependencies`, so every install route (`npm i`, `npm i -g`,
