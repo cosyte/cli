@@ -81,8 +81,15 @@ fails `ERESOLVE`; `deid` declares the same optional `@cosyte/fhir` peer and inst
 mechanism is not yet explained. Record measurements, not theories.
 
 `@cosyte/fhir` is kept as a **`devDependency`** on the vendored tarball, so this repo's own FHIR and
-`convert` tests still run, and so it satisfies `@cosyte/transform`'s peer in the dev tree. It is not
-published, because `devDependencies` are not.
+`convert` tests still run, and so it satisfies `@cosyte/transform`'s peer in the dev tree.
+
+**Say this precisely, because the obvious shorter sentence is false.** `devDependencies` **are**
+published: they stay in the published `package.json` (`npm view @cosyte/hl7@0.0.7 devDependencies`
+returns a full list), and so the fix release's manifest still carries one `file:vendor/*.tgz`
+specifier. What makes that harmless is that **a consumer never installs a dependency's
+`devDependencies`**, so npm never resolves the path. That was verified, not assumed: installing the
+packed tarball in a clean directory exits `0` with the `file:` devDependency present in the manifest.
+The runtime closure is what had to be clean, and it is.
 
 ### What an installed copy cannot do, and why that is not a crash
 
@@ -98,8 +105,17 @@ wrong for a conversion library. So `src/core/parsers.ts` now has `loadOptionalPa
 underneath it, plus a `loadFhir()` whose diagnostic says the package is not on the registry (rather
 than `loadOptional`'s "install it", which would be false). `@cosyte/hl7` and `@cosyte/terminology`
 stay hard deps and keep their bare imports, correctly. `test/absent-sibling.test.ts` holds this shut,
-including a static guard that fails if any new bare `import("@cosyte/fhir")` or
-`import("@cosyte/transform")` call site appears in `src/`.
+including a static guard over `src/`.
+
+**What that guard does and does not catch, because "any new call site" would overstate it.** It flags
+a single-line `await import("@cosyte/fhir")` or `import("@cosyte/transform")` that is not wrapped by
+one of the loaders, which is the shape the defect actually took, and it carries negative controls so
+it cannot pass by matching nothing. It does **not** catch a thunk assigned to a variable and awaited
+elsewhere, an import split across lines, or a **static** `import … from "@cosyte/fhir"`. That last one
+matters: this repo now has its first static reference to that package (`src/core/parsers.ts`, as
+`import type`, which is erased at build time and emits no runtime load, verified in `dist/`). Dropping
+the word `type` would load it eagerly and break every command in an installed copy, and the guard
+would not see it.
 
 ### The `npx @cosyte/cli` short form does not work, and the swap does not fix it
 

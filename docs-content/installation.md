@@ -9,9 +9,12 @@ sidebar_position: 1
 `@cosyte/cli` ships the `cosyte` command as a Node.js executable, alongside `cosyte-mcp`. A global
 install is the simplest route; `npx` works too, with one flag noted under [Run it](#run-it).
 
-> **Status:** pre-alpha (`0.0.x`). **`0.0.1` and `0.0.2` cannot be installed at all**: see
-> [If you are on 0.0.1 or 0.0.2](#if-you-are-on-001-or-002). The next release fixes that. FHIR support
-> is unavailable in an installed copy for a separate reason, described under
+> **Status:** pre-alpha (`0.0.x`), and **there is no installable release yet.** The newest version on
+> npm is `0.0.2`, and `0.0.1` and `0.0.2` are both uninstallable: see
+> [If you are on 0.0.1 or 0.0.2](#if-you-are-on-001-or-002). The packaging defect is fixed in the
+> repository and proven by installing the packed tarball, but a published version is immutable, so the
+> fix arrives with the next release. Until then, run the CLI from a source checkout. FHIR support is
+> unavailable in an installed copy for a separate reason, described under
 > [What is not available from npm](#what-is-not-available-from-npm).
 
 ## If you are on 0.0.1 or 0.0.2
@@ -30,7 +33,8 @@ wrong with your environment.
 Those manifests declared the ten `@cosyte/*` sibling packages as local file paths
 (`file:vendor/*.tgz`) instead of npm version ranges. The tarballs are not part of the published
 package, so npm resolved the paths against a directory that is not there. A published version is
-immutable, so both stay broken; **install a later version.**
+immutable, so both stay broken. **The fix ships as a later version, which does not exist yet**; run
+the CLI from a source checkout in the meantime.
 
 ## What is not available from npm
 
@@ -47,8 +51,12 @@ installed `@cosyte/cli` has no FHIR library and:
   dependency.
 
 Everything else works from a plain install: HL7 v2 (`@cosyte/hl7`), `map-codes`
-(`@cosyte/terminology`), and the six breadth formats X12, C-CDA, DICOM, NCPDP, ASTM and MLLP, each an
-optional dependency that reports `CLI_PARSER_UNAVAILABLE` if you deselect it.
+(`@cosyte/terminology`), and the six breadth formats X12, C-CDA, DICOM, NCPDP, ASTM and MLLP, which
+are optional dependencies that do resolve, so a default install has all six.
+
+> **Do not install with `--omit=optional`.** It succeeds, but the `cosyte` command then fails to start
+> at all on a missing `@modelcontextprotocol/sdk`, before it reaches any command. Known defect,
+> tracked separately.
 
 **To use the FHIR commands today, run the CLI from source**, where the FHIR library is supplied
 locally:

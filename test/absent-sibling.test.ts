@@ -99,9 +99,34 @@ function fhirDetailFromSource(): string {
 }
 
 describe("an absent @cosyte/transform degrades, and is named as a conversion library", () => {
-  it("does not call transform a 'parser': loadOptional's wording would be wrong for it", () => {
+  /** The shipped diagnostic, read out of the source so this asserts the real text, not a copy. */
+  function transformDetail(): string {
     const source = readFileSync(new URL("../src/commands/convert.ts", import.meta.url), "utf8");
-    expect(source).toContain("conversion library is not installed");
+    const match = /const TRANSFORM_UNAVAILABLE =\n((?:\s+"[^"]*"(?: \+)?\n)+)/.exec(source);
+    if (match?.[1] === undefined) throw new Error("could not read TRANSFORM_UNAVAILABLE");
+    return [...match[1].matchAll(/"([^"]*)"/g)].map((m) => m[1]).join("");
+  }
+
+  it("does not call transform a 'parser': loadOptional's wording would be wrong for it", () => {
+    expect(transformDetail()).toContain("conversion library is not installed");
+    expect(transformDetail()).not.toContain("parser is not installed");
+  });
+
+  it("does NOT tell the user to install it, because that command cannot succeed", () => {
+    // `npm install @cosyte/transform` fails E404 on its own @cosyte/fhir peer, so "install it to use
+    // convert (it is an optional dependency)" - loadOptional's stock wording, and what this
+    // diagnostic said in an earlier draft - sends a user at a command that always fails. A refuter
+    // caught exactly that. The message must name the real cause instead.
+    const detail = transformDetail();
+    expect(detail).not.toMatch(/install it to use/);
+    expect(detail).not.toContain("it is an optional dependency)");
+    expect(detail).toContain("not currently on the npm registry");
+  });
+
+  it("both unavailable-sibling diagnostics name the registry as the cause", () => {
+    for (const detail of [transformDetail(), fhirDetailFromSource()]) {
+      expect(detail).toContain("not currently on the npm registry");
+    }
   });
 });
 

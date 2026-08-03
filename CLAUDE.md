@@ -130,8 +130,17 @@ subpath still exports a small programmatic `core` API (`detectFormat`, `EXIT`, `
   copy has no FHIR support**, and FHIR `parse`/`inspect`/`fmt`/`validate` plus `convert` degrade to a
   value-free `CLI_PARSER_UNAVAILABLE` (69). That required `loadOptionalPackage(detail, load)` beneath
   `loadOptional` (which takes a `CosyteFormat` and hardcodes the word "parser", wrong for both cases)
-  plus `loadFhir()`; `test/absent-sibling.test.ts` includes a **static guard** that reds if a new bare
-  `import("@cosyte/fhir")` or `import("@cosyte/transform")` appears in `src/`.
+  plus `loadFhir()`; `test/absent-sibling.test.ts` includes a **static guard** that reds on a new
+  **single-line, unwrapped** `import("@cosyte/fhir")` / `import("@cosyte/transform")` in `src/`, which
+  is the shape the defect took. **Do not write "any new call site": a refuter falsified that wording
+  by adding a thunk assigned to a variable, and the suite stayed 10/10 green.** It also misses a
+  multi-line import and a **static** `import … from "@cosyte/fhir"` - and this repo now HAS the first
+  static reference to that package (`src/core/parsers.ts`, `import type`, erased at build, verified
+  absent from `dist/`). Dropping the word `type` loads it eagerly and breaks every command in an
+  installed copy, unseen by the guard. Also note the two diagnostics deliberately do NOT say
+  "install it": `npm install @cosyte/transform` fails `E404` on its own `fhir` peer, so that advice
+  would send a user at a command that cannot succeed. `loadOptional()`'s stock wording says exactly
+  that, which is why neither goes through it.
   **Verified by installing, which a `--dry-run` cannot do**: pack, `npm install` the tarball in a clean
   directory outside the repo (exit 0), run both bins, import `.` under ESM and CJS. Negative control:
   the published `0.0.2` still `ENOENT`s. Keep that step; it is checklist step 6 in `RELEASING.md`.

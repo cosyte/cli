@@ -131,10 +131,26 @@ node_modules/@cosyte/cli/vendor/cosyte-fhir-0.0.0.tgz`. The siblings are now rea
   dependency. Both were previously loaded with a bare `await import()`, which in an installed copy
   would have surfaced a raw resolver error and a stack frame, so FHIR `parse`/`inspect`/`fmt`/`validate`
   and `convert` now degrade to a value-free `CLI_PARSER_UNAVAILABLE` (exit `69`) with a diagnostic that
-  says the package is not on the registry rather than "install it". New `loadOptionalPackage(detail, load)`
-  under `loadOptional`, exported on the `.` subpath. `@cosyte/fhir` is retained as a `devDependency`
-  on the vendored tarball so this repo's own FHIR and `convert` tests still run. HL7 v2, `map-codes`
-  and the six breadth formats are unaffected and work from a plain install.
+  says the package is not on the registry rather than "install it". **Neither diagnostic says "install
+  it", and that is deliberate**: `npm install @cosyte/transform` fails `E404` on its own
+  `@cosyte/fhir` peer, so `loadOptional()`'s stock wording ("install it to use this format, it is an
+  optional dependency") would point a user at a command that cannot succeed. New
+  `loadOptionalPackage(detail, load)` under `loadOptional`, exported on the `.` subpath.
+  `@cosyte/fhir` is retained as a `devDependency` on the vendored tarball so this repo's own FHIR and
+  `convert` tests still run; note that `devDependencies` **are** published, so that one
+  `file:vendor/*.tgz` specifier does remain in the manifest, harmlessly, because a consumer never
+  installs a dependency's `devDependencies` (verified: the install exits `0`). HL7 v2, `map-codes` and
+  the six breadth formats are unaffected and work from a plain install.
+
+- **Documented a pre-existing defect that this release makes reachable for the first time:
+  `--omit=optional` produces an install in which the `cosyte` command does not run at all.** The
+  install exits `0`, then every invocation, `--version` included, fails with `ERR_MODULE_NOT_FOUND` on
+  `@modelcontextprotocol/sdk` and a raw stack trace, because the built `dist/bin/cosyte.mjs` imports
+  the SDK statically at the top level rather than only on the `mcp` path. Verified identical on the
+  base commit, so it is not introduced here; it simply could not be hit before, because the package
+  could not be installed at all. `docs-content/` now says not to use that flag instead of implying it
+  is a supported way to slim the install. **The code defect is not fixed here** and needs its own
+  change: it also falsifies the "a plain `cosyte parse` never pulls it" claim in `src/bin/cosyte.ts`.
 
 - **The docs no longer tell you to run `npx @cosyte/cli …`, which never worked.** Separate from the
   packaging defect and not fixed by it: `npx` runs the executable whose name matches the package

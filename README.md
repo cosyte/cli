@@ -88,13 +88,20 @@ invoke `dist/bin/cosyte.mjs`), where the FHIR library is supplied locally.
 >
 > The CLI is **feature-complete**: an argv+stdin+MCP fuzz gate, an exit-code golden matrix, a
 > built-package smoke of both bins, and a clean `npm publish` dry-run. Those gates cover the code, and
-> the code is not what is broken. The one release step they do not cover is the dependency swap
-> described above, which is why `0.0.1` published green and still cannot be installed: a dry-run
-> builds the tarball but never resolves it from a registry. **The swap is blocked, not scheduled**,
-> and it stays blocked until `@cosyte/fhir` can be published under a name npm accepts, which also
-> unblocks `@cosyte/transform`. See [RELEASING.md](./RELEASING.md).
+> the code was never what was broken. The one release step they do not cover is the dependency swap
+> described above, which is why `0.0.1` and `0.0.2` published green and still cannot be installed: a
+> dry-run builds the tarball but never resolves it from a registry. **That swap has now been made**,
+> and installing the packed tarball from outside the repository is a release step in its own right.
+> `@cosyte/fhir` is the one dependency it could not cover, which is why FHIR support is absent from an
+> installed copy rather than merely deferred. See [RELEASING.md](./RELEASING.md).
 
 ## Run it
+
+> **These commands do not work yet, and the reason is now only that no fixed version has shipped.**
+> The newest version on npm is `0.0.2`, and it is one of the two that cannot be installed. The
+> packaging defect is fixed in this repository and proven by installing the packed tarball outside it,
+> but a published version is immutable, so the fix reaches you only in the next release. Until then,
+> run it from a source checkout: `pnpm install && pnpm build`, then invoke `dist/bin/cosyte.mjs`.
 
 ```bash
 npm install -g @cosyte/cli          # put `cosyte` on your PATH

@@ -10,8 +10,11 @@
 #
 #   @cosyte/fhir   file:vendor/cosyte-fhir-0.0.0.tgz, and it is a devDependency, NOT a runtime one.
 #                  It exists so this repo's own FHIR + convert tests can run, and so that
-#                  @cosyte/transform's mandatory @cosyte/fhir peer resolves in the dev tree. It is
-#                  never published: devDependencies are not.
+#                  @cosyte/transform's mandatory @cosyte/fhir peer resolves in the dev tree.
+#                  NOTE, because the shorter sentence is false: devDependencies ARE published, so
+#                  this file: specifier does ship in the manifest. It is harmless only because a
+#                  consumer never installs a dependency's devDependencies, so npm never resolves
+#                  the path. Verified by installing the packed tarball in a clean directory.
 #   everything else  a real "^0.0.x" range from npm. The nine other tarballs below are refreshed by
 #                  this script but referenced by nothing. They are kept because @cosyte/fhir's
 #                  refresh shares this machinery, and removing them is a separate cleanup.

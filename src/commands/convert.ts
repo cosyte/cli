@@ -167,6 +167,19 @@ type ConvertOutcome =
   | { readonly ok: false; readonly result: RunResult };
 
 /**
+ * Why `@cosyte/transform` is absent, in words a user can act on. **It deliberately does not say
+ * "install it"**: `npm install @cosyte/transform` fails too (`E404` on its own `@cosyte/fhir` peer),
+ * so telling someone to install it would send them at a command that cannot succeed. That is the same
+ * defect the `@cosyte/fhir` diagnostic exists to avoid, and it is why neither goes through
+ * `loadOptional()`, whose stock wording is exactly "install it (it is an optional dependency)".
+ * Value-free by construction: package names and a statement of fact, no input echoed.
+ */
+const TRANSFORM_UNAVAILABLE =
+  "the @cosyte/transform conversion library is not installed, so convert is unavailable; it " +
+  "requires @cosyte/fhir, which is not currently on the npm registry, so npm skips transform as " +
+  "an unresolvable optional dependency and installing it directly fails for the same reason";
+
+/**
  * Parse the HL7 v2 bytes and convert to FHIR: every library **lazy-loaded** so this code loads only
  * when `convert` runs. Only the `parseHL7` call is inside the failure boundary: a genuine parser
  * rejection becomes a value-free `CLI_PARSE_FAILED` (65), with the single opt-in excerpt (under
@@ -182,11 +195,7 @@ type ConvertOutcome =
 async function runConvert(bytes: Uint8Array, posture: PhiPosture): Promise<ConvertOutcome> {
   const [{ parseHL7 }, { toFhir }, { serializeResource }] = await Promise.all([
     import("@cosyte/hl7"),
-    loadOptionalPackage(
-      "the @cosyte/transform conversion library is not installed; install it to use convert " +
-        "(it is an optional dependency, and it in turn requires @cosyte/fhir)",
-      () => import("@cosyte/transform"),
-    ),
+    loadOptionalPackage(TRANSFORM_UNAVAILABLE, () => import("@cosyte/transform")),
     loadFhir(),
   ]);
 
