@@ -86,7 +86,7 @@
     "clean": "rm -rf dist coverage",
     "vendor:refresh": "bash scripts/vendor-refresh.sh",
     "pack:docs": "bash scripts/build-docs-artifacts.sh",
-    "attw": "attw --pack . --profile node16",
+    "attw": "node scripts/attw.mjs --profile node16",
     "version": "changeset version && prettier --write package.json CHANGELOG.md",
     "release": "changeset publish",
     "prepublishOnly": "pnpm clean && pnpm typecheck && pnpm lint && pnpm test && pnpm build && pnpm attw",

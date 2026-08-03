@@ -217,7 +217,8 @@ a summary.
 - **Language:** TypeScript (strict, full rigor set incl. `noUncheckedIndexedAccess`) via
   `@cosyte/tsconfig`. **Target ES2023**, `NodeNext`. TypeScript 5.9.x, exact-pinned.
 - **Build:** dual ESM + CJS + `.d.ts` via `tsup` (`@cosyte/tsup-config`); `attw` is a publish gate
-  (per-condition types: `.d.ts` for `import`, `.d.cts` for `require`).
+  (per-condition types: `.d.ts` for `import`, `.d.cts` for `require`). The `attw` script is
+  **`node scripts/attw.mjs --profile node16`, not the bare CLI**: see the guardrail below.
 - **Node:** **>= 22** (CI matrix 22 + 24).
 - **Package manager:** `pnpm@10`.
 - **Lint/format:** **ESLint 10** + unified `typescript-eslint` (type-checked) via
@@ -327,6 +328,65 @@ first-time-contributor approval gate nor whether `codeql / analyze` can report o
   caught exception's message is discarded, never echoed. The CLI writes no temp file, logs to no file.
 - Coverage: per-directory >= 90% (lines/branches/functions/statements), enforced by
   `pnpm test:coverage`.
+- **▶ `attw` SAYS "does not contain types" AND EXITS 0, SO THE `attw` SCRIPT IS A WRAPPER, NOT THE
+  BARE CLI.** `getExitCode.js` in `@arethetypeswrong/cli@0.18.4` opens with
+  `if (!analysis.types) return 0`, so the problem list is never consulted and no `--profile`,
+  `--ignore-rules` or config setting reaches that early return. For a package that ships types it
+  means the declarations were **not in the tarball**, which is a broken publish reported as a pass,
+  and `verify.sh` propagates the 0. **The race only supplies the condition.** Reproduced here with
+  **zero concurrency**, under the real `--pack . --profile node16`: `rm -rf dist` and, separately,
+  deleting all ten of a completed build's declaration files both print the sentence and exit 0.
+  `tsup` writes JS in one pass and declarations in a later one; instrumented on one build here at a
+  10ms poll, all eight `.mjs`/`.cjs` files appeared on a single poll at 4.92s and all ten
+  declarations on a single later poll at 11.82s, a **6.90s window**. **Do not quote that interval as
+  a constant**: it moves with load (7.85s on a busier box). What does not move is the ordering, and
+  that the ten declarations land together. So the answer is **not** a lock, a lease or a build queue.
+  `scripts/attw.mjs` carries **two nets**: a preflight that every relative path `package.json`
+  promises exists and is non-empty (which names the missing file), and a post-check on the untyped
+  sentence (which catches declarations on disk but excluded from the tarball by `files`; no instance
+  of that is on record here).
+  **Three things specific to this repo, each measured, none inherited from the sibling this was
+  ported from:**
+  1. **The preflight walks `bin` as well as `exports`.** `attw` never reads `bin`. With
+     `dist/bin/cosyte.mjs` deleted and everything else built, it printed every subpath green and
+     exited 0 over a tarball with no `cosyte` command in it.
+  2. **`--profile node16` is load-bearing and is forwarded, never reinterpreted.** Without it,
+     `@cosyte/cli/mcp` fails `node10` resolution and `attw` exits 1. The wrapper passes every
+     argument straight through.
+  3. **SIX PACKED-BUT-UNDECLARED DECLARATIONS DECIDE WHICH SILENCE YOU GET, AND THE OBVIOUS
+     TWO-LINE VERSION OF THIS IS FALSE.** `files: ["dist"]` packs all **ten** declarations `tsup`
+     emits; `package.json` names only **four** (`dist/index.d.*`, `dist/mcp.d.*`). The other six ride
+     along unnamed: `dist/io-<hash>.d.ts`/`.d.cts` **and the four `dist/bin/*.d.ts`/`.d.cts`**.
+     `analysis.types` is true if the tarball carries **any** declaration, so **any one of the six** is
+     enough. Measured, JS intact: the four declared gone with io-\* and bin/\* packed, **exit 1**;
+     also without io-\*, **exit 1**; also without bin/\* but with io-\* back, **exit 1**; all ten
+     gone, the untyped sentence and **exit 0**. So a **partial** loss is caught by `attw` itself and
+     only a **total** one is the false green, and the build window above is the total case. The
+     preflight therefore reports both outcomes and **must not assert the exit 0**. A first draft
+     named only the io chunk as the deciding file, measured it on a `bin`-less throwaway fixture, and
+     wrote the fixture's result down as this tree's; a refuter falsified it in one run. **Re-measure
+     before you shorten this.**
+     The post-check reads a string, so what would hide that string is **refused** rather than
+     tolerated: `--quiet`, `-q`, `--format`, `-f`, `--config-path`, and a `.attw.json` setting `quiet`
+     or `format` (`readConfig()` applies it after argv). Every one was measured here to remove the
+     sentence and still exit 0, `--config-path` included. **The refusal matches an EXACT ARGV TOKEN**
+     (or the part before an `=`), by option name and not by value. **Two disclosed holes, measured,
+     deliberately left open:** commander's attached and clustered short forms `-fjson` and `-Pf json`
+     get through and exit 0 over an untyped pack (`-qP` does not, the empty-transcript net catches
+     it), and a declared path not starting with `.` is skipped by the preflight. Neither is closed,
+     because the bare invocation this replaced exited 0 on that pack with **no** arguments at all, so
+     the gate is strictly better either way, and a short-option parser is a moving part the guard does
+     not need. **Of the ARGV refusal say "exact argv token", never "wholesale":** the stronger wording
+     was live in both the header and the printed message, and was refuted. The `.attw.json` refusal
+     **is** wholesale (key presence, any value) and that word is correct there; the two messages
+     differ on purpose. `test/scripts/attw-gate.test.ts` pins both nets, the upstream exit 0 itself, a
+     negative control on a well-formed package, and that a real `attw` failure still fails with attw's
+     own status.
+     **The vendored `file:` deps do not touch this.** `npm pack --dry-run` on a clean build lists
+     **30** entries and zero from `vendor/`, and no emitted declaration carries a `@cosyte/*` module
+     specifier. (A draft said 70. It was read off a stale `dist/`; a clean `pnpm clean && pnpm build`
+     gives 30, and 26 of those are `dist/`.) The published manifest being uninstallable is a real,
+     separate condition; this gate neither addresses it nor is shaped by it.
 
 ## Standing disciplines (every change)
 
