@@ -93,7 +93,11 @@ function loadFhirWithAbsentPackage(): Promise<never> {
  */
 function fhirDetailFromSource(): string {
   const source = readFileSync(new URL("../src/core/parsers.ts", import.meta.url), "utf8");
-  const match = /const FHIR_UNAVAILABLE =\n((?:\s+"[^"]*"(?: \+)?\n)+)/.exec(source);
+  // The `;?` is load-bearing: the LAST line of the concatenation ends `";`, so without it the final
+  // segment never matches and this silently returns a truncated string while still reading like the
+  // whole thing. A refuter caught exactly that: the negative assertions below were blind to the last
+  // line, which is where an appended sentence would land. The `endsWith` guards below pin it.
+  const match = /const FHIR_UNAVAILABLE =\n((?:\s+"[^"]*"(?: \+)?;?\n)+)/.exec(source);
   if (match?.[1] === undefined) throw new Error("could not read FHIR_UNAVAILABLE from parsers.ts");
   return [...match[1].matchAll(/"([^"]*)"/g)].map((m) => m[1]).join("");
 }
@@ -102,7 +106,8 @@ describe("an absent @cosyte/transform degrades, and is named as a conversion lib
   /** The shipped diagnostic, read out of the source so this asserts the real text, not a copy. */
   function transformDetail(): string {
     const source = readFileSync(new URL("../src/commands/convert.ts", import.meta.url), "utf8");
-    const match = /const TRANSFORM_UNAVAILABLE =\n((?:\s+"[^"]*"(?: \+)?\n)+)/.exec(source);
+    // `;?` as in fhirDetailFromSource: without it the final segment is dropped silently.
+    const match = /const TRANSFORM_UNAVAILABLE =\n((?:\s+"[^"]*"(?: \+)?;?\n)+)/.exec(source);
     if (match?.[1] === undefined) throw new Error("could not read TRANSFORM_UNAVAILABLE");
     return [...match[1].matchAll(/"([^"]*)"/g)].map((m) => m[1]).join("");
   }
@@ -127,6 +132,15 @@ describe("an absent @cosyte/transform degrades, and is named as a conversion lib
     for (const detail of [transformDetail(), fhirDetailFromSource()]) {
       expect(detail).toContain("not currently on the npm registry");
     }
+  });
+
+  it("the source extraction reads the WHOLE constant, not a truncated prefix", () => {
+    // Without this the negative assertions above have a last-line blind spot: the extraction regex
+    // silently drops the final segment (the one ending `";`), which is where an appended sentence
+    // would land, so a re-introduced "install it" tail would pass unnoticed. Pinned by the last
+    // words of each shipped string, so a truncation of any length fails here.
+    expect(transformDetail()).toMatch(/installing it directly fails for the same reason$/);
+    expect(fhirDetailFromSource()).toMatch(/FHIR support is unavailable in this install$/);
   });
 });
 
