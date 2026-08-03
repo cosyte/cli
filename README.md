@@ -22,10 +22,9 @@ It is a thin, honest skin over libraries that already own correctness ([`@cosyte
 and owns two disciplines of its own: a documented **exit-code contract** and a **value-free
 diagnostic** posture.
 
-## Known issue: `0.0.1` is published but cannot be installed
+## Known issue: `0.0.1` and `0.0.2` are published but cannot be installed
 
-**`@cosyte/cli@0.0.1` is on npm and `npm install @cosyte/cli` fails.** It ends in an `ENOENT`, like
-this:
+**`npm install @cosyte/cli@0.0.1` and `@0.0.2` both fail.** They end in an `ENOENT`, like this:
 
 ```
 npm error code ENOENT
@@ -33,26 +32,33 @@ npm error path node_modules/@cosyte/cli/vendor/cosyte-fhir-0.0.0.tgz
 npm error enoent ENOENT: no such file or directory
 ```
 
-`npx @cosyte/cli …` and `npm install -g @cosyte/cli` fail the same way, and so does the `npx`-based
-MCP server registration below. There is no workaround from the consumer side. **Nothing is wrong with
-your setup, and re-running it will not help.**
+`npx` and `npm install -g` fail the same way on those two versions, and so does the `npx`-based MCP
+server registration below. There is no workaround from the consumer side. **Nothing is wrong with your
+setup, and re-running it will not help.**
 
-**Why.** The published manifest declares its ten `@cosyte/*` sibling packages as local file paths
+**Why.** Those manifests declared the ten `@cosyte/*` sibling packages as local file paths
 (`file:vendor/*.tgz`) rather than as npm version ranges. Those tarballs live in the git repository and
-are deliberately not part of the published package, so npm resolves the paths against a directory that
-does not exist in your `node_modules` and stops at the first one. It is a packaging defect in that
-release, not a fault in any command.
+are deliberately not part of the published package, so npm resolved the paths against a directory that
+does not exist in your `node_modules` and stopped at the first one. It was a packaging defect in those
+releases, not a fault in any command.
 
-**A published version is immutable, so `0.0.1` will stay broken.** The fix has to arrive as a later
-version, and it is blocked on something outside this package: `@cosyte/fhir` is not on npm yet (its
-name was rejected by the registry as too similar to an existing package, which is a naming problem
-rather than missing work), and `@cosyte/transform` is on npm but currently fails to install for the
-same reason, because it peer-depends on `@cosyte/fhir`. `@cosyte/hl7` and `@cosyte/terminology` are
-published and would swap over today. Until the naming issue is resolved, run the CLI from a source
-checkout (`pnpm install && pnpm build`, then invoke `dist/bin/cosyte.mjs`).
+**A published version is immutable, so `0.0.1` and `0.0.2` stay broken: install a later version.** The
+sibling packages are now declared as real npm ranges, and the resulting tarball has been installed from
+outside this repository and exercised, which is the check a `npm publish --dry-run` cannot perform.
 
-> **Status:** pre-alpha (`0.0.x`), published to npm at `0.0.1`, which **cannot be installed** (see
-> above). The `cosyte` command wraps **all eight
+**One dependency could not be made real, and it costs you FHIR support.** `@cosyte/fhir` is not on the
+npm registry, so it cannot be a dependency of this package at all; `@cosyte/transform` is on npm but
+requires it, so npm skips that too. In an installed copy:
+
+- FHIR `parse` / `inspect` / `fmt` / `validate` and the `convert` command report a value-free
+  `CLI_PARSER_UNAVAILABLE` and exit `69`. They never guess, and they never blame your input.
+- HL7 v2, `map-codes`, and the six breadth formats (X12, C-CDA, DICOM, NCPDP, ASTM, MLLP) all work.
+
+To use the FHIR commands today, run the CLI from a source checkout (`pnpm install && pnpm build`, then
+invoke `dist/bin/cosyte.mjs`), where the FHIR library is supplied locally.
+
+> **Status:** pre-alpha (`0.0.x`). `0.0.1` and `0.0.2` are on npm and **cannot be installed** (see
+> above); a later version fixes that. The `cosyte` command wraps **all eight
 > cosyte formats** (**HL7 v2**, **FHIR R4**, **X12**, **ASTM**, **NCPDP SCRIPT**, **C-CDA**, **DICOM**,
 > and **MLLP**) plus the `@cosyte/transform` and `@cosyte/terminology` higher-layer libraries, with
 > conservative content-format autodetection and a documented exit-code contract:
@@ -82,24 +88,39 @@ checkout (`pnpm install && pnpm build`, then invoke `dist/bin/cosyte.mjs`).
 >
 > The CLI is **feature-complete**: an argv+stdin+MCP fuzz gate, an exit-code golden matrix, a
 > built-package smoke of both bins, and a clean `npm publish` dry-run. Those gates cover the code, and
-> the code is not what is broken. The one release step they do not cover is the dependency swap
-> described above, which is why `0.0.1` published green and still cannot be installed: a dry-run
-> builds the tarball but never resolves it from a registry. **The swap is blocked, not scheduled**,
-> and it stays blocked until `@cosyte/fhir` can be published under a name npm accepts, which also
-> unblocks `@cosyte/transform`. See [RELEASING.md](./RELEASING.md).
+> the code was never what was broken. The one release step they do not cover is the dependency swap
+> described above, which is why `0.0.1` and `0.0.2` published green and still cannot be installed: a
+> dry-run builds the tarball but never resolves it from a registry. **That swap has now been made**,
+> and installing the packed tarball from outside the repository is a release step in its own right.
+> `@cosyte/fhir` is the one dependency it could not cover, which is why FHIR support is absent from an
+> installed copy rather than merely deferred. See [RELEASING.md](./RELEASING.md).
 
 ## Run it
 
-> **None of the commands in this section work today.** `@cosyte/cli` is on npm, but every install
-> route fails with the `ENOENT` described in [the known issue](#known-issue-001-is-published-but-cannot-be-installed)
-> above. They are recorded here as the shape install will take once a fixed version can ship. Until
-> then, run it from a local checkout (`pnpm install && pnpm build`, then invoke `dist/bin/cosyte.mjs`).
+> **These commands do not work yet, and the reason is now only that no fixed version has shipped.**
+> The newest version on npm is `0.0.2`, and it is one of the two that cannot be installed. The
+> packaging defect is fixed in this repository and proven by installing the packed tarball outside it,
+> but a published version is immutable, so the fix reaches you only in the next release. Until then,
+> run it from a source checkout: `pnpm install && pnpm build`, then invoke `dist/bin/cosyte.mjs`.
 
 ```bash
-npx @cosyte/cli parse message.hl7   # no install; format autodetected → HL7 v2
-npm install -g @cosyte/cli          # or put `cosyte` on your PATH
-cosyte --help
+npm install -g @cosyte/cli          # put `cosyte` on your PATH
+cosyte parse message.hl7            # format autodetected → HL7 v2
 ```
+
+Or without installing, using `npx`:
+
+```bash
+npx --package @cosyte/cli cosyte parse message.hl7
+```
+
+> **`npx @cosyte/cli …` (the short form) does not work, and this is not the packaging defect above.**
+> It fails with `could not determine executable to run`. When a package ships more than one
+> executable, `npx` runs the one whose name matches the package name's last segment; that would be
+> `cli`, and this package ships `cosyte` and `cosyte-mcp`. Naming the executable explicitly with
+> `--package` is the supported form, and it works. A `cli` executable is deliberately **not** added as
+> an alias: `npm install -g` would then put a command called `cli` on every user's `PATH`, which is far
+> too generic a name to claim.
 
 ## `cosyte parse`
 
@@ -274,15 +295,16 @@ subprocess**, not a hosted endpoint. Register it in an MCP client's config:
 ```json
 {
   "mcpServers": {
-    "cosyte": { "command": "npx", "args": ["-y", "@cosyte/cli", "mcp"] }
+    "cosyte": { "command": "npx", "args": ["-y", "--package", "@cosyte/cli", "cosyte-mcp"] }
   }
 }
 ```
 
-> This registration **does not work yet**: `npx` has to install the package first, and that install
-> fails with the `ENOENT` described in
-> [the known issue](#known-issue-001-is-published-but-cannot-be-installed) above. To run the MCP
-> server today, point `command` at a built local checkout's `dist/bin/cosyte-mcp.mjs` instead.
+> **`--package` is required, and the shorter `["-y", "@cosyte/cli", "mcp"]` does not work**: it fails
+> with `could not determine executable to run`, for the `npx` executable-selection reason described
+> under [Run it](#run-it) above. This also needs a version that can be installed at all, so not
+> `0.0.1` or `0.0.2`. The `convert` tool reports `CLI_PARSER_UNAVAILABLE` from an npm install, because
+> the FHIR library is not on the registry.
 
 `cosyte mcp` and the standalone `cosyte-mcp` bin both start the stdio server. It exposes four tools
 (`parse`, `validate`, `inspect`, `convert`), each calling the same command the terminal runs, so the CLI

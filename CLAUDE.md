@@ -107,6 +107,50 @@ subpath still exports a small programmatic `core` API (`detectFormat`, `EXIT`, `
   **Pre-existing and correctly not retroactive:** commit subjects already on `main` may carry `U+2014`.
   The message half only runs on `pull_request`. History is not rewritten.
 
+- **The published manifest is installable again, and `VERSION` no longer lies.** `0.0.1` and `0.0.2`
+  are permanently broken on npm (`file:vendor/*.tgz` specifiers in the published manifest, `ENOENT` on
+  every install route) and both shipped `VERSION = "0.0.0"` against a `0.0.2` manifest, which
+  `cosyte --version` and the MCP `serverInfo.version` both printed. Fixed together:
+  **`scripts/sync-version.mjs`** now runs inside the `version` script and rewrites **two** targets,
+  `src/core/version.ts` and the asserted literal in `docs-content/installation.md`; `test/sanity.test.ts`
+  compares the export against `package.json` **and** pins the declaration's `: string` shape, which the
+  script's pattern keys on. **Fix the ASSERTION, not just the value:** the docs block asserted
+  `typeof VERSION`, which is true of every wrong value and green-lit both bad releases.
+  **The dep swap is done except for one dependency, and the exception is the interesting part.**
+  `@cosyte/hl7` (`^0.0.7`) and `@cosyte/terminology` (`^0.0.9`) are hard deps at real ranges; the six
+  breadth parsers and `@cosyte/transform` (`^0.0.4`) are `optionalDependencies` at real ranges.
+  **`@cosyte/fhir` is not declared at all**, because it is not on the registry and, measured here,
+  declaring it in ANY form alongside `@cosyte/transform` (whose `@cosyte/fhir` peer is mandatory)
+  fails the whole install with `ERESOLVE`: optional dep and optional _peer_ both. Either one alone
+  installs clean; the pair does not. **Do not explain this with a missing
+  `peerDependenciesMeta.optional` flag** - measured across the suite, that flag does not decide the
+  outcome, and the mechanism is unexplained. `@cosyte/fhir` is kept as a **`devDependency`** on the
+  vendored tarball so this repo's own FHIR/`convert` tests run and so `transform`'s peer resolves in
+  the dev tree. Consequence, stated on every consumer surface rather than discovered: **an installed
+  copy has no FHIR support**, and FHIR `parse`/`inspect`/`fmt`/`validate` plus `convert` degrade to a
+  value-free `CLI_PARSER_UNAVAILABLE` (69). That required `loadOptionalPackage(detail, load)` beneath
+  `loadOptional` (which takes a `CosyteFormat` and hardcodes the word "parser", wrong for both cases)
+  plus `loadFhir()`; `test/absent-sibling.test.ts` includes a **static guard** that reds on a new
+  **single-line, unwrapped** `import("@cosyte/fhir")` / `import("@cosyte/transform")` in `src/`, which
+  is the shape the defect took. **Do not write "any new call site": a refuter falsified that wording
+  by adding a thunk assigned to a variable, and the suite stayed 10/10 green.** It also misses a
+  multi-line import and a **static** `import … from "@cosyte/fhir"` - and this repo now HAS the first
+  static reference to that package (`src/core/parsers.ts`, `import type`, erased at build, verified
+  absent from `dist/`). Dropping the word `type` loads it eagerly and breaks every command in an
+  installed copy, unseen by the guard. Also note the two diagnostics deliberately do NOT say
+  "install it": `npm install @cosyte/transform` fails `E404` on its own `fhir` peer, so that advice
+  would send a user at a command that cannot succeed. `loadOptional()`'s stock wording says exactly
+  that, which is why neither goes through it.
+  **Verified by installing, which a `--dry-run` cannot do**: pack, `npm install` the tarball in a clean
+  directory outside the repo (exit 0), run both bins, import `.` under ESM and CJS. Negative control:
+  the published `0.0.2` still `ENOENT`s. Keep that step; it is checklist step 6 in `RELEASING.md`.
+  **A THIRD fault is real, pre-existing, and NOT fixed by any of this: `npx @cosyte/cli …` fails with
+  `could not determine executable to run`.** `npx` runs the bin matching the package name's last
+  segment (`cli`); this package ships `cosyte` and `cosyte-mcp`. The `bin` block is byte-identical to
+  the published `0.0.2`, so the swap cannot have changed it. Docs now say
+  `npx --package @cosyte/cli cosyte …` (measured working). **A `cli` bin alias would fix it and is
+  deliberately not added** - `npm install -g` would then claim the name `cli` on the user's `PATH`.
+  That trade is a founder call.
 - **Phase 7 shipped (CLI-7): release hardening: the final roadmap phase. The CLI is feature-complete.**
   No new runtime command surface; this phase is publish-readiness. **Fuzz** over the CLI's two input
   boundaries: the terminal (`run`, over argv plus stdin bytes) and the agent surface (`dispatchTool`,
@@ -186,12 +230,16 @@ subpath still exports a small programmatic `core` API (`detectFormat`, `EXIT`, `
 - **Phase 1 shipped** (§Phase 1). `cosyte parse <file|->` for **HL7 v2** + **FHIR R4**, **content
   format autodetection** (conservative, fail-safe, never a guessed parser), the documented
   **exit-code contract**, and the **value-free diagnostic** channel with stable `CLI_*` codes.
-- **Hard runtime deps (ADR 0021 + 0023):** `@cosyte/hl7` + `@cosyte/fhir` (parsers) and
-  `@cosyte/transform` + `@cosyte/terminology` (the higher-layer libs `convert`/`map-codes` wrap) are
-  **real `dependencies`** (an `npx` bin can't peer-depend), vendored as `pnpm pack` tarballs in
-  `vendor/` until PUB-FLIP: refresh with `pnpm vendor:refresh`. Pinned shas: hl7 `46d50eb`, fhir
-  `7a099b2`, transform `e6c4531`, terminology `e5ed368`. **Lazy-loaded per command.** Umbrella
-  `verify-policy.json` caps `cli` runtime deps at **4** (raised 2 → 4 for CLI-4, ADR 0023).
+- **Hard runtime deps (ADR 0021 + 0023), as they stand AFTER the vendor → npm swap:** only
+  **`@cosyte/hl7` (`^0.0.7`) + `@cosyte/terminology` (`^0.0.9`)** are hard `dependencies` now, both
+  real registry ranges (an `npx` bin can't peer-depend). `@cosyte/transform` moved to
+  `optionalDependencies` and **`@cosyte/fhir` is undeclared** - see the swap note above for why, and
+  do not "restore" either without reading it. That is **2** hard runtime deps against an umbrella
+  `verify-policy.json` cap of **4**, so it is under the cap, not at it. **Lazy-loaded per command.**
+  On the `0.0.x` ladder `^0.0.7` permits no other version, so these are effectively exact pins, and
+  Dependabot now sees them (it never could while they were `file:` specs). `vendor/` survives only to
+  supply `@cosyte/fhir` as a **`devDependency`**; the other nine tarballs are refreshed by
+  `pnpm vendor:refresh` but wired to nothing, and removing them is a deliberate separate cleanup.
   Third-party CLI-core runtime deps: **zero**. The MCP server's **`@modelcontextprotocol/sdk`** is the
   CLI's only third-party runtime dep: declared in **`optionalDependencies`** (not `dependencies`),
   isolated behind `./mcp`, so it is outside the hard-closure cap (ADR 0024).

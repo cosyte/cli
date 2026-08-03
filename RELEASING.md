@@ -12,79 +12,125 @@ gotchas worth not rediscovering. The suite-wide mechanics live in the umbrella
 Both are standing human gates. Everything up to them (the changeset, the version PR, the publish
 **dry-run**, provenance/OIDC config, this doc) is agent-shippable. The publish itself is not.
 
-## Before the first publish is even possible: the vendor → npm dep swap
+## The vendor → npm dep swap (done, with one dep that could not follow)
 
 `@cosyte/cli` is the only package in the suite that **hard-depends on its siblings**: an `npx`-invoked
-`bin` cannot peer-depend on something the user pre-installed. Until `PUB-FLIP`, those deps are
-**vendored `pnpm pack` tarballs** (`file:vendor/*.tgz`, ADR 0021/0023):
+`bin` cannot peer-depend on something the user pre-installed. Those deps used to be **vendored
+`pnpm pack` tarballs** (`file:vendor/*.tgz`, ADR 0021/0023). **A published package cannot ship a
+`file:vendor/…tgz` dependency**, and two releases went out doing exactly that.
 
-- **Hard `dependencies`** (capped at 4): `@cosyte/hl7`, `@cosyte/fhir`, `@cosyte/transform`,
-  `@cosyte/terminology`.
-- **`optionalDependencies`** (lazy, outside the cap): the six breadth parsers
-  (`dicom`/`x12`/`ccda`/`ncpdp`/`astm`/`mllp`, ADR 0025) and `@modelcontextprotocol/sdk` (ADR 0024).
+They are now real npm ranges, with the single exception of `@cosyte/fhir`, which is not on the
+registry and therefore is not declared at all. `vendor/` survives only to supply `@cosyte/fhir` to
+this repo's own test run, as a `devDependency`; `pnpm vendor:refresh` still refreshes the tarballs,
+and the other nine are no longer wired to anything.
 
-Refresh them with `pnpm vendor:refresh`. **At `PUB-FLIP` these `file:` specifiers must become real
-`@cosyte/*` npm ranges**: a published package cannot ship a `file:vendor/…tgz` dependency. This swap
-is a deliberate release step, not an automated one.
+### ▶ THIS STEP WAS SKIPPED TWICE, AND `0.0.1` + `0.0.2` ARE BROKEN ON npm BECAUSE OF IT
 
-### ▶ THIS STEP WAS SKIPPED, AND `0.0.1` IS BROKEN ON npm BECAUSE OF IT
-
-**`@cosyte/cli@0.0.1` published on 2026-07-29 with all ten `file:vendor/*.tgz` specifiers intact.**
-`vendor/` is not in `files`, and there is no `bundledDependencies`, so the tarball ships none of
-them. Every install route (`npm i`, `npm i -g`, `npx`) dies on the first one:
+**Both published with all ten `file:vendor/*.tgz` specifiers intact.** `vendor/` is not in `files`,
+and there is no `bundledDependencies`, so those tarballs ship none of them. Every install route
+(`npm i`, `npm i -g`, `npx`) dies on the first one:
 
 ```
 npm error code ENOENT
 npm error path node_modules/@cosyte/cli/vendor/cosyte-fhir-0.0.0.tgz
 ```
 
-A published version is immutable (ADR 0001), so `0.0.1` cannot be repaired; the fix must be a later
-version. **Two lessons, both cheap to act on:**
+A published version is immutable (ADR 0001), so neither can be repaired; the fix ships as a later
+version. **The lesson, and it is now a checklist step:**
 
-1. **`npm publish --dry-run` cannot catch this, and the checklist implied it could.** A dry-run packs
-   a tarball; it never resolves that tarball's dependencies from a registry. The gate that would have
-   caught it is `npm install` of the packed tarball **from a directory outside this repo**. Add that
-   before the next publish, and do not treat a green dry-run as install-proof.
-2. **The swap is now blocked, not merely pending.** `@cosyte/fhir` is unpublished (`E403`, an npm
-   name-similarity rejection, tracked as `FHIR-NPM-NAME`), and `@cosyte/transform@0.0.2` is published
-   but fails `E404` on its `@cosyte/fhir` peer, so neither can become a real range today.
-   `@cosyte/hl7` (`0.0.3`) and `@cosyte/terminology` (`0.0.4`) would swap over now, as would all six
-   breadth parsers. See "The route to an installable release" below.
+**`npm publish --dry-run` cannot catch this, and the checklist implied it could.** A dry-run packs a
+tarball; it never resolves that tarball's dependencies from a registry. The gate that catches it is
+`npm install` of the packed tarball **from a directory outside this repo**. That is step 6 below, and
+a green dry-run is not install-proof.
 
-### The route to an installable release
+### The dependency swap, as actually done
 
-Verified against the live registry on 2026-07-30, not assumed:
+Verified against the live registry on 2026-08-03, and by installing the packed tarball in a clean
+directory, not assumed:
 
-| dep                   | real range today?               | note                           |
-| --------------------- | ------------------------------- | ------------------------------ |
-| `@cosyte/hl7`         | yes (`0.0.3`)                   | hard dep                       |
-| `@cosyte/terminology` | yes (`0.0.4`)                   | hard dep                       |
-| six breadth parsers   | yes (all published)             | already `optionalDependencies` |
-| `@cosyte/fhir`        | **no** (`404`, `FHIR-NPM-NAME`) | hard dep                       |
-| `@cosyte/transform`   | **no** (`E404` on the peer)     | hard dep                       |
+| dep                         | shipped as                          | resolves? |
+| --------------------------- | ----------------------------------- | --------- |
+| `@cosyte/hl7`               | `dependencies`, `^0.0.7`            | yes       |
+| `@cosyte/terminology`       | `dependencies`, `^0.0.9`            | yes       |
+| six breadth parsers         | `optionalDependencies`, real ranges | yes       |
+| `@modelcontextprotocol/sdk` | `optionalDependencies`, `1.29.0`    | yes       |
+| `@cosyte/transform`         | `optionalDependencies`, `^0.0.4`    | **no**    |
+| `@cosyte/fhir`              | **not declared at all**             | **no**    |
 
-An installable release **is reachable before `FHIR-NPM-NAME` is resolved**, because npm tolerates an
-`optionalDependency` that fails to resolve (measured: a `404` optional dep installs clean, exit `0`).
-Moving `@cosyte/fhir` and `@cosyte/transform` to `optionalDependencies` with real ranges lets the
-install succeed with those two simply absent.
+**On the `0.0.x` ladder `^0.0.7` is an exact pin** (caret on a `0.0.z` version allows no other
+version), which is what we want pre-alpha: the CLI is tested against exactly those sibling releases,
+and Dependabot now proposes each bump as its own reviewable PR.
 
-**It needs a code change first, and shipping without it would be worse than the current break.**
-`@cosyte/hl7` and `@cosyte/fhir` are imported with a raw `await import()` in `src/core/parsers.ts`
-(`@cosyte/fhir` at 327/412/542/602, `@cosyte/hl7` at 319/397/537/612) and `src/commands/convert.ts`
-(179-180); only the six breadth parsers go
-through `loadOptional()`, which is what turns an absent package into the value-free
-`CLI_PARSER_UNAVAILABLE` (exit `69`). An absent `@cosyte/fhir` or `@cosyte/transform` would therefore
-crash rather than degrade honestly.
+**Why `@cosyte/fhir` is not declared, rather than declared optional.** It is not on the registry
+(`FHIR-NPM-NAME`, a persistent npm `E403`; the earlier "name similarity" reading was retracted
+ecosystem-wide on 2026-08-03, so treat the cause as **unexplained** and do not assert one). Declaring
+it at all breaks the install, which was measured here rather than reasoned about:
 
-**`loadOptional()` cannot be reused as-is, so scope this as more than a one-line change.** Its
-signature is `loadOptional<T>(format: CosyteFormat, …)` and `"transform"` is **not** a `CosyteFormat`
-(`src/core/format.ts:33` lists the eight wire formats only). Its diagnostic also hardcodes the word
-"parser" (`the @cosyte/${format} parser is not installed`), which is wrong for `transform`, a
-conversion library. So the work is: widen the helper (or add a sibling that takes a package name and
-a diagnostic), route the `fhir` and `transform` imports through it, and give `transform` a diagnostic
-that names it accurately. `@cosyte/hl7` stays a hard dep and needs no treatment.
-`src/commands/map-codes.ts:177` also raw-imports `@cosyte/terminology`, which is harmless while
-`terminology` publishes cleanly at `0.0.4`, but it is the same shape if that ever changes.
+| root manifest declares                                    | `npm install`            |
+| --------------------------------------------------------- | ------------------------ |
+| optional `@cosyte/fhir` alone                             | exit `0`                 |
+| optional `@cosyte/transform` alone                        | exit `0`                 |
+| **both**                                                  | **`ERESOLVE`, exit `1`** |
+| optional `@cosyte/fhir` as an _optional peer_ + transform | **`ERESOLVE`, exit `1`** |
+
+So the two cannot both be named. `@cosyte/transform` is declared (it is real, and it starts
+installing by itself the day `@cosyte/fhir` publishes, with no release needed here) and `@cosyte/fhir`
+is not. **Do not attribute this to a missing `peerDependenciesMeta.optional` flag**: measured across
+the suite, that flag does not decide the outcome (`synth` marks all seven peers optional and still
+fails `ERESOLVE`; `deid` declares the same optional `@cosyte/fhir` peer and installs cleanly). The
+mechanism is not yet explained. Record measurements, not theories.
+
+`@cosyte/fhir` is kept as a **`devDependency`** on the vendored tarball, so this repo's own FHIR and
+`convert` tests still run, and so it satisfies `@cosyte/transform`'s peer in the dev tree.
+
+**Say this precisely, because the obvious shorter sentence is false.** `devDependencies` **are**
+published: they stay in the published `package.json` (`npm view @cosyte/hl7@0.0.7 devDependencies`
+returns a full list), and so the fix release's manifest still carries one `file:vendor/*.tgz`
+specifier. What makes that harmless is that **a consumer never installs a dependency's
+`devDependencies`**, so npm never resolves the path. That was verified, not assumed: installing the
+packed tarball in a clean directory exits `0` with the `file:` devDependency present in the manifest.
+The runtime closure is what had to be clean, and it is.
+
+### What an installed copy cannot do, and why that is not a crash
+
+With `@cosyte/fhir` and `@cosyte/transform` both absent, every code path that reaches for them
+degrades to a value-free `CLI_PARSER_UNAVAILABLE` (exit `69`). That required a code change, and
+shipping the manifest swap without it would have been worse than the install break: both were
+imported with a bare `await import()`, so an install without them raised a raw resolver error and a
+stack frame, which the CLI's value-free posture forbids.
+
+`loadOptional()` could not be reused as-is: its signature is `loadOptional<T>(format: CosyteFormat, …)`
+and `"transform"` is not a `CosyteFormat`, and its diagnostic hardcodes the word "parser", which is
+wrong for a conversion library. So `src/core/parsers.ts` now has `loadOptionalPackage(detail, load)`
+underneath it, plus a `loadFhir()` whose diagnostic says the package is not on the registry (rather
+than `loadOptional`'s "install it", which would be false). `@cosyte/hl7` and `@cosyte/terminology`
+stay hard deps and keep their bare imports, correctly. `test/absent-sibling.test.ts` holds this shut,
+including a static guard over `src/`.
+
+**What that guard does and does not catch, because "any new call site" would overstate it.** It flags
+a single-line `await import("@cosyte/fhir")` or `import("@cosyte/transform")` that is not wrapped by
+one of the loaders, which is the shape the defect actually took, and it carries negative controls so
+it cannot pass by matching nothing. It does **not** catch a thunk assigned to a variable and awaited
+elsewhere, an import split across lines, or a **static** `import … from "@cosyte/fhir"`. That last one
+matters: this repo now has its first static reference to that package (`src/core/parsers.ts`, as
+`import type`, which is erased at build time and emits no runtime load, verified in `dist/`). Dropping
+the word `type` would load it eagerly and break every command in an installed copy, and the guard
+would not see it.
+
+### The `npx @cosyte/cli` short form does not work, and the swap does not fix it
+
+Separate, pre-existing, and measured on both the published `0.0.2` and the fixed tarball:
+
+```
+$ npx @cosyte/cli --help
+npm error could not determine executable to run
+```
+
+`npx` runs the executable whose name matches the package name's last segment, which would be `cli`;
+this package ships `cosyte` and `cosyte-mcp`. `npx --package @cosyte/cli cosyte --help` works and is
+what the docs tell people to run. **A `cli` bin alias would fix the short form and is deliberately not
+added**, because `npm install -g` would then put a command named `cli` on every user's `PATH`. If that
+trade is ever revisited, it is a founder call, not a packaging tidy-up.
 
 ## The pipeline
 
@@ -134,17 +180,29 @@ would fail.
 
 ## The publish checklist (for the human at the gate)
 
-Steps 1 and 3 are **already done**: the repo is public, and both bin names were taken by `0.0.1`.
-Step 2 is the one that was skipped, and it is why this checklist now has a step 6.
+Steps 1, 2 and 3 are **already done**. Step 2 is the one that was skipped twice, and it is why this
+checklist has a step 6.
 
 1. ~~`PUB-FLIP` the repo public (founder stop 1).~~ Done; the repo is public.
-2. Swap the vendored `file:` deps for real `@cosyte/*` npm ranges; `pnpm install`; re-run
-   `scripts/verify.sh cli`. **Blocked today** on two of the four hard deps: see "The route to an
-   installable release" above for what is reachable without waiting.
+2. ~~Swap the vendored `file:` deps for real `@cosyte/*` npm ranges.~~ Done; see "The dependency swap,
+   as actually done" above for what could and could not be swapped, and for the measurements behind
+   it. `@cosyte/fhir` stays undeclared until it is on the registry; when it publishes, declare it and
+   `@cosyte/transform` starts resolving too.
 3. ~~Confirm the `cosyte` / `cosyte-mcp` bin names are free on npm.~~ Done; `0.0.1` owns both.
 4. Land the release changeset; approve the **"Version Packages"** PR.
 5. Approve the protected `release` environment to publish (founder stop 2). Provenance attaches
    automatically.
 6. **Install the published version from outside this repo before calling it shipped**, in a clean
-   temp directory: `npm install @cosyte/cli@<version>`. A green `--dry-run` does not prove this, and
-   `0.0.1` is the proof that it does not.
+   temp directory. A green `--dry-run` does not prove this, and `0.0.1` and `0.0.2` are the proof that
+   it does not. Run the binary too, because installing is not the same as working:
+
+   ```bash
+   cd "$(mktemp -d)" && npm init -y >/dev/null
+   npm install @cosyte/cli@<version>          # must exit 0
+   node_modules/.bin/cosyte --version         # must print <version>, NOT 0.0.0
+   node_modules/.bin/cosyte parse some.hl7    # must exit 0
+   node -e 'import("@cosyte/cli").then(m=>console.log(m.VERSION))'
+   ```
+
+   `cosyte --version` is the check that catches a skipped `scripts/sync-version.mjs`: `0.0.1` and
+   `0.0.2` both printed `0.0.0`.

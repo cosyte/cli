@@ -74,6 +74,23 @@ These are **non-goals**, not missing features: named so nothing over-trusts the 
   | `dicom`                | not supported (binary model)              | ✓       | not supported | ✓             |
   | `mllp`                 | ✓ (de-framed to HL7)                      | ✓       | not supported | not supported |
 
+  **The matrix says what the CLI implements. It is not a promise about what your install can reach**,
+  and for one format those differ today:
+
+- **FHIR is implemented but not available from an npm install.** `@cosyte/fhir` is not on the npm
+  registry, so it cannot be a dependency of this package. In an installed copy every FHIR cell above
+  reports a value-free `CLI_PARSER_UNAVAILABLE` and exits `69`, and so does **`convert`**, which needs
+  both `@cosyte/fhir` and `@cosyte/transform` (the latter requires the former, so npm skips it as an
+  unresolvable optional dependency). This is stated rather than discovered: the commands do not guess,
+  and they do not report your input as bad. Run the CLI from a source checkout to use them. The six
+  breadth formats are also optional dependencies, but they do resolve, so a default install has all
+  six; removing one degrades that format to the same value-free `CLI_PARSER_UNAVAILABLE`.
+
+- **Do not install with `--omit=optional`.** The install succeeds, but the `cosyte` command then does
+  not run at all: it fails on a missing `@modelcontextprotocol/sdk` before reaching any command, even
+  `--version`. That is a known defect and is tracked separately; it is recorded here rather than left
+  for you to hit.
+
 - **No clinical interpretation, no unit conversion, no terminology content.** The CLI inherits these
   non-goals from the libraries it wraps. It never decides criticality, rescales a magnitude, or bundles
   SNOMED/LOINC/CPT.

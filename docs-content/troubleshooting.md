@@ -38,10 +38,18 @@ names which formats _do_ support the operation. The command is never faked to a 
 
 ## `CLI_PARSER_UNAVAILABLE` (exit 69)
 
-The optional parser package for a recognised format is not installed. The six breadth parsers
-(`dicom`/`x12`/`ccda`/`ncpdp`/`astm`/`mllp`) are `optionalDependencies`: installed by default, but if
-one is absent (e.g. you installed with `--omit=optional`) the CLI degrades to this value-free signal
-rather than crashing. Install the named `@cosyte/<format>` package to use that format.
+The library for a recognised format is not installed. The CLI degrades to this value-free signal
+rather than crashing, and it never falls back to a guess. Two different causes:
+
+- **The six breadth parsers** (`dicom`/`x12`/`ccda`/`ncpdp`/`astm`/`mllp`) are `optionalDependencies`
+  that resolve, so a default install has all six; you see this only if one was removed. Install the
+  named `@cosyte/<format>` package to get it back. Note that `--omit=optional` is **not** a supported
+  way to slim the install: it also removes `@modelcontextprotocol/sdk`, and the `cosyte` command then
+  fails to start at all rather than reaching this diagnostic. Known defect, tracked separately.
+- **FHIR is always unavailable from an npm install**, and no reinstall changes that: `@cosyte/fhir` is
+  not on the npm registry, so it is not a dependency of this package. This also takes out `convert`,
+  which additionally needs `@cosyte/transform` (itself skipped, because it requires `@cosyte/fhir`).
+  The diagnostic says so. To use the FHIR commands, run the CLI from a source checkout.
 
 ## `CLI_NO_INPUT` (exit 66)
 

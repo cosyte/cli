@@ -11,6 +11,30 @@ this file is maintained by hand (Changesets handles the version bump and publish
 
 ### Fixed
 
+- **`@cosyte/cli` can be installed from npm again (CLI-UNINSTALLABLE-MANIFEST).** `0.0.1` and `0.0.2`
+  both published with all ten `@cosyte/*` sibling packages declared as `file:vendor/*.tgz` local
+  paths. `vendor/` is not in `files` and there is no `bundledDependencies`, so the tarball shipped
+  none of them and every install route died on the first: `ENOENT ...
+node_modules/@cosyte/cli/vendor/cosyte-fhir-0.0.0.tgz`. The siblings are now real registry ranges:
+  `@cosyte/hl7` (`^0.0.7`) and `@cosyte/terminology` (`^0.0.9`) as hard `dependencies`, and the six
+  breadth parsers plus `@cosyte/transform` (`^0.0.4`) as `optionalDependencies`. Verified the way a
+  dry-run cannot: the packed tarball was installed in a clean directory outside the repo (exit `0`),
+  then both bins were run and the `.` subpath imported under ESM and CJS.
+
+- **`VERSION` and `cosyte --version` now report the release you are running (CLI-VERSION-DRIFT).**
+  `src/core/version.ts` exported `"0.0.0"` while `package.json` said `0.0.2`, and the constant's own
+  doc comment claimed it was "synced with `package.json#version` on release by the Changesets
+  `version` script" when no such step existed. Confirmed in the published tarball: `@cosyte/cli@0.0.2`
+  ships `VERSION = "0.0.0"` in `dist/index.mjs` and `dist/index.cjs`. It reached two user-visible
+  surfaces, `cosyte --version` and the MCP server's advertised `serverInfo.version`. `scripts/sync-version.mjs`
+  (ported from `@cosyte/transform`) now runs inside the `version` script, and `test/sanity.test.ts`
+  compares the export against `package.json` so a skipped sync goes red rather than shipping.
+  **The two assertions that let five bad releases through the sibling packages are fixed here, not
+  just the value:** `docs-content/installation.md` asserted `typeof VERSION` (true of every wrong
+  value) and now asserts the exact version, which the sync script keeps in step; and the declaration's
+  `: string` annotation, which the sync script's pattern keys on, is pinned by its own test, so
+  dropping it fails at `pnpm test` instead of silently at release time.
+
 - **The `attw` publish gate no longer exits 0 on an untyped pack (ATTW-FALSE-GREEN-PORT).** The
   `attw` script was the bare CLI (`attw --pack . --profile node16`), and
   `@arethetypeswrong/cli@0.18.4`'s `getExitCode.js` opens with `if (!analysis.types) return 0`,
@@ -90,6 +114,53 @@ this file is maintained by hand (Changesets handles the version bump and publish
   routed through a guarded loader to degrade to `CLI_PARSER_UNAVAILABLE` (exit `69`) rather than
   crash. `loadOptional()` cannot be reused unchanged: it takes a `CosyteFormat`, and `"transform"` is
   not one, and its diagnostic hardcodes the word "parser". Not undertaken here.
+  - **Superseded within this same unreleased set**, by the two entries at the top of this section:
+    the swap and the loader change were both carried out. Two claims that entry made did not survive
+    contact: the "name similarity" reading of the `@cosyte/fhir` `E403` was **retracted across the
+    ecosystem on 2026-08-03** (the cause is unexplained; do not assert one), and "npm tolerates an
+    `optionalDependency` that fails to resolve" is true only in isolation. Declaring **both**
+    `@cosyte/fhir` and `@cosyte/transform` optional fails the install outright with `ERESOLVE`, which
+    is why `@cosyte/fhir` ended up not declared at all rather than declared optional.
+
+### Changed
+
+- **FHIR support is unavailable in an npm-installed copy, and now says so instead of crashing.**
+  `@cosyte/fhir` is not on the npm registry, so it cannot be declared as a dependency at all;
+  measured, declaring it alongside `@cosyte/transform` (which requires it) fails the whole install
+  with `ERESOLVE`. `@cosyte/transform` is therefore skipped by npm as an unresolvable optional
+  dependency. Both were previously loaded with a bare `await import()`, which in an installed copy
+  would have surfaced a raw resolver error and a stack frame, so FHIR `parse`/`inspect`/`fmt`/`validate`
+  and `convert` now degrade to a value-free `CLI_PARSER_UNAVAILABLE` (exit `69`) with a diagnostic that
+  says the package is not on the registry rather than "install it". **Neither diagnostic says "install
+  it", and that is deliberate**: `npm install @cosyte/transform` fails `E404` on its own
+  `@cosyte/fhir` peer, so `loadOptional()`'s stock wording ("install it to use this format, it is an
+  optional dependency") would point a user at a command that cannot succeed. New
+  `loadOptionalPackage(detail, load)` under `loadOptional`, exported on the `.` subpath.
+  `@cosyte/fhir` is retained as a `devDependency` on the vendored tarball so this repo's own FHIR and
+  `convert` tests still run; note that `devDependencies` **are** published, so that one
+  `file:vendor/*.tgz` specifier does remain in the manifest, harmlessly, because a consumer never
+  installs a dependency's `devDependencies` (verified: the install exits `0`). HL7 v2, `map-codes` and
+  the six breadth formats are unaffected and work from a plain install.
+
+- **Documented a pre-existing defect that this release makes reachable for the first time:
+  `--omit=optional` produces an install in which the `cosyte` command does not run at all.** The
+  install exits `0`, then every invocation, `--version` included, fails with `ERR_MODULE_NOT_FOUND` on
+  `@modelcontextprotocol/sdk` and a raw stack trace, because the built `dist/bin/cosyte.mjs` imports
+  the SDK statically at the top level rather than only on the `mcp` path. Verified identical on the
+  base commit, so it is not introduced here; it simply could not be hit before, because the package
+  could not be installed at all. `docs-content/` now says not to use that flag instead of implying it
+  is a supported way to slim the install. **The code defect is not fixed here** and needs its own
+  change: it also falsifies the "a plain `cosyte parse` never pulls it" claim in `src/bin/cosyte.ts`.
+
+- **The docs no longer tell you to run `npx @cosyte/cli …`, which never worked.** Separate from the
+  packaging defect and not fixed by it: `npx` runs the executable whose name matches the package
+  name's last segment, which would be `cli`, and this package ships `cosyte` and `cosyte-mcp`, so the
+  short form fails with `could not determine executable to run`. Reproduced on the published `0.0.2`
+  and on the fixed tarball, whose `bin` block is byte-identical. `README.md`, `docs-content/installation.md`
+  and both MCP registration snippets now use `npx --package @cosyte/cli cosyte …` /
+  `npx -y --package @cosyte/cli cosyte-mcp`, each measured working. A `cli` bin alias would fix the
+  short form and is deliberately not added, because `npm install -g` would then claim a command named
+  `cli` on the user's `PATH`.
 
 ### Added
 

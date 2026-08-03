@@ -1,6 +1,26 @@
 #!/usr/bin/env bash
 #
-# vendor-refresh.sh: regenerate the vendored @cosyte sibling tarballs @cosyte/cli depends on.
+# vendor-refresh.sh: regenerate the vendored @cosyte sibling tarballs.
+#
+# ▶ READ THIS FIRST: ONLY ONE OF THESE TARBALLS IS STILL WIRED TO ANYTHING.
+#
+# The vendor -> npm dependency swap has happened. package.json now declares real registry ranges for
+# every sibling EXCEPT @cosyte/fhir, which is not on the npm registry and therefore cannot be a
+# dependency of a published package at all. So:
+#
+#   @cosyte/fhir   file:vendor/cosyte-fhir-0.0.0.tgz, and it is a devDependency, NOT a runtime one.
+#                  It exists so this repo's own FHIR + convert tests can run, and so that
+#                  @cosyte/transform's mandatory @cosyte/fhir peer resolves in the dev tree.
+#                  NOTE, because the shorter sentence is false: devDependencies ARE published, so
+#                  this file: specifier does ship in the manifest. It is harmless only because a
+#                  consumer never installs a dependency's devDependencies, so npm never resolves
+#                  the path. Verified by installing the packed tarball in a clean directory.
+#   everything else  a real "^0.0.x" range from npm. The nine other tarballs below are refreshed by
+#                  this script but referenced by nothing. They are kept because @cosyte/fhir's
+#                  refresh shares this machinery, and removing them is a separate cleanup.
+#
+# When @cosyte/fhir publishes: declare it as a real range alongside the others, drop the
+# devDependency, and this script can go. See RELEASING.md.
 #
 # @cosyte/cli is a `bin` package (the `cosyte` command), not a library. An `npx`-invoked bin CANNOT
 # rely on the user having pre-installed anything, so, unlike @cosyte/mllp (peer + optional on

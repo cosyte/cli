@@ -22,14 +22,19 @@ Add the server to your MCP client's configuration (Claude Desktop, an IDE agent,
 ```json
 {
   "mcpServers": {
-    "cosyte": { "command": "npx", "args": ["-y", "@cosyte/cli", "mcp"] }
+    "cosyte": { "command": "npx", "args": ["-y", "--package", "@cosyte/cli", "cosyte-mcp"] }
   }
 }
 ```
 
-> **This registration does not work yet.** `npx` installs the package first, and that install fails:
-> see [Installing fails today](./installation#installing-fails-today). Point `command` at a built
-> local checkout's `dist/bin/cosyte-mcp.mjs` instead.
+> **`--package` is required here, and the shorter `["-y", "@cosyte/cli", "mcp"]` does not work.** It
+> fails with `could not determine executable to run`, because `npx` picks the executable whose name
+> matches the package name's last segment (`cli`) and this package ships `cosyte` and `cosyte-mcp`.
+> Naming `cosyte-mcp` explicitly is the supported form.
+>
+> This registration also requires a version that can be installed at all: `0.0.1` and `0.0.2` cannot
+> be. See [If you are on 0.0.1 or 0.0.2](./installation#if-you-are-on-001-or-002). FHIR tools are
+> unavailable from an npm install for a further reason described alongside it.
 
 `cosyte mcp` starts the stdio server; the standalone `cosyte-mcp` bin is equivalent.
 

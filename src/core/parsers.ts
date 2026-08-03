@@ -18,6 +18,8 @@
  * @packageDocumentation
  */
 
+import type * as CosyteFhir from "@cosyte/fhir";
+
 import { CLI_CODES, CliError } from "./diagnostics.js";
 import { EXIT } from "./exit-codes.js";
 import { formatHl7Position, type Finding } from "./findings.js";
@@ -270,19 +272,75 @@ function anyError(findings: readonly Finding[]): boolean {
  * ```
  */
 export async function loadOptional<T>(format: CosyteFormat, load: () => Promise<T>): Promise<T> {
+  return loadOptionalPackage(
+    `the @cosyte/${format} parser is not installed; install it to use this format ` +
+      `(it is an optional dependency)`,
+    load,
+  );
+}
+
+/**
+ * The same graceful-degradation path as {@link loadOptional}, keyed on a **package name** rather than
+ * a {@link CosyteFormat}, with the diagnostic supplied by the caller.
+ *
+ * Two of the packages the CLI lazy-loads are not wire-format parsers and so cannot go through
+ * {@link loadOptional}: `@cosyte/transform` (a conversion library, not one of the eight formats, so
+ * calling it a "parser" in the diagnostic would be wrong) and `@cosyte/fhir` (a format, but absent for
+ * a reason no reinstall fixes, which the message has to say). Both are reachable from a published
+ * install only if the user already has them, so both must degrade to a value-free
+ * `CLI_PARSER_UNAVAILABLE` (exit `69`) instead of surfacing a raw resolver error and a stack frame.
+ *
+ * @template T - The imported module's type.
+ * @param detail - The value-free diagnostic detail shown when the package is absent.
+ * @param load - A thunk performing the dynamic import.
+ * @returns The imported module.
+ * @throws {CliError} `CLI_PARSER_UNAVAILABLE` (exit `69`) when the package is absent; any other error
+ *   propagates unchanged.
+ * @example
+ * ```ts
+ * import { loadOptionalPackage } from "@cosyte/cli";
+ *
+ * await loadOptionalPackage("the conversion library is not installed", () =>
+ *   import("@cosyte/transform"),
+ * );
+ * ```
+ */
+export async function loadOptionalPackage<T>(detail: string, load: () => Promise<T>): Promise<T> {
   try {
     return await load();
   } catch (e) {
     if (isModuleNotFound(e)) {
-      throw new CliError(
-        CLI_CODES.CLI_PARSER_UNAVAILABLE,
-        EXIT.UNAVAILABLE,
-        `the @cosyte/${format} parser is not installed; install it to use this format ` +
-          `(it is an optional dependency)`,
-      );
+      throw new CliError(CLI_CODES.CLI_PARSER_UNAVAILABLE, EXIT.UNAVAILABLE, detail);
     }
     throw e;
   }
+}
+
+/**
+ * Why `@cosyte/fhir` is absent, in the words a user can act on. It is not on the npm registry, so it
+ * cannot be a declared dependency of this package at all, and no reinstall of `@cosyte/cli` will
+ * produce it. Value-free by construction: a package name and a statement of fact, no input echoed.
+ */
+const FHIR_UNAVAILABLE =
+  "the @cosyte/fhir parser is not installed, and it is not currently on the npm registry, " +
+  "so it cannot be installed from there; FHIR support is unavailable in this install";
+
+/**
+ * Load `@cosyte/fhir`, degrading to a value-free `CLI_PARSER_UNAVAILABLE` when it is absent.
+ *
+ * Every FHIR branch in this file and the `convert` command go through here, so there is exactly one
+ * place that decides what an absent FHIR library does. It is deliberately not re-exported from the
+ * package entry point: consumers get {@link loadOptionalPackage}, not this repo's own wiring.
+ *
+ * @returns The `@cosyte/fhir` module.
+ * @throws {CliError} `CLI_PARSER_UNAVAILABLE` (exit `69`) when the package is absent.
+ * @example
+ * ```ts
+ * const { parseResource } = await loadFhir();
+ * ```
+ */
+export async function loadFhir(): Promise<typeof CosyteFhir> {
+  return loadOptionalPackage(FHIR_UNAVAILABLE, () => import("@cosyte/fhir"));
 }
 
 /** True iff `e` is a "module not found" failure, by Node's `code`, or the standard resolver message. */
@@ -324,7 +382,7 @@ export async function parseFormat(format: CosyteFormat, bytes: Uint8Array): Prom
       };
     }
     case "fhir": {
-      const { parseResource, serializeResource } = await import("@cosyte/fhir");
+      const { parseResource, serializeResource } = await loadFhir();
       const text = decode(bytes);
       const { resource, issues } = parseResource(text);
       const model: unknown = JSON.parse(serializeResource(resource));
@@ -409,7 +467,7 @@ export async function inspectFormat(
       };
     }
     case "fhir": {
-      const { parseResource, resourceType, readBundle } = await import("@cosyte/fhir");
+      const { parseResource, resourceType, readBundle } = await loadFhir();
       const { resource, issues } = parseResource(decode(bytes));
       const rt = resourceType(resource) ?? null;
       if (rt === "Bundle") {
@@ -539,7 +597,7 @@ export async function fmtFormat(format: CosyteFormat, bytes: Uint8Array): Promis
       return { output: msg.toString(), warningCount: msg.warnings.length };
     }
     case "fhir": {
-      const { parseResource, serializeResource } = await import("@cosyte/fhir");
+      const { parseResource, serializeResource } = await loadFhir();
       const { resource, issues } = parseResource(decode(bytes));
       return { output: serializeResource(resource), warningCount: issues.length };
     }
@@ -599,7 +657,7 @@ export async function fmtFormat(format: CosyteFormat, bytes: Uint8Array): Promis
 export async function validateFormat(format: CosyteFormat, bytes: Uint8Array): Promise<Verdict> {
   switch (format) {
     case "fhir": {
-      const { parseResource, validateResource } = await import("@cosyte/fhir");
+      const { parseResource, validateResource } = await loadFhir();
       const { resource, issues } = parseResource(decode(bytes));
       const validation = validateResource(resource);
       const findings: Finding[] = [
