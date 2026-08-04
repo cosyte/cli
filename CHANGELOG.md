@@ -11,6 +11,69 @@ this file is maintained by hand (Changesets handles the version bump and publish
 
 ### Fixed
 
+- **The pre-commit PHI gate never saw a `git mv` into a scan root
+  (PHI-SCAN-RENAME-BLIND-AT-PRECOMMIT).** `scripts/phi-scan.ts --staged` listed the index with
+  `git diff --cached --name-only --diff-filter=AM`. Rename detection is on by default, so
+  `git mv <path> test/__fixtures__/<name>` stages as a **two-path `R100` record**, and `R` and `C`
+  are in neither `AM` nor `AMT`: the status filter deleted the record outright and the destination
+  was never enumerated. Measured on this repo, both shapes walking through the
+  `pnpm phi-scan --staged` pre-commit hook at **exit 0**: a regular file carrying a value this
+  scanner's own floor catches (`:100644 100644 <sha> <sha> R100`), and a symbolic link
+  (`:120000 120000 <sha> <sha> R100`, index mode `120000` under the scan root). `git mv` is an
+  ordinary developer action, not crafted input, and the pre-commit hook is the gate it walked
+  through.
+  - **`--no-renames` is the remedy, and it costs the record stride nothing.** The destination
+    arrives as a single-path `A` and the source as a `D` the filter drops, so the enumeration is a
+    strict **superset** of the previous one. Verified under `diff.renames` set to `true`, `copies`,
+    `false` and `1`, and under `diff.renameLimit=1`: no `R` or `C` record survives in any of them,
+    which makes the two-field record stride structural rather than conditional. `copies` is not
+    hypothetical; it produces a live `C100` here.
+  - **The destination mode was never read at all.** The route enumerated with `--name-only` and read
+    content with `git show :<path>`, and git stores a symbolic link as its **target path** under
+    mode `120000`, so the scan was handed the path text and never the target's bytes. It now lists
+    with `--raw -z` and **refuses** (exit `2`) any in-scope entry whose destination mode is not a
+    regular blob. A refusal names the entry's own repo-relative path and an engine-owned token for
+    its kind, and **never the link target**, which is working-tree text that can itself carry PHI.
+    Every offender is named, not just the first.
+  - **`T` (typechange) is now in the filter**, because replacing a _tracked_ regular fixture with a
+    link is neither an add nor a modify (`:100644 120000 <sha> <sha> T`), so `--diff-filter=AM`
+    deleted the record before any mode could be read. The reverse direction, a link replaced by a
+    real file, is now scanned as the file it became.
+  - **Each scan root's own path is in scope**, not just its contents. Git records no index entry for
+    a directory, so an entry at exactly `test/__fixtures__` or `src` is that root replaced by a blob
+    or a link, and a prefix test requiring the trailing slash let it through while the whole corpus
+    went unscanned.
+  - **The all-mode walk gets the same refusal.** A scanner whose pre-commit half refuses a link
+    while its CI half silently drops one is not one a developer can reason about. The walk
+    enumerates `Dirent.isFile()`, an lstat answer, so a link (and a linked _directory_, which
+    `isDirectory()` also answers false for) fell out of the loop silently. The `.md` exemption
+    deliberately does not reach a link: it is a judgement about a file whose bytes the walk could
+    have read, and a link's name is no evidence about what is on the other side of it. A gitignored
+    entry stays out of scope, by the same rule that already excludes a gitignored fixture.
+  - **Two pre-existing exit-code defects fixed with it.** A missing or unreadable allow-list, and an
+    unreadable scan root, both threw past every handler and exited **1** with a raw stack trace. `1`
+    is this contract's code for _hits found_, so a caller branching on the exit code read a broken
+    invocation as a PHI finding and a caller branching on "not 0" read it as the gate working.
+    Neither was true. Both are now exit `2` with a diagnostic.
+  - **Stated rather than left to be inferred, both pre-existing and neither closed here.** The
+    staged route still does not enumerate `D` (a deletion has no staged blob to scan) or `U` (an
+    unmerged path has no single one). The `U` half costs nothing that can reach a commit, and that
+    was measured rather than assumed: `git commit` refuses an unmerged index outright. Under `src/`
+    the staged route still covers only `.ts` files while the all-mode walk covers every non-`.md`
+    file, so the CI sweep is what covers the difference; widening the staged half is a scope
+    decision and was not taken here. And in the all-mode route only, a scan root that is a
+    **dangling** link is followed by `existsSync`, answers false, and the walk reports clean over a
+    corpus it never opened. That needs a refuse-a-scan-that-observed-nothing rule, which is its own
+    change. The `--staged` half of that same shape **is** closed.
+  - `test/scripts/phi-scan.test.ts` builds throwaway git repositories for all of it, because these
+    are properties of what `git diff --cached` reports and cannot be reproduced by scanning a path.
+    **16 of its 30 tests run red against the scanner on `a7a92f8`**; the 14 that stay green are the
+    pre-existing floor tests and the deliberate controls (an ordinary staged hit, a clean pass, a
+    staged link outside both roots, an ignored link, and a check that the payload under test is
+    something this scanner would otherwise catch). Synthetic values only.
+  - **No change to the CLI's runtime surface**: no command, flag, exit code, diagnostic code or
+    export moves. This is repository tooling.
+
 - **`@cosyte/cli` can be installed from npm again (CLI-UNINSTALLABLE-MANIFEST).** `0.0.1` and `0.0.2`
   both published with all ten `@cosyte/*` sibling packages declared as `file:vendor/*.tgz` local
   paths. `vendor/` is not in `files` and there is no `bundledDependencies`, so the tarball shipped

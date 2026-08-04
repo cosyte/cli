@@ -18,7 +18,17 @@
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { spawnSync } from "node:child_process";
-import { writeFileSync, mkdtempSync, rmSync } from "node:fs";
+import {
+  writeFileSync,
+  readFileSync,
+  mkdtempSync,
+  mkdirSync,
+  copyFileSync,
+  symlinkSync,
+  existsSync,
+  realpathSync,
+  rmSync,
+} from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
@@ -34,9 +44,9 @@ interface RunResult {
   stderr: string;
 }
 
-function runScanner(args: string[]): RunResult {
+function runScanner(args: string[], cwd: string = REPO_ROOT): RunResult {
   const r = spawnSync(TSX_BIN, [SCANNER_PATH, ...args], {
-    cwd: REPO_ROOT,
+    cwd,
     encoding: "utf8",
     shell: false,
   });
@@ -96,3 +106,564 @@ describe("phi-scan starter: the override-log gate", () => {
     expect(r.stderr).toMatch(/phi-scan-overrides\.md/);
   });
 });
+
+// ---------------------------------------------------------------------------
+// The `--staged` route: the pre-commit half of the gate.
+//
+// These build throwaway git repositories laid out the way this scanner expects,
+// because the defects below are properties of what `git diff --cached` reports
+// and cannot be reproduced by scanning a path. The pre-commit hook is
+// `pnpm phi-scan --staged`, so this route is the gate a developer actually
+// walks through.
+//
+// SYNTHETIC PHI ONLY. The payload is the dashed-SSN shape this file's own floor
+// tests already use plus an address at the RFC 2606 reserved `.invalid` TLD, so
+// it is detectable by construction and refers to no one.
+// ---------------------------------------------------------------------------
+
+const SYNTHETIC_SSN = "123-45-6789";
+const SYNTHETIC_EMAIL = "zzsentinel@hospital.invalid";
+const SYNTHETIC_PHI = `synthetic record: ssn ${SYNTHETIC_SSN} contact ${SYNTHETIC_EMAIL}\n`;
+
+/**
+ * A link target whose own FILENAME carries the payload. A refusal must name the
+ * entry and never echo what it points at: the target path is working-tree text,
+ * and a diagnostic about a PHI leak is itself a PHI surface.
+ */
+const TARGET_NAME = `notes-${SYNTHETIC_SSN}.txt`;
+
+function expectNoPhi(text: string): void {
+  expect(text).not.toContain(SYNTHETIC_SSN);
+  expect(text).not.toContain(SYNTHETIC_EMAIL);
+}
+
+function git(cwd: string, args: string[]): void {
+  const r = spawnSync("git", args, { cwd, encoding: "utf8", shell: false });
+  if ((r.status ?? -1) !== 0) throw new Error(`git ${args.join(" ")} failed: ${r.stderr}`);
+}
+
+function gitOut(cwd: string, args: string[]): string {
+  const r = spawnSync("git", args, { cwd, encoding: "utf8", shell: false });
+  return r.stdout ?? "";
+}
+
+const COMMIT = ["-c", "user.email=t@example.com", "-c", "user.name=t", "commit", "-qm"];
+const MERGE = ["-c", "user.email=t@example.com", "-c", "user.name=t", "merge"];
+
+/**
+ * Every test below spawns the scanner as a child process, and `tsx` pays a cold
+ * TypeScript start on each one. Several of these build a git repo and spawn it
+ * more than once. The shared 10s default is not enough headroom for that on a
+ * loaded box: measured at 0.5s idle and 3.7s under contention for a single
+ * spawn, which is a flake waiting to be read as a red gate.
+ */
+const SLOW_MS = 60_000;
+
+const repos: string[] = [];
+
+/**
+ * A throwaway git repo laid out the way this scanner expects: an allow-list
+ * under `scripts/`, both scan roots, and one ordinary file in each so the
+ * enumeration has something legitimate to find.
+ */
+function makeRepo(): string {
+  const root = realpathSync(mkdtempSync(join(tmpdir(), "cli-phi-scan-repo-")));
+  repos.push(root);
+  mkdirSync(join(root, "scripts"));
+  mkdirSync(join(root, "test", "__fixtures__"), { recursive: true });
+  mkdirSync(join(root, "src"));
+  copyFileSync(
+    join(REPO_ROOT, "scripts", "phi-allow-list.txt"),
+    join(root, "scripts", "phi-allow-list.txt"),
+  );
+  writeFileSync(join(root, "test", "__fixtures__", "ordinary.txt"), "synthetic placeholder\n");
+  writeFileSync(join(root, "src", "ok.ts"), "export const ok = 1;\n");
+  git(root, ["init", "-q", "."]);
+  // Repo-local identity, so no git invocation in this file depends on the
+  // runner having one. A CI runner has none, and a git operation that refuses
+  // for want of an identity fails in a way that reads as "nothing happened",
+  // which is how a fixture goes silently vacuous.
+  git(root, ["config", "user.email", "t@example.com"]);
+  git(root, ["config", "user.name", "t"]);
+  return root;
+}
+
+afterAll(() => {
+  for (const r of repos) rmSync(r, { recursive: true, force: true });
+});
+
+describe("phi-scan: the scanner under test is THIS package's", () => {
+  // Negative control against a cross-worker file collision. Several agents share
+  // one scratch area in this environment, and a sibling package's scanner would
+  // answer most of the cases below plausibly while proving nothing about
+  // `@cosyte/cli`. Assert the identity rather than assume it.
+  it("is @cosyte/cli's scanner, not a sibling's", () => {
+    const pkg: unknown = JSON.parse(readFileSync(join(REPO_ROOT, "package.json"), "utf8"));
+    const name = (pkg as { name?: unknown }).name;
+    expect(name).toBe("@cosyte/cli");
+    expect(name).not.toBe("@cosyte/dicom");
+    expect(existsSync(SCANNER_PATH)).toBe(true);
+    // This repo's own scan roots. A sibling's scanner walks `test/fixtures`, not
+    // `test/__fixtures__`, and none of them walks `src/` as a second root.
+    const source = readFileSync(SCANNER_PATH, "utf8");
+    expect(source).toContain("test/__fixtures__");
+    expect(source).toContain("SRC_ROOT");
+    expect(source).not.toContain("PN_TAGS");
+  });
+});
+
+describe("phi-scan: the synthetic payload is genuinely detectable", { timeout: SLOW_MS }, () => {
+  // Guards against proving nothing by fixture: every refusal case below rests on
+  // this payload being something the scanner would otherwise catch.
+  it("as a plain staged regular file under a scan root it is a hit (exit 1)", () => {
+    const root = makeRepo();
+    writeFileSync(join(root, "test", "__fixtures__", "violator.txt"), SYNTHETIC_PHI);
+    git(root, ["add", "test/__fixtures__/violator.txt"]);
+
+    const r = runScanner(["--staged"], root);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(1);
+    expect(r.stderr).toContain(SYNTHETIC_SSN);
+    expect(r.stderr).toContain(SYNTHETIC_EMAIL);
+  });
+});
+
+describe(
+  "phi-scan --staged: rename detection hid an entire staged path",
+  { timeout: SLOW_MS },
+  () => {
+    it("scans a regular file RENAMED into the fixture root, which R100 dropped entirely", () => {
+      // The headline. `git mv` is an ordinary developer action. With rename
+      // detection on (the default) git stages it as a TWO-PATH `R100` record, and
+      // `R` is in neither `AM` nor `AMT`, so the status filter deleted the record
+      // and the destination was never enumerated at all. A rename that also
+      // substitutes a real value walked straight through the pre-commit hook.
+      const root = makeRepo();
+      writeFileSync(join(root, "loose.txt"), SYNTHETIC_PHI);
+      git(root, ["add", "loose.txt", "test/__fixtures__/ordinary.txt"]);
+      git(root, [...COMMIT, "base"]);
+      git(root, ["mv", "loose.txt", "test/__fixtures__/loose.txt"]);
+
+      // The premise, in both directions: with detection on the record is a
+      // two-path rename the status filter drops; with it off it is a plain add.
+      expect(gitOut(root, ["diff", "--cached", "--raw"])).toContain("R100");
+      expect(gitOut(root, ["diff", "--cached", "--raw", "--diff-filter=AM"]).trim()).toBe("");
+      expect(gitOut(root, ["diff", "--cached", "--raw", "--diff-filter=AMT"]).trim()).toBe("");
+      expect(
+        gitOut(root, ["diff", "--cached", "--raw", "--no-renames", "--diff-filter=AMT"]),
+      ).toMatch(/^:000000 100644 /);
+
+      const r = runScanner(["--staged"], root);
+      expect(r.code, `stderr: ${r.stderr}`).toBe(1);
+      expect(r.stderr).toContain("test/__fixtures__/loose.txt");
+      expect(r.stderr).toContain(SYNTHETIC_SSN);
+    });
+
+    it("scans a .ts file RENAMED into src/, the second scan root", () => {
+      const root = makeRepo();
+      writeFileSync(join(root, "loose.ts"), `// ${SYNTHETIC_PHI}`);
+      git(root, ["add", "loose.ts", "src/ok.ts"]);
+      git(root, [...COMMIT, "base"]);
+      git(root, ["mv", "loose.ts", "src/loose.ts"]);
+
+      const r = runScanner(["--staged"], root);
+      expect(r.code, `stderr: ${r.stderr}`).toBe(1);
+      expect(r.stderr).toContain("src/loose.ts");
+    });
+
+    it("refuses a LINK renamed into the fixture root: R100 at mode 120000", () => {
+      // The same hole with the entry shape that makes it worst. The index really
+      // does hold mode 120000 under the scan root, and the whole record was gone.
+      const root = makeRepo();
+      writeFileSync(join(root, TARGET_NAME), SYNTHETIC_PHI);
+      symlinkSync(TARGET_NAME, join(root, "toplink.txt"));
+      git(root, ["add", "toplink.txt", "test/__fixtures__/ordinary.txt"]);
+      git(root, [...COMMIT, "base"]);
+      git(root, ["mv", "toplink.txt", "test/__fixtures__/toplink.txt"]);
+
+      expect(gitOut(root, ["diff", "--cached", "--raw"])).toContain("R100");
+      expect(gitOut(root, ["diff", "--cached", "--raw", "--diff-filter=AMT"]).trim()).toBe("");
+      expect(
+        gitOut(root, ["diff", "--cached", "--raw", "--no-renames", "--diff-filter=AMT"]),
+      ).toMatch(/^:000000 120000 /);
+      expect(gitOut(root, ["ls-files", "--stage", "test/__fixtures__/toplink.txt"])).toMatch(
+        /^120000 /,
+      );
+
+      const r = runScanner(["--staged"], root);
+      expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+      expect(r.stderr).toContain("test/__fixtures__/toplink.txt");
+      expect(r.stderr).toContain("a symbolic link");
+      expectNoPhi(r.stderr);
+      expect(r.stdout).not.toMatch(/OK/);
+    });
+
+    it("no R or C record survives --no-renames, whatever diff.renames is set to", () => {
+      // The property that makes the two-field stride STRUCTURAL rather than
+      // conditional. `copies` is not hypothetical: it produces a live `C100` here.
+      for (const value of ["true", "copies", "false", "1"]) {
+        const root = makeRepo();
+        git(root, ["config", "diff.renames", value]);
+        git(root, ["config", "diff.renameLimit", "1"]);
+        writeFileSync(join(root, "loose.txt"), SYNTHETIC_PHI);
+        git(root, ["add", "loose.txt", "test/__fixtures__/ordinary.txt"]);
+        git(root, [...COMMIT, "base"]);
+        git(root, ["mv", "loose.txt", "test/__fixtures__/loose.txt"]);
+        writeFileSync(join(root, "test", "__fixtures__", "copy.txt"), SYNTHETIC_PHI);
+        git(root, ["add", "test/__fixtures__/copy.txt"]);
+
+        const off = gitOut(root, ["diff", "--cached", "--raw", "--no-renames"]);
+        expect(off, `diff.renames=${value}`).not.toMatch(/\s[RC]\d*\t/);
+        for (const line of off.split("\n").filter((l) => l.length > 0)) {
+          expect(line, `diff.renames=${value}`).toMatch(
+            /^:\d{6} \d{6} [0-9a-f]+ [0-9a-f]+ [A-Z]\t/,
+          );
+        }
+
+        const r = runScanner(["--staged"], root);
+        expect(r.code, `diff.renames=${value} stderr: ${r.stderr}`).toBe(1);
+        expect(r.stderr).toContain("test/__fixtures__/loose.txt");
+        expect(r.stderr).toContain("test/__fixtures__/copy.txt");
+      }
+    });
+  },
+);
+
+describe(
+  "phi-scan --staged: a staged entry that is not a regular file",
+  { timeout: SLOW_MS },
+  () => {
+    it("git really does store a link as its target path, not the target's bytes", () => {
+      // The measurement the refusal rests on. If git ever changed this, the
+      // refusal would be arguing from a premise that no longer holds.
+      const root = makeRepo();
+      writeFileSync(join(root, TARGET_NAME), SYNTHETIC_PHI);
+      symlinkSync(join("..", "..", TARGET_NAME), join(root, "test", "__fixtures__", "leak.txt"));
+      git(root, ["add", "test/__fixtures__/leak.txt"]);
+
+      expect(gitOut(root, ["ls-files", "--stage", "test/__fixtures__/leak.txt"])).toMatch(
+        /^120000 /,
+      );
+      const shown = gitOut(root, ["show", ":test/__fixtures__/leak.txt"]);
+      expect(shown.trim()).toBe(`../../${TARGET_NAME}`);
+      expect(shown).not.toContain(SYNTHETIC_EMAIL);
+    });
+
+    it("refuses a staged symlink (exit 2) without echoing a PHI-bearing target path", () => {
+      // On the base scanner this route enumerated the link, handed `git show` the
+      // path text, found no SSN or email in it and printed OK. With a target name
+      // of this shape it would instead have reported a hit whose value came out of
+      // the WORKING TREE'S OWN FILENAME, never the target's contents. The refusal
+      // must restore neither reading.
+      const root = makeRepo();
+      writeFileSync(join(root, TARGET_NAME), SYNTHETIC_PHI);
+      symlinkSync(join("..", "..", TARGET_NAME), join(root, "test", "__fixtures__", "leak.txt"));
+      git(root, ["add", "test/__fixtures__/leak.txt"]);
+
+      const r = runScanner(["--staged"], root);
+      expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+      expect(r.stderr).toContain("test/__fixtures__/leak.txt");
+      expect(r.stderr).toContain("a symbolic link");
+      expectNoPhi(r.stderr);
+      expect(r.stdout).not.toMatch(/OK/);
+    });
+
+    it("refuses a TYPECHANGE: a tracked regular fixture replaced by a link", () => {
+      // The shape `--diff-filter=AM` deleted before any mode could be read.
+      const root = makeRepo();
+      git(root, ["add", "test/__fixtures__/ordinary.txt"]);
+      git(root, [...COMMIT, "base"]);
+
+      writeFileSync(join(root, "payload.txt"), SYNTHETIC_PHI);
+      rmSync(join(root, "test", "__fixtures__", "ordinary.txt"));
+      symlinkSync(
+        join("..", "..", "payload.txt"),
+        join(root, "test", "__fixtures__", "ordinary.txt"),
+      );
+      git(root, ["add", "test/__fixtures__/ordinary.txt"]);
+
+      // The premise: git raises this as a typechange, not A or M, so the old
+      // `--name-only --diff-filter=AM` list was EMPTY.
+      expect(gitOut(root, ["diff", "--cached", "--name-only", "--diff-filter=AM"]).trim()).toBe("");
+      expect(gitOut(root, ["diff", "--cached", "--raw"])).toContain(" 120000 ");
+
+      const r = runScanner(["--staged"], root);
+      expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+      expect(r.stderr).toContain("test/__fixtures__/ordinary.txt");
+      expect(r.stderr).toContain("a symbolic link");
+      expectNoPhi(r.stderr);
+    });
+
+    it("scans the other direction of a typechange: a link replaced by a real file", () => {
+      const root = makeRepo();
+      symlinkSync("ordinary.txt", join(root, "test", "__fixtures__", "link.txt"));
+      git(root, ["add", "test/__fixtures__/link.txt"]);
+      git(root, [...COMMIT, "base"]);
+
+      rmSync(join(root, "test", "__fixtures__", "link.txt"));
+      writeFileSync(join(root, "test", "__fixtures__", "link.txt"), SYNTHETIC_PHI);
+      git(root, ["add", "test/__fixtures__/link.txt"]);
+
+      const r = runScanner(["--staged"], root);
+      expect(r.code, `stderr: ${r.stderr}`).toBe(1);
+      expect(r.stderr).toContain(SYNTHETIC_SSN);
+    });
+
+    it("refuses a scan ROOT staged as a link, not just entries under it", () => {
+      // An index entry at exactly `test/__fixtures__` is the corpus root replaced
+      // by a blob or a link; git records no index entry for a directory, so this
+      // path can only mean that. A prefix test requiring the trailing slash lets
+      // it through and the whole corpus then goes unscanned.
+      const root = makeRepo();
+      writeFileSync(join(root, TARGET_NAME), SYNTHETIC_PHI);
+      rmSync(join(root, "test", "__fixtures__"), { recursive: true });
+      symlinkSync(join("..", TARGET_NAME), join(root, "test", "__fixtures__"));
+      git(root, ["add", "test/__fixtures__"]);
+
+      expect(gitOut(root, ["ls-files", "--stage", "test/__fixtures__"])).toMatch(/^120000 /);
+
+      const r = runScanner(["--staged"], root);
+      expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+      expect(r.stderr).toContain("test/__fixtures__");
+      expect(r.stderr).toContain("a symbolic link");
+      expectNoPhi(r.stderr);
+    });
+
+    it("refuses the src/ root staged as a link too", () => {
+      const root = makeRepo();
+      writeFileSync(join(root, TARGET_NAME), SYNTHETIC_PHI);
+      rmSync(join(root, "src"), { recursive: true });
+      symlinkSync(TARGET_NAME, join(root, "src"));
+      git(root, ["add", "src"]);
+
+      const r = runScanner(["--staged"], root);
+      expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+      expect(r.stderr).toContain("a symbolic link");
+      expectNoPhi(r.stderr);
+    });
+
+    it("refuses a staged gitlink under a scan root (exit 2)", () => {
+      const root = makeRepo();
+      const nested = join(root, "test", "__fixtures__", "nested");
+      mkdirSync(nested);
+      git(nested, ["init", "-q", "."]);
+      writeFileSync(join(nested, "payload.txt"), SYNTHETIC_PHI);
+      git(nested, ["add", "payload.txt"]);
+      git(nested, [...COMMIT, "n"]);
+      git(root, ["add", "test/__fixtures__/nested"]);
+
+      // The premise the refusal's WORDING rests on, and it is not the symlink one:
+      // `git show` does not hand back a target path for a gitlink, it fails
+      // outright. A `why` clause asserting otherwise would be false for every mode
+      // this refusal covers except 120000.
+      const shown = spawnSync("git", ["show", ":test/__fixtures__/nested"], {
+        cwd: root,
+        encoding: "utf8",
+        shell: false,
+      });
+      expect(shown.status).not.toBe(0);
+      expect(shown.stderr).toContain("bad object");
+
+      const r = runScanner(["--staged"], root);
+      expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+      expect(r.stderr).toContain("test/__fixtures__/nested");
+      expect(r.stderr).toContain("a gitlink");
+      expect(r.stderr).not.toContain("hands back its target path");
+      expectNoPhi(r.stderr);
+    });
+
+    it("names EVERY offender, not just the first", () => {
+      const root = makeRepo();
+      writeFileSync(join(root, TARGET_NAME), SYNTHETIC_PHI);
+      symlinkSync(join("..", "..", TARGET_NAME), join(root, "test", "__fixtures__", "one.txt"));
+      symlinkSync(join("..", "..", TARGET_NAME), join(root, "test", "__fixtures__", "two.txt"));
+      git(root, ["add", "test/__fixtures__/one.txt", "test/__fixtures__/two.txt"]);
+
+      const r = runScanner(["--staged"], root);
+      expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+      expect(r.stderr).toContain("test/__fixtures__/one.txt");
+      expect(r.stderr).toContain("test/__fixtures__/two.txt");
+      expect(r.stderr).toContain("2 entries");
+      expectNoPhi(r.stderr);
+    });
+  },
+);
+
+describe("phi-scan --staged: the scope is widened, never narrowed", { timeout: SLOW_MS }, () => {
+  it("still catches a staged ordinary file carrying the payload (exit 1)", () => {
+    // Regression control on the `--raw -z` reparse: reading the mode must not
+    // cost the route the ordinary files it was already enumerating.
+    const root = makeRepo();
+    writeFileSync(join(root, "test", "__fixtures__", "violator.txt"), SYNTHETIC_PHI);
+    git(root, ["add", "test/__fixtures__/violator.txt"]);
+
+    const r = runScanner(["--staged"], root);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(1);
+    expect(r.stderr).toContain("test/__fixtures__/violator.txt");
+  });
+
+  it("passes staged ordinary clean files in both roots (exit 0)", () => {
+    const root = makeRepo();
+    git(root, ["add", "test/__fixtures__/ordinary.txt", "src/ok.ts"]);
+    const r = runScanner(["--staged"], root);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(0);
+    expect(r.stdout).toMatch(/OK, no hits/);
+  });
+
+  it("leaves a staged link OUTSIDE both scan roots alone", () => {
+    // The mode check narrows what the scope ADMITS; it does not widen the scope.
+    const root = makeRepo();
+    writeFileSync(join(root, TARGET_NAME), SYNTHETIC_PHI);
+    symlinkSync(TARGET_NAME, join(root, "docs-link.txt"));
+    git(root, ["add", "docs-link.txt"]);
+
+    const r = runScanner(["--staged"], root);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(0);
+  });
+
+  it("an unmerged (U) entry is out of scope, and cannot reach a commit anyway", () => {
+    // Stated rather than inferred, because the disclosure is only worth anything
+    // if the second half is true: git REFUSES to commit an unmerged index, so no
+    // `U` entry has ever been one `git commit` away from landing.
+    const root = makeRepo();
+    git(root, ["add", "test/__fixtures__/ordinary.txt"]);
+    git(root, [...COMMIT, "base"]);
+    const base = gitOut(root, ["rev-parse", "--abbrev-ref", "HEAD"]).trim();
+    git(root, ["checkout", "-q", "-b", "other"]);
+    writeFileSync(join(root, "test", "__fixtures__", "ordinary.txt"), SYNTHETIC_PHI);
+    git(root, ["add", "test/__fixtures__/ordinary.txt"]);
+    git(root, [...COMMIT, "theirs"]);
+    git(root, ["checkout", "-q", base]);
+    writeFileSync(join(root, "test", "__fixtures__", "ordinary.txt"), "a different change\n");
+    git(root, ["add", "test/__fixtures__/ordinary.txt"]);
+    git(root, [...COMMIT, "ours"]);
+    // The merge is EXPECTED to fail, so its result is asserted rather than
+    // discarded. Ignoring it made this test vacuous on a runner with no git
+    // identity configured: `git merge` refused before touching the index, no
+    // conflict was created, and every assertion below passed over an empty one.
+    // A merge that does not conflict here is a broken fixture, not a pass.
+    const merge = spawnSync("git", [...MERGE, "other"], {
+      cwd: root,
+      encoding: "utf8",
+      shell: false,
+    });
+    expect(merge.status, `merge: ${merge.stdout}${merge.stderr}`).not.toBe(0);
+    expect(`${merge.stdout}${merge.stderr}`).toContain("CONFLICT");
+
+    expect(gitOut(root, ["ls-files", "-u"])).toContain("test/__fixtures__/ordinary.txt");
+    expect(gitOut(root, ["diff", "--cached", "--raw", "--diff-filter=AMT"]).trim()).toBe("");
+    expect(gitOut(root, ["diff", "--cached", "--raw", "--diff-filter=AMTU"])).toMatch(
+      / U\ttest\/__fixtures__\/ordinary\.txt/,
+    );
+
+    // Out of scope for the scan...
+    expect(runScanner(["--staged"], root).code).toBe(0);
+    // ...and out of reach of a commit.
+    const attempt = spawnSync("git", [...COMMIT, "attempt"], {
+      cwd: root,
+      encoding: "utf8",
+      shell: false,
+    });
+    expect(attempt.status).not.toBe(0);
+    expect(`${attempt.stdout}${attempt.stderr}`).toContain("unmerged files");
+  });
+});
+
+describe("phi-scan: an invocation failure exits 2, never 1", { timeout: SLOW_MS }, () => {
+  // `1` is this contract's code for "hits found". A caller branching on the exit
+  // code read a broken invocation as a PHI finding; a caller branching on
+  // "not 0" read it as the gate working. Both readings were wrong.
+  it("a missing allow-list exits 2 with a diagnostic, not 1 with a stack trace", () => {
+    const root = makeRepo();
+    rmSync(join(root, "scripts", "phi-allow-list.txt"));
+    git(root, ["add", "test/__fixtures__/ordinary.txt"]);
+
+    const r = runScanner(["--staged"], root);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+    expect(r.stderr).toContain("[phi-scan]");
+    expect(r.stderr).toContain("allow-list not found");
+    expect(r.stderr).not.toContain("InvocationError:");
+    expect(r.stderr).not.toContain("at loadAllowList");
+  });
+
+  it("an unreadable scan root exits 2, rather than throwing out of readdirSync", () => {
+    const root = makeRepo();
+    const guarded = join(root, "test", "__fixtures__");
+    let r: RunResult;
+    try {
+      spawnSync("chmod", ["000", guarded], { encoding: "utf8", shell: false });
+      // Skip where the filesystem or a privileged uid ignores the mode.
+      if (existsSync(join(guarded, "ordinary.txt"))) return;
+      r = runScanner([], root);
+    } finally {
+      spawnSync("chmod", ["755", guarded], { encoding: "utf8", shell: false });
+    }
+    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+    expect(r.stderr).toContain("[phi-scan]");
+    expect(r.stderr).toContain("could not read test/__fixtures__");
+    expect(r.stdout).not.toMatch(/OK/);
+  });
+});
+
+describe(
+  "phi-scan: the all-mode walk refuses a non-regular entry too",
+  { timeout: SLOW_MS },
+  () => {
+    // The staged route is the pre-commit gate and was this slice's target; the
+    // all-mode sweep is the CI backstop, and shipping a scanner where one refuses
+    // a link and the other silently drops it would be indefensible.
+    it("refuses a symlink under a scan root pointing at PHI (exit 2)", () => {
+      const root = makeRepo();
+      writeFileSync(join(root, TARGET_NAME), SYNTHETIC_PHI);
+      symlinkSync(join("..", "..", TARGET_NAME), join(root, "test", "__fixtures__", "leak.txt"));
+
+      const r = runScanner([], root);
+      expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+      expect(r.stderr).toContain("test/__fixtures__/leak.txt");
+      expect(r.stderr).toContain("a symbolic link");
+      expectNoPhi(r.stderr);
+    });
+
+    it("refuses a symlinked DIRECTORY, which isDirectory() also answers false for", () => {
+      const root = makeRepo();
+      mkdirSync(join(root, "elsewhere"));
+      writeFileSync(join(root, "elsewhere", TARGET_NAME), SYNTHETIC_PHI);
+      symlinkSync(join("..", "..", "elsewhere"), join(root, "test", "__fixtures__", "linked-dir"));
+
+      const r = runScanner([], root);
+      expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+      expect(r.stderr).toContain("test/__fixtures__/linked-dir");
+      expectNoPhi(r.stderr);
+    });
+
+    it("refuses a link named README.md, which the file route's exemption would skip", () => {
+      // The `.md` exemption is a judgement about a file whose bytes the walk could
+      // have read. A link's NAME is no evidence about what is on the other side.
+      const root = makeRepo();
+      writeFileSync(join(root, TARGET_NAME), SYNTHETIC_PHI);
+      symlinkSync(join("..", "..", TARGET_NAME), join(root, "test", "__fixtures__", "README.md"));
+
+      const r = runScanner([], root);
+      expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+      expect(r.stderr).toContain("test/__fixtures__/README.md");
+      expect(r.stderr).toContain("a symbolic link");
+      expectNoPhi(r.stderr);
+    });
+
+    it("an ignored link is out of scope, by the rule that already excludes an ignored fixture", () => {
+      const root = makeRepo();
+      writeFileSync(join(root, TARGET_NAME), SYNTHETIC_PHI);
+      symlinkSync(join("..", "..", TARGET_NAME), join(root, "test", "__fixtures__", "leak.txt"));
+      writeFileSync(join(root, ".gitignore"), "test/__fixtures__/leak.txt\n");
+
+      const r = runScanner([], root);
+      expect(r.code, `stderr: ${r.stderr}`).toBe(0);
+    });
+
+    it("a repo with no link and no violator still scans clean (exit 0)", () => {
+      const root = makeRepo();
+      const r = runScanner([], root);
+      expect(r.code, `stderr: ${r.stderr}`).toBe(0);
+      expect(r.stdout).toMatch(/OK, no hits/);
+    });
+  },
+);

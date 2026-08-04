@@ -54,9 +54,99 @@
  *   (no args)                - scan all in-scope working-tree files
  *
  * Exit codes: 0 (clean), 1 (hits found), 2 (invocation error).
+ *
+ * ===========================================================================
+ * AN IN-SCOPE ENTRY THAT IS NOT A REGULAR FILE REFUSES THE SCAN (exit 2). It is
+ * never silently skipped, because BOTH enumerating routes are blind to it in a
+ * way that reads as clean:
+ *
+ *   - the walk enumerates `Dirent.isFile()`, which is an lstat answer, so a
+ *     symbolic link is neither a file nor a directory and used to fall out of
+ *     the loop silently, whatever it pointed at. `isDirectory()` answers false
+ *     for a LINKED DIRECTORY too, so a whole subtree vanished the same way;
+ *   - `--staged` reads content with `git show :<path>`, and git stores a
+ *     symbolic link as its TARGET PATH under mode 120000, so that route is
+ *     handed the path text and never the target's bytes.
+ *
+ * Neither route is made to follow such an entry: following would read bytes the
+ * enumeration does not control (outside the repo, a loop, a device, a FIFO that
+ * blocks the gate forever), and git does not carry those bytes anyway, so a hit
+ * on them would be a claim about something no commit contains. Refusing states
+ * the only true thing available: there is an entry here the scan cannot account
+ * for, so the scan is not clean.
+ *
+ * ▶ THE PRE-COMMIT HOLE THAT MADE THIS URGENT WAS RENAME DETECTION, AND IT IS
+ * NOT LIMITED TO LINKS. `R` and `C` are returned by neither `--diff-filter=AM`
+ * nor `AMT`, so ANY `git mv` into a scan root vanished from the `--staged` list
+ * entirely: a link (measured: `:120000 120000 <sha> <sha> R100`, index mode
+ * 120000, exit 0) and equally an ordinary regular file whose contents this
+ * scanner's own floor would have caught (measured: `:100644 100644 <sha> <sha>
+ * R100`, exit 0). `--no-renames` is the whole remedy. It costs the record stride
+ * nothing: the destination arrives as a single-path `A` and the source as a `D`
+ * the filter drops, so the enumeration is a strict SUPERSET of the previous one.
+ * `git mv` is an ordinary developer action, not crafted input, and the
+ * pre-commit hook (`pnpm phi-scan --staged`) is the gate it walked through.
+ *
+ * "IN SCOPE" IS A NARROWER THING THAN THE PATH PREFIX, AND THE EXACT BOUNDARY IS
+ * WORTH STATING RATHER THAN LEAVING TO BE INFERRED, BECAUSE THE GAP BETWEEN THE
+ * TWO IS WHERE THIS DEFECT LIVED. The walk covers everything under
+ * `test/__fixtures__/` and `src/` except a gitignored entry (the same rule that
+ * already excludes a gitignored fixture, so links do not get a second, stricter
+ * boundary of their own) and except a `.md` file. `--staged` covers
+ * `test/__fixtures__` and everything under it, plus `src` and the `.ts` files
+ * under it, restricted to the staged records git reports as ADDED, MODIFIED or
+ * TYPECHANGED.
+ *
+ * Three boundary facts, each measured on this repo rather than inferred, and
+ * each admitting MORE than before rather than less:
+ *
+ *   1. rename detection is off, so a rename destination arrives as an ordinary
+ *      add instead of vanishing with its two-path record;
+ *   2. `T` (TYPECHANGE) is in the filter. Replacing a TRACKED regular fixture
+ *      with a link is neither an add nor a modify (`:100644 120000 <sha> <sha>
+ *      T`), so `AM` deleted the record before any mode could be read;
+ *   3. each scan root's OWN path is in scope as well as its contents. An index
+ *      entry at exactly `test/__fixtures__` or `src` is never a directory, since
+ *      git records no entry for one, so it is the corpus root replaced by a blob
+ *      or a link, and a prefix test requiring the trailing slash let it through.
+ *
+ * TWO THINGS THIS ROUTE STILL DOES NOT ENUMERATE, STATED BECAUSE INFERRING THEM
+ * FROM THE PREFIX WOULD BE WRONG, both PRE-EXISTING and neither closed here:
+ *
+ *   - `D` (a deletion has no staged blob to scan) and `U` (an unmerged path has
+ *     no single one). The `U` half costs nothing that can reach a commit:
+ *     measured here, `git commit` with an unmerged index REFUSES outright
+ *     ("Committing is not possible because you have unmerged files", exit 128),
+ *     so no `U` entry has ever been one `git commit` away from landing. It is
+ *     `git add` on the resolved path that stages it, and that arrives as `M`.
+ *   - under `src/`, only `.ts` files. The all-mode walk covers every non-`.md`
+ *     file under `src/`, so the two routes disagree there, and the all-mode
+ *     sweep in CI is what covers the difference. Widening the staged half is a
+ *     scope decision and is deliberately not taken here.
+ *
+ * A refusal names the entry's own repo-relative path and an engine-owned token
+ * for its kind. IT NEVER REPORTS THE LINK TARGET, which is text off the working
+ * tree and can itself carry PHI: a target path of the shape
+ * `../patients/<surname>-<given>-<dob>.txt` is the whole reason. The shape is
+ * written out rather than an example, because a diagnostic ABOUT a PHI leak is
+ * itself a PHI surface, and that applies to the prose explaining it too.
+ *
+ * The entry's OWN name is a different matter and is printed deliberately, but it
+ * is a new line on a channel that used to print nothing for a link, so say what
+ * it is: it is the same locus every hit already carries, it is a path a developer
+ * chose and git would record in a commit, and a refusal that will not say WHICH
+ * entry it means cannot be acted on. Nothing from the other side of the link
+ * joins it.
+ *
+ * KNOWN AND NOT CLOSED HERE, in the all-mode route only: with a scan root that
+ * is a DANGLING link, `existsSync` follows it, answers false, and the walk
+ * reports clean over a corpus it never opened. That needs a
+ * refuse-a-scan-that-observed-nothing rule, which is its own slice. The
+ * `--staged` half of that same shape IS closed, by fact 3 above.
+ * ===========================================================================
  */
 
-import { readFileSync, statSync, existsSync, readdirSync } from "node:fs";
+import { readFileSync, statSync, existsSync, readdirSync, type Dirent } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { join, resolve, relative, sep, isAbsolute } from "node:path";
 
@@ -185,7 +275,18 @@ function loadAllowList(): AllowList {
   if (!existsSync(ALLOW_LIST_PATH)) {
     throw new InvocationError(`allow-list not found at ${ALLOW_LIST_PATH}`);
   }
-  const raw = readFileSync(ALLOW_LIST_PATH, "utf8");
+  // `existsSync` is not "readable": a present-but-unreadable allow-list would
+  // otherwise throw a raw fs error past every handler and exit 1.
+  let raw: string;
+  try {
+    raw = readFileSync(ALLOW_LIST_PATH, "utf8");
+  } catch (err) {
+    throw new InvocationError(
+      `could not read the allow-list at ${ALLOW_LIST_PATH}: ${
+        err instanceof Error ? err.message : String(err)
+      }`,
+    );
+  }
   const names = new Set<string>();
   const dobs = new Set<string>();
   const ids = new Set<string>();
@@ -257,19 +358,77 @@ interface Target {
   read: () => Buffer;
 }
 
-function walk(dir: string, out: string[]): void {
+/**
+ * An entry the enumeration reached but cannot scan. Both fields are safe to
+ * print: `path` is the entry's own repo-relative path (the same locus every hit
+ * already carries) and `kind` is a token from the closed set below. Nothing off
+ * the other side of a link is ever recorded here.
+ */
+interface Unscannable {
+  path: string;
+  kind: string;
+}
+
+/** Closed-set, engine-owned description of a directory entry's kind. */
+function direntKind(e: Dirent): string {
+  if (e.isSymbolicLink()) return "a symbolic link";
+  if (e.isFIFO()) return "a FIFO";
+  if (e.isSocket()) return "a socket";
+  if (e.isBlockDevice()) return "a block device";
+  if (e.isCharacterDevice()) return "a character device";
+  return "not a regular file";
+}
+
+/**
+ * Enumerate a scan root. `Dirent`'s predicates are lstat answers and are not
+ * exhaustive: an entry that is neither a directory nor a regular file is
+ * collected into `unscannable` rather than dropped, so the caller can refuse
+ * instead of reporting clean over it.
+ */
+function walk(dir: string, out: string[], unscannable: Unscannable[]): void {
   if (!existsSync(dir)) return;
-  for (const e of readdirSync(dir, { withFileTypes: true })) {
+  let entries: Dirent[];
+  try {
+    entries = readdirSync(dir, { withFileTypes: true });
+  } catch (err) {
+    // A root this scan cannot read is an INVOCATION failure (exit 2), never a
+    // clean run and never exit 1: `1` means "hits found", and reporting "no
+    // PHI" over a directory nobody opened is the reading this must not produce.
+    throw new InvocationError(
+      `could not read ${normalizePath(dir)}: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
+  for (const e of entries) {
     const full = join(dir, e.name);
     if (e.isDirectory()) {
-      walk(full, out);
+      walk(full, out, unscannable);
     } else if (e.isFile()) {
       // README/markdown docs may legitimately describe violator values; they
       // are documentation, not fixtures.
       if (e.name.toLowerCase().endsWith(".md")) continue;
       out.push(full);
+    } else {
+      // Deliberately NOT subject to the `.md` exemption above. That exemption is
+      // a judgement about a file whose bytes the walk could have read; a link's
+      // name is no evidence at all about what is on the other side of it.
+      unscannable.push({ path: normalizePath(full), kind: direntKind(e) });
     }
   }
+}
+
+/**
+ * Refuse (exit 2) over entries the enumeration reached and cannot scan. EVERY
+ * offender is named, not just the first: a developer who has to re-run the gate
+ * once per link learns to distrust it.
+ */
+function refuseUnscannable(entries: Unscannable[], why: string, remedy: string): void {
+  if (entries.length === 0) return;
+  const lines = entries.map((u) => `  - ${u.path} (${u.kind})`).join("\n");
+  const noun =
+    entries.length === 1 ? "entry is not a regular file" : "entries are not regular files";
+  throw new InvocationError(
+    `refusing the scan: ${String(entries.length)} ${noun}:\n${lines}\n${why} ${remedy}`,
+  );
 }
 
 function gitIgnored(paths: string[]): Set<string> {
@@ -293,9 +452,22 @@ function gitIgnored(paths: string[]): Set<string> {
 
 function buildTargetsForAll(): Target[] {
   const files: string[] = [];
-  walk(FIXTURE_ROOT, files);
-  walk(SRC_ROOT, files);
-  const ignored = gitIgnored(files);
+  const unscannable: Unscannable[] = [];
+  walk(FIXTURE_ROOT, files, unscannable);
+  walk(SRC_ROOT, files, unscannable);
+
+  // One `git check-ignore` over both lists. An ignored entry is already out of
+  // scope for the file route, so applying the same rule to a link keeps a single
+  // boundary rather than inventing a second, stricter one for links alone.
+  const ignored = gitIgnored([...files.map(normalizePath), ...unscannable.map((u) => u.path)]);
+
+  refuseUnscannable(
+    unscannable.filter((u) => !ignored.has(u.path)),
+    "The walk can neither read such an entry nor vouch for what is on the other side of it.",
+    "Remove it, replace it with a regular file, or (if it is genuinely not part of the " +
+      "corpus) untrack it and add it to .gitignore.",
+  );
+
   return files
     .filter((abs) => !ignored.has(normalizePath(abs)))
     .map((abs) => ({ path: normalizePath(abs), read: () => readFileSync(abs) }));
@@ -310,27 +482,124 @@ function buildTargetsForPaths(paths: string[]): Target[] {
   });
 }
 
+/** git's file modes for a regular blob. Every other mode is not a file to read. */
+const REGULAR_BLOB_MODES = new Set(["100644", "100755"]);
+
+/** Closed-set, engine-owned description of a git file mode. */
+function gitModeKind(mode: string): string {
+  if (mode === "120000") return "a symbolic link";
+  if (mode === "160000") return "a gitlink (a nested repository)";
+  return `a git mode-${mode} entry`;
+}
+
+/** `:<srcmode> <dstmode> <srcsha> <dstsha> <status>` - the info half of a `--raw -z` record. */
+const RAW_RECORD = /^:(?:\d{6}) (\d{6}) [0-9a-f]+ [0-9a-f]+ [A-Z]\d*$/;
+
+/**
+ * The staged route's scope. Each root's OWN path counts as well as its contents:
+ * git records no index entry for a directory, so an entry at exactly
+ * `test/__fixtures__` or `src` is that root replaced by a blob or a link.
+ */
+function isStagedInScope(path: string): boolean {
+  if (path === "test/__fixtures__" || path.startsWith("test/__fixtures__/")) return true;
+  if (path === "src") return true;
+  return path.startsWith("src/") && path.endsWith(".ts");
+}
+
 function buildTargetsForStaged(): Target[] {
   let listBuf: Buffer;
   try {
     // SECURITY: array-form execFileSync, no shell.
-    listBuf = execFileSync("git", ["diff", "--cached", "--name-only", "--diff-filter=AM", "-z"], {
-      encoding: "buffer",
-      stdio: ["ignore", "pipe", "pipe"],
-    });
+    //
+    // `--raw` rather than `--name-only` because the DESTINATION MODE is the only
+    // thing this route can read a non-regular entry off. `git show :<path>` does
+    // not stand in for it: for a symbolic link it answers the target path as if
+    // it were content, and it is the mode, not the answer, that says so.
+    //
+    // `--no-renames` IS THE ONE THAT CLOSED THE PRE-COMMIT HOLE, AND THE STATUS
+    // FILTER ALONE WAS NOT ENOUGH. Rename detection is on by default (and
+    // `diff.renames` can turn copy detection on too), so `git mv <path>` into a
+    // scan root stages as a TWO-PATH `R100` record, which `--diff-filter` then
+    // deletes outright because `R` and `C` are in neither `AM` nor `AMT`.
+    // Measured on this repo, both shapes exiting 0 through the pre-commit hook:
+    // a link (`:120000 120000 <sha> <sha> R100`, index mode 120000) and an
+    // ordinary regular file carrying a value this scanner's own floor catches
+    // (`:100644 100644 <sha> <sha> R100`). With detection off the destination
+    // arrives as a single-path `A` (`:000000 120000 0000000 <sha> A`) and the
+    // source as a `D` the filter drops, so the enumeration is a strict SUPERSET
+    // of the previous one and the two-field stride below is untouched. It also
+    // makes that stride STRUCTURAL rather than conditional: with detection off,
+    // no `R` or `C` record can be produced whatever the caller's `diff.renames`
+    // setting is. Verified under `diff.renames` set to `true`, `copies`, `false`
+    // and `1`, and under `diff.renameLimit=1`.
+    //
+    // `T` (TYPECHANGE) IS IN THE FILTER, AND LEAVING IT OUT MADE THE MODE CHECK
+    // BELOW UNREACHABLE WHENEVER THE FIXTURE WAS ALREADY TRACKED. Replacing a
+    // TRACKED regular file with a link is not an add and not a modify: git
+    // raises it as `T` (`:100644 120000 <sha> <sha> T`), so `--diff-filter=AM`
+    // deleted the record before any mode could be read and the pre-commit hook
+    // passed the link green. Typechange carries a single path, exactly like `A`
+    // and `M`, so admitting it costs the stride nothing, and the reverse
+    // typechange (a link replaced by a real file) is now scanned as the file it
+    // became.
+    listBuf = execFileSync(
+      "git",
+      ["diff", "--cached", "--raw", "-z", "--no-renames", "--diff-filter=AMT"],
+      { encoding: "buffer", stdio: ["ignore", "pipe", "pipe"] },
+    );
   } catch (err) {
     throw new InvocationError(
       `git diff --cached failed: ${err instanceof Error ? err.message : String(err)}`,
     );
   }
-  const list = listBuf
-    .toString("utf8")
-    .split("\0")
-    .filter((p) => p.length > 0)
-    .filter(
-      (p) => p.startsWith("test/__fixtures__/") || (p.startsWith("src/") && p.endsWith(".ts")),
-    );
-  return list.map((relPath) => ({
+
+  // `--raw -z` emits `<info>\0<path>\0` per record. `R` (rename) and `C` (copy)
+  // are the only statuses carrying a SECOND path, and `--no-renames` above means
+  // git cannot emit either, so the stride is two fields. The regex still admits a
+  // score-suffixed status: if one ever reached here the stride would desync and
+  // the next record would fail to parse, which REFUSES - the same outcome as any
+  // other unparseable record, and the safe one. A record that does not parse
+  // REFUSES rather than being skipped: a silently shortened list is exactly the
+  // shape this scan must never report clean over.
+  const fields = listBuf.toString("utf8").split("\0");
+  const staged: { path: string; mode: string }[] = [];
+  let i = 0;
+  while (i < fields.length) {
+    const info = fields[i];
+    if (info === undefined || info.length === 0) {
+      i += 1;
+      continue;
+    }
+    const m = RAW_RECORD.exec(info);
+    const mode = m?.[1];
+    const path = fields[i + 1];
+    if (mode === undefined || path === undefined || path.length === 0) {
+      throw new InvocationError(
+        "could not read the output of `git diff --cached --raw -z`: unrecognized record. " +
+          "Refusing rather than scanning a list that may be short.",
+      );
+    }
+    staged.push({ path, mode });
+    i += 2;
+  }
+
+  const inScope = staged.filter((s) => isStagedInScope(s.path));
+
+  refuseUnscannable(
+    inScope
+      .filter((s) => !REGULAR_BLOB_MODES.has(s.mode))
+      .map((s) => ({ path: s.path, kind: gitModeKind(s.mode) })),
+    // Deliberately says what the INDEX holds, not what `git show` would answer:
+    // `git show :<path>` answers a symbolic link with its target path as though
+    // that were content, but for a gitlink it fails outright (`fatal: bad
+    // object`), so a sentence about `git show` would be false for every mode
+    // here except 120000.
+    "The index records such an entry by reference rather than as file content, so nothing " +
+      "readable through it would be evidence about what it names.",
+    "Unstage it, or replace it with a regular file.",
+  );
+
+  return inScope.map(({ path: relPath }) => ({
     path: relPath,
     // SECURITY: array-form execFileSync, no shell. `:<path>` is a git pathspec.
     read: (): Buffer =>
@@ -452,7 +721,22 @@ function main(): number {
     throw err;
   }
 
-  const allow = loadAllowList();
+  // Loading the allow-list is an INVOCATION step, so its failure is exit 2. It
+  // used to sit outside every `catch` here: a missing or unreadable allow-list
+  // threw an uncaught `InvocationError`, which node reports with a stack trace
+  // and exit 1 - and `1` is this contract's code for "hits found". A caller
+  // branching on the exit code read a broken invocation as a PHI finding, and a
+  // caller branching on "not 0" read it as the gate working. Neither is true.
+  let allow: AllowList;
+  try {
+    allow = loadAllowList();
+  } catch (err) {
+    if (err instanceof InvocationError) {
+      process.stderr.write(`[phi-scan] ${err.message}\n`);
+      return 2;
+    }
+    throw err;
+  }
   const allowed = new Set<string>(args.allowFixtures.map(normalizePath));
 
   let targets: Target[];
