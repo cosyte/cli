@@ -13,11 +13,6 @@
     },
     {
       "type": "category",
-      "label": "MCP server",
-      "items": ["mcp"]
-    },
-    {
-      "type": "category",
       "label": "Core Concepts",
       "collapsed": false,
       "items": ["concepts-archetype"]
@@ -25,17 +20,12 @@
     {
       "type": "category",
       "label": "Guides",
-      "items": ["guides-overview"]
-    },
-    {
-      "type": "category",
-      "label": "Reference",
-      "items": ["reference-commands", "limitations"]
+      "items": ["guides-overview", "mcp", "reference-commands"]
     },
     {
       "type": "category",
       "label": "Troubleshooting",
-      "items": ["troubleshooting"]
+      "items": ["troubleshooting", "limitations"]
     }
   ]
 }

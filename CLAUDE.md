@@ -23,6 +23,43 @@ subpath still exports a small programmatic `core` API (`detectFormat`, `EXIT`, `
 
 ## Status
 
+- **▶ `docs-content/sidebars.json` IS BOUND BY AN IA SPINE THAT NOTHING IN THIS REPO CHECKS, AND
+  BREAKING IT STOPS THE WHOLE DOCS SITE DEPLOYING.** This package shipped two off-spine top-level
+  categories, **"MCP server"** and **"Reference"**. The docs site lints the sidebar out of each
+  package's released `docs-content.tar.gz`, and in strict mode a non-canonical top-level label is an
+  **error**, so `cli` was one of two packages holding a site that had not deployed for four days.
+  It was pre-existing and masked: every build died earlier, on memory, before reaching the gate.
+  **The canonical top-level order is `Overview` (the `intro` DOC REFERENCE, not a category),
+  `Installation`, `Quickstart`, `Core Concepts`, `Guides`, `API Reference`, `Troubleshooting`.**
+  Categories are OPTIONAL; the rule is that whatever you have is labelled and ordered canonically, so
+  `{"docs":["intro"]}` is fully compliant. `mcp` and `reference-commands` now sit under **Guides**,
+  `limitations` under **Troubleshooting** (the spine's item 7 explicitly houses "Known Limitations",
+  and `mllp`/`astm`/`deid` all keep it there; `synth` is the lone counter-example, so do not copy
+  `synth` here); nothing was orphaned.
+  **🔴 NEVER AUTHOR AN `API Reference` CATEGORY.** It is injected by the docs site when the package
+  ships API sources, and a hand-authored one is a distinct, harder **error** than the off-spine
+  label it would be replacing. Renaming "Reference" to "API Reference" trades one failing check for
+  another.
+  **▶ AND DO NOT REPEAT THE CLAIM THAT IT LANDS "JUST BEFORE Troubleshooting". A refuter falsified
+  that here.** Two different code paths inject it and they DISAGREE:
+  `docs/scripts/sidebar-resolver.ts` inserts at the canonical position, but it governs the
+  UNVERSIONED `content/<slug>/` instance, which is not served once a slug is versioned
+  (`includeCurrentVersion: false`). The served path for a released package is
+  `docs/scripts/versioning/sidebar-augment.ts`, which **appends** (`[...value, apiCategoryEntry()]`),
+  so the rendered nav ends `..., Guides, Troubleshooting, API Reference`. The augmenter's own header
+  claims it mirrors the resolver; it does not. **This is a `docs` defect, not a `cli` one**, it is
+  cosmetic ordering, and it affects every released package. **The IA linter cannot see it** (it
+  refuses `versioned_sidebars/`), so "verified against the linter" is NOT evidence about placement.
+  State only what this package controls: it does not author or position that category.
+  **Nothing in `verify.sh` or this repo's CI can catch this** (`pack:docs` checks only that
+  `intro.md` and `sidebars.json` EXIST), so verify a sidebar edit against the site's own linter,
+  `docs/scripts/check-ia-conformance.ts`. It self-executes on import, so `NODE_ENV=test` is required
+  to call `lintSidebar` directly. **Use the previously shipped sidebar as a negative control**: if it
+  does not report errors, the probe is wrong, not the sidebar.
+  **Only a NEW RELEASE clears the gate**, because it reads the shipped artifact and releases are
+  immutable, so every already-published version keeps its sidebar forever. Archived versions are
+  reported at `info` and never gate. Do not try to fix history.
+
 - **▶ THE PRE-COMMIT PHI GATE WAS BLIND TO `git mv`, AND THE HOLE WAS NOT LIMITED TO LINKS.**
   `scripts/phi-scan.ts --staged` is the `pre-commit` hook (`simple-git-hooks`). It listed the index
   with `git diff --cached --name-only --diff-filter=AM`. Rename detection is **on by default**, so
