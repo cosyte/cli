@@ -17,16 +17,14 @@ no page moved out of the navigation and none was orphaned:
   are task-oriented: what to run, and what comes back.
 - **`limitations`** (what the CLI does and does not do, the per-(format, operation) support matrix,
   the PHI and HIPAA posture) now sits under **Troubleshooting**, next to `troubleshooting`, which is
-  where the documentation standard puts known limitations and where the sibling packages that ship
-  such a page already keep it.
+  where the documentation standard puts known limitations.
 
 The categories this package ships are now `Installation`, `Quickstart`, `Core Concepts`, `Guides`
 and `Troubleshooting`, in that order, under the `intro` document.
 
-**"Reference" was NOT renamed to "API Reference".** That category is injected by the docs site when
-a package ships API-reference sources, and a hand-authored one is refused outright rather than
-warned about. Where the site places it is the site's decision, not this package's, and this package
-neither authors nor positions it.
+**"Reference" was NOT renamed to "API Reference".** That category is injected by the docs site, and
+a hand-authored one is refused outright rather than warned about. Whether and where the site adds it
+is the site's decision, not this package's, and this package neither authors nor positions it.
 
 Verified against the site's own linter rather than by inspection, with the sidebar shipped in the
 previous release as a negative control: that one produces two errors, and this one produces no

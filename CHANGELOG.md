@@ -29,15 +29,14 @@ still do. Each entry was assigned to the release whose tag first contains it, re
     `docs-content/` and the nine referenced by the sidebar are the same nine). **`mcp`** and
     **`reference-commands`** join **Guides**, next to `guides-overview`, both being task-oriented:
     what to run and what comes back. **`limitations`** joins **Troubleshooting**, next to
-    `troubleshooting`, which is where the documentation standard puts known limitations and where
-    the sibling packages that ship such a page already keep it.
+    `troubleshooting`, which is where the documentation standard puts known limitations.
   - The categories this package ships are now `Installation`, `Quickstart`, `Core Concepts`,
     `Guides` and `Troubleshooting`, in that order, under the `intro` document.
   - **"Reference" was deliberately NOT renamed to "API Reference".** That category is injected by
-    the docs site when a package ships API-reference sources, and a hand-authored one is refused
-    outright rather than warned about, so the rename would have traded a failing check for a
-    differently failing one. Where the site places it is the site's decision, not this package's,
-    and this package neither authors nor positions it.
+    the docs site, and a hand-authored one is refused outright rather than warned about, so the
+    rename would have traded a failing check for a differently failing one. Whether and where the
+    site adds it is the site's decision, not this package's, and this package neither authors nor
+    positions it.
   - Verified against the site's own linter rather than by inspection, with the sidebar shipped in
     the previous release as a **negative control**: that one produces two errors and this one
     produces no findings. **Only a new release can clear the gate**, because it reads the sidebar
