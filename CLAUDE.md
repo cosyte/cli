@@ -23,6 +23,76 @@ subpath still exports a small programmatic `core` API (`detectFormat`, `EXIT`, `
 
 ## Status
 
+- **▶ THE PRE-COMMIT PHI GATE WAS BLIND TO `git mv`, AND THE HOLE WAS NOT LIMITED TO LINKS.**
+  `scripts/phi-scan.ts --staged` is the `pre-commit` hook (`simple-git-hooks`). It listed the index
+  with `git diff --cached --name-only --diff-filter=AM`. Rename detection is **on by default**, so
+  `git mv <path> test/__fixtures__/<name>` stages as a **two-path `R100`** record, and `R`/`C` are in
+  neither `AM` nor `AMT`, so the status filter **deleted the record** and the destination was never
+  enumerated. Measured here, both at **exit 0** through the hook: an ordinary regular file carrying a
+  value the scanner's own floor catches (`:100644 100644 <sha> <sha> R100`) and a link
+  (`:120000 120000 <sha> <sha> R100`, index mode `120000` under the scan root).
+  **`--no-renames` is the whole remedy and it is a strict SUPERSET, not a narrowing**: the
+  destination arrives as a single-path `A`, the source as a `D` the filter drops. Verified under
+  `diff.renames` = `true` / `copies` / `false` / `1` and `diff.renameLimit=1`: **no `R` or `C`
+  survives any of them**, which is what makes the two-field `--raw -z` stride **structural rather
+  than conditional**. `copies` is not hypothetical here, it emits a live `C100`.
+  **Do NOT re-derive this as "needs the two-path record shape, a scope decision".** That framing was
+  ported from a sibling and is false; `dicom` measured it and `cli` re-measured it.
+  Three more shapes in the same route, each measured at exit 0 on `a7a92f8` and each closed: the
+  **destination mode was never read** (`--name-only` gives none, and `git show :<path>` answers a
+  link with its **target path as though it were content**, so the scan read path text and never the
+  target's bytes, and this is why the route now lists `--raw -z` and refuses a non-blob mode with
+  **exit 2**); **`T` was missing from the filter**, so replacing a _tracked_ fixture with a link was
+  neither `A` nor `M` and the record was gone before a mode could be read; and **each scan root's own
+  path** is in scope now, because git records no index entry for a directory, so an entry at exactly
+  `test/__fixtures__` or `src` is that root replaced by a blob or a link.
+  **A refusal NEVER prints the link target.** It is working-tree text and a target path of the shape
+  `../patients/<surname>-<given>-<dob>.txt` is the whole reason: a diagnostic about a PHI leak is
+  itself a PHI surface. The entry's **own** path is printed deliberately, and every offender is
+  named, not just the first. **That guarantee is about a REFUSAL and does not extend to a hit** (see
+  the linked-scan-root residual below, where the values printed come from the far side of a link).
+  **The all-mode walk got the same refusal**, because a scanner whose pre-commit half refuses a link
+  while its CI half silently drops one cannot be reasoned about. The `.md` exemption deliberately
+  does not reach a link.
+  **Two exit-code defects fixed with it, and the reason matters more than the codes:** a missing or
+  unreadable allow-list, and an unreadable scan root, both threw past every handler and exited **1**
+  with a stack trace. **`1` is this contract's code for "hits found"**, so a broken invocation read
+  as a PHI finding. Both are exit **2** now.
+  **▶ THE REFUSAL RULE IS SCOPED TO AN _ENUMERATED_ ENTRY, AND THE UNQUALIFIED VERSION IS FALSE.**
+  A refuter caught the first draft of this note asserting "neither route follows such an entry" while
+  the same file falsifies it. The rule covers an entry the walk reached **beneath a root it had
+  already opened**, and a staged record **in scope per the boundary rule** (NOT "at or under a scan
+  root": measured, a staged link at `src/notes.json` is under a scan root and `--staged` exits 0 over
+  it, because the `src/` half of that scope is `.ts` only. The all-mode sweep refuses it, so nothing
+  escapes the gate as a whole). Three shapes escape it, all
+  **PRE-EXISTING** (identical on `a7a92f8` and in `dicom`), all measured, **none closed here**:
+  (1) **a scan root that is itself a LIVE link is followed** by the all-mode walk, because
+  `existsSync`/`readdirSync` both resolve, so the walk reads files no commit contains and prints their
+  values under a **fabricated in-repo path** that holds no such file, which is a confident wrong
+  provenance on the channel this repo calls a PHI surface. The **dangling** direction is the mirror
+  image: it prints OK over a corpus it never opened; (2) **an ancestor** of a scan root is in neither
+  route's scope, so staging `test` as a link is exit 0 on `--staged` and the walk then follows it;
+  (3) **paths mode follows an explicitly named link** (`statSync` resolves). The `--staged` half of
+  shape (1) **is** closed here. **Do not "fix" this by growing the guard inside a rename slice**: the
+  remedy taken was to correct the claim, and closing it needs a refuse-a-scan-that-observed-nothing
+  rule plus a decision about how far above a root to look.
+  **Other residuals, all PRE-EXISTING and none closed:** `D` and `U` are still not enumerated (`U`
+  costs nothing that can reach a commit, **measured**: `git commit` refuses an unmerged index
+  outright, exit 128); under `src/` the staged route covers only `.ts` while the all-mode walk covers
+  every non-`.md` file, so **the two routes disagree there** and the CI sweep is the cover.
+  **16 of `test/scripts/phi-scan.test.ts`'s 34 tests run red on `a7a92f8`.** The 18 that stay green
+  are the floor tests, the deliberate controls (one of which asserts the payload under test is
+  something this scanner would otherwise catch), and the four that **pin the residuals above** and
+  are green on both trees by design. **Give these tests explicit timeouts**: each spawns `tsx` cold,
+  measured at 0.5s idle and **3.7s under contention** against a shared 10s default.
+  **Two vacuity traps this suite has already sprung, both worth knowing before you add to it:** a
+  fixture built its merge conflict with a bare `git merge` and DISCARDED the result, which on a
+  runner with no git identity refuses before touching the index, so every later assertion held over
+  an empty one (real CI caught it; local runs passed against an ambient global identity). And the
+  `diff.renames` loop asserted only the detection-OFF side, so it would have passed just as happily
+  if git had stopped emitting the record shape the whole change is about. **Assert the premise, not
+  only the remedy.**
+
 - **Em-dash brand gate armed, and unlike most siblings this repo was NOT clean when it landed.**
   `scripts/check-no-emdash.sh` (`pnpm check:no-emdash`) plus `.github/workflows/no-emdash.yml` enforce
   the founder directive banning `U+2014` outright (`knowledgebase/06-brand/voice-and-tone.md`, "No em
