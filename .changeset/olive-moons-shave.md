@@ -16,16 +16,17 @@ no page moved out of the navigation and none was orphaned:
   (the man-page-style command reference) now sit under **Guides**, next to `guides-overview`. Both
   are task-oriented: what to run, and what comes back.
 - **`limitations`** (what the CLI does and does not do, the per-(format, operation) support matrix,
-  the PHI and HIPAA posture) now sits under **Core Concepts**, next to `concepts-archetype`. It is
-  the mental model a reader needs before relying on the tool, not a recipe.
+  the PHI and HIPAA posture) now sits under **Troubleshooting**, next to `troubleshooting`, which is
+  where the documentation standard puts known limitations and where the sibling packages that ship
+  such a page already keep it.
 
-Top-level navigation is now `Overview` (the `intro` doc), `Installation`, `Quickstart`,
-`Core Concepts`, `Guides`, `Troubleshooting`, in that order.
+The categories this package ships are now `Installation`, `Quickstart`, `Core Concepts`, `Guides`
+and `Troubleshooting`, in that order, under the `intro` document.
 
-**"Reference" was NOT renamed to "API Reference".** That category is injected by the docs site's own
-sidebar resolver when a package ships API-reference sources, and a hand-authored one is refused
-outright rather than warned about. The resolver still inserts it in its canonical position, just
-before `Troubleshooting`.
+**"Reference" was NOT renamed to "API Reference".** That category is injected by the docs site when
+a package ships API-reference sources, and a hand-authored one is refused outright rather than
+warned about. Where the site places it is the site's decision, not this package's, and this package
+neither authors nor positions it.
 
 Verified against the site's own linter rather than by inspection, with the sidebar shipped in the
 previous release as a negative control: that one produces two errors, and this one produces no

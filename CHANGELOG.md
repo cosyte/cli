@@ -28,16 +28,16 @@ still do. Each entry was assigned to the release whose tag first contains it, re
     **no page left the navigation and none was orphaned** (verified: the nine documents in
     `docs-content/` and the nine referenced by the sidebar are the same nine). **`mcp`** and
     **`reference-commands`** join **Guides**, next to `guides-overview`, both being task-oriented:
-    what to run and what comes back. **`limitations`** joins **Core Concepts**, next to
-    `concepts-archetype`, being the mental model a reader needs before relying on the tool rather
-    than a recipe.
-  - Top-level navigation is now `Overview` (the `intro` doc reference), `Installation`,
-    `Quickstart`, `Core Concepts`, `Guides`, `Troubleshooting`, in that order.
+    what to run and what comes back. **`limitations`** joins **Troubleshooting**, next to
+    `troubleshooting`, which is where the documentation standard puts known limitations and where
+    the sibling packages that ship such a page already keep it.
+  - The categories this package ships are now `Installation`, `Quickstart`, `Core Concepts`,
+    `Guides` and `Troubleshooting`, in that order, under the `intro` document.
   - **"Reference" was deliberately NOT renamed to "API Reference".** That category is injected by
-    the docs site's sidebar resolver when a package ships API-reference sources, and a hand-authored
-    one is refused outright rather than warned about, so the rename would have traded a failing
-    check for a differently failing one. The resolver still inserts it just before
-    `Troubleshooting`.
+    the docs site when a package ships API-reference sources, and a hand-authored one is refused
+    outright rather than warned about, so the rename would have traded a failing check for a
+    differently failing one. Where the site places it is the site's decision, not this package's,
+    and this package neither authors nor positions it.
   - Verified against the site's own linter rather than by inspection, with the sidebar shipped in
     the previous release as a **negative control**: that one produces two errors and this one
     produces no findings. **Only a new release can clear the gate**, because it reads the sidebar
