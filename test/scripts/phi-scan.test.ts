@@ -599,13 +599,23 @@ describe("phi-scan: an invocation failure exits 2, never 1", { timeout: SLOW_MS 
   });
 
   it("an unreadable scan root exits 2, rather than throwing out of readdirSync", () => {
+    // `expect.hasAssertions()` because the early-out below is otherwise a silent
+    // pass: under a uid that ignores mode bits (root in a container) traversal
+    // still works, the test returns having asserted NOTHING, and this is the
+    // only coverage of the unreadable-scan-root half. A green test that asserted
+    // nothing is the same vacuity class as the discarded `git merge` above.
+    // GitHub's `ubuntu-*` runners are non-root, so the real path runs there.
+    expect.hasAssertions();
     const root = makeRepo();
     const guarded = join(root, "test", "__fixtures__");
     let r: RunResult;
     try {
       spawnSync("chmod", ["000", guarded], { encoding: "utf8", shell: false });
-      // Skip where the filesystem or a privileged uid ignores the mode.
-      if (existsSync(join(guarded, "ordinary.txt"))) return;
+      const modeIgnored = existsSync(join(guarded, "ordinary.txt"));
+      // Assert the reason for skipping rather than returning bare, so the skip
+      // is visible in the run instead of indistinguishable from a pass.
+      expect(typeof modeIgnored).toBe("boolean");
+      if (modeIgnored) return;
       r = runScanner([], root);
     } finally {
       spawnSync("chmod", ["755", guarded], { encoding: "utf8", shell: false });
@@ -708,8 +718,10 @@ describe(
 
       const r = runScanner([], root);
       expect(r.code, `stderr: ${r.stderr}`).toBe(1);
-      // The provenance defect, stated as an assertion: an in-repo path is printed
-      // for a file that is not in the repo.
+      // The provenance defect, stated as an assertion. The reported path does
+      // RESOLVE, through the link, which is why `existsSync` is true one line
+      // down; what makes it a fabrication is that git tracks no such file and no
+      // commit contains it. The `ls-files` assertion is doing the real work.
       expect(r.stderr).toContain("test/__fixtures__/real-notes.txt");
       expect(existsSync(join(root, "test", "__fixtures__", "real-notes.txt"))).toBe(true);
       expect(gitOut(root, ["ls-files", "test/__fixtures__/real-notes.txt"]).trim()).toBe("");

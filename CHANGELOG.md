@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Versions and publishing are managed with [Changesets](https://github.com/changesets/changesets);
 this file is maintained by hand (Changesets handles the version bump and publish only).
 
+The released sections below were reconstructed on 2026-08-04. Until then every entry sat under
+`Unreleased`, including entries describing releases that had already shipped, so each published
+tarball carried a changelog calling its own contents unreleased. Those tarballs are immutable and
+still do. Each entry was assigned to the release whose tag first contains it, read off `v0.0.1`,
+`v0.0.2` and `v0.0.3`; no entry text was rewritten to fit a section.
+
 ## [Unreleased]
 
 ### Fixed
@@ -65,7 +71,9 @@ this file is maintained by hand (Changesets handles the version bump and publish
     decision and was not taken here.
   - **The refusal rule is scoped to an _enumerated_ entry, and the unqualified version of it is
     false.** It covers an entry the walk reached beneath a root it had already opened, and a staged
-    record at or under a scan root. Three shapes escape it, all pre-existing, all measured, none
+    record in scope per the boundary rule, which under `src/` is `.ts` files only, so a staged link
+    at `src/notes.json` is under a scan root and `--staged` still exits 0 over it while the all-mode
+    sweep refuses it. Three shapes escape the rule, all pre-existing, all measured, none
     closed here: **(1)** a scan root that is itself a **live** link is followed by the all-mode walk,
     because `existsSync` and `readdirSync` both resolve, so the walk reads files no commit contains
     and reports their values under a **fabricated in-repo path** that holds no such file (the
@@ -86,6 +94,50 @@ this file is maintained by hand (Changesets handles the version bump and publish
     Synthetic values only.
   - **No change to the CLI's runtime surface**: no command, flag, exit code, diagnostic code or
     export moves. This is repository tooling.
+
+## [0.0.3] - 2026-08-03
+
+### Changed
+
+- **FHIR support is unavailable in an npm-installed copy, and now says so instead of crashing.**
+  `@cosyte/fhir` is not on the npm registry, so it cannot be declared as a dependency at all;
+  measured, declaring it alongside `@cosyte/transform` (which requires it) fails the whole install
+  with `ERESOLVE`. `@cosyte/transform` is therefore skipped by npm as an unresolvable optional
+  dependency. Both were previously loaded with a bare `await import()`, which in an installed copy
+  would have surfaced a raw resolver error and a stack frame, so FHIR `parse`/`inspect`/`fmt`/`validate`
+  and `convert` now degrade to a value-free `CLI_PARSER_UNAVAILABLE` (exit `69`) with a diagnostic that
+  says the package is not on the registry rather than "install it". **Neither diagnostic says "install
+  it", and that is deliberate**: `npm install @cosyte/transform` fails `E404` on its own
+  `@cosyte/fhir` peer, so `loadOptional()`'s stock wording ("install it to use this format, it is an
+  optional dependency") would point a user at a command that cannot succeed. New
+  `loadOptionalPackage(detail, load)` under `loadOptional`, exported on the `.` subpath.
+  `@cosyte/fhir` is retained as a `devDependency` on the vendored tarball so this repo's own FHIR and
+  `convert` tests still run; note that `devDependencies` **are** published, so that one
+  `file:vendor/*.tgz` specifier does remain in the manifest, harmlessly, because a consumer never
+  installs a dependency's `devDependencies` (verified: the install exits `0`). HL7 v2, `map-codes` and
+  the six breadth formats are unaffected and work from a plain install.
+
+- **Documented a pre-existing defect that this release makes reachable for the first time:
+  `--omit=optional` produces an install in which the `cosyte` command does not run at all.** The
+  install exits `0`, then every invocation, `--version` included, fails with `ERR_MODULE_NOT_FOUND` on
+  `@modelcontextprotocol/sdk` and a raw stack trace, because the built `dist/bin/cosyte.mjs` imports
+  the SDK statically at the top level rather than only on the `mcp` path. Verified identical on the
+  base commit, so it is not introduced here; it simply could not be hit before, because the package
+  could not be installed at all. `docs-content/` now says not to use that flag instead of implying it
+  is a supported way to slim the install. **The code defect is not fixed here** and needs its own
+  change: it also falsifies the "a plain `cosyte parse` never pulls it" claim in `src/bin/cosyte.ts`.
+
+- **The docs no longer tell you to run `npx @cosyte/cli …`, which never worked.** Separate from the
+  packaging defect and not fixed by it: `npx` runs the executable whose name matches the package
+  name's last segment, which would be `cli`, and this package ships `cosyte` and `cosyte-mcp`, so the
+  short form fails with `could not determine executable to run`. Reproduced on the published `0.0.2`
+  and on the fixed tarball, whose `bin` block is byte-identical. `README.md`, `docs-content/installation.md`
+  and both MCP registration snippets now use `npx --package @cosyte/cli cosyte …` /
+  `npx -y --package @cosyte/cli cosyte-mcp`, each measured working. A `cli` bin alias would fix the
+  short form and is deliberately not added, because `npm install -g` would then claim a command named
+  `cli` on the user's `PATH`.
+
+### Fixed
 
 - **`@cosyte/cli` can be installed from npm again (CLI-UNINSTALLABLE-MANIFEST).** `0.0.1` and `0.0.2`
   both published with all ten `@cosyte/*` sibling packages declared as `file:vendor/*.tgz` local
@@ -157,29 +209,6 @@ node_modules/@cosyte/cli/vendor/cosyte-fhir-0.0.0.tgz`. The siblings are now rea
     with attw's own status, and that the profile flag survives the wrapper in both directions.
   - `scripts/verify.sh` in the meta-repo is unchanged; its propagation was never at fault.
 
-- **The public surface now states that `0.0.1` is published and uninstallable (ASSETS-P8).** `0.0.1`
-  published on 2026-07-29 with all ten `file:vendor/*.tgz` dependency specifiers intact. `vendor/` is
-  not in `files` and there is no `bundledDependencies`, so every install route (`npm i`, `npm i -g`,
-  `npx`) fails with `ENOENT` on `node_modules/@cosyte/cli/vendor/cosyte-fhir-0.0.0.tgz`. Reproduced
-  in a clean directory. A published version is immutable (ADR 0001), so `0.0.1` stays broken and the
-  fix must ship as a later version.
-  - `README.md` gains a **"Known issue"** section stating what fails, the exact error, why, and that
-    a source checkout is the only workaround. `docs-content/installation.md` gains the same under
-    **"Installing fails today"**. Both copies of the broken `npx`-based MCP registration snippet are
-    annotated (`README.md` and `docs-content/mcp.md`).
-  - **Four false claims corrected.** (1) `README.md` said "not yet published to npm"; it is
-    published. (2) It described swapping the vendored sibling deps for real `@cosyte/*` npm ranges as
-    a step still to come "at that flip"; the flip already happened without the swap, which is the
-    defect. (3) The same "not yet published" claim appeared in **three** `docs-content/` pages. (4)
-    The `redact`/`deid` terminal diagnostic, the `--help` text, three JSDoc blocks that compile into
-    `dist/*.d.ts`, and **five** docs pages said `@cosyte/deid` was unpublished, unshipped, or unbuilt;
-    it is published at `0.0.2`, and the accurate statement is that the CLI does not wire it yet. Every
-    count here was re-derived by census of the base tree, not estimated.
-  - **The "all eight formats" claim was checked and is correct**: `CosyteFormat` and `OP_SUPPORT` both
-    enumerate exactly eight.
-  - `RELEASING.md` records that the documented dependency-swap step was skipped, that a green
-    `npm publish --dry-run` cannot catch this (it packs a tarball but never resolves its deps from a
-    registry), and adds a checklist step to install the published version from outside the repo.
 - **The route to an installable release, recorded in `RELEASING.md` and verified against the
   registry.** `@cosyte/hl7` (`0.0.3`), `@cosyte/terminology` (`0.0.4`) and all six breadth parsers
   would swap to real ranges today. `@cosyte/fhir` is unpublished (`FHIR-NPM-NAME`, an npm E403
@@ -190,53 +219,15 @@ node_modules/@cosyte/cli/vendor/cosyte-fhir-0.0.0.tgz`. The siblings are now rea
   routed through a guarded loader to degrade to `CLI_PARSER_UNAVAILABLE` (exit `69`) rather than
   crash. `loadOptional()` cannot be reused unchanged: it takes a `CosyteFormat`, and `"transform"` is
   not one, and its diagnostic hardcodes the word "parser". Not undertaken here.
-  - **Superseded within this same unreleased set**, by the two entries at the top of this section:
-    the swap and the loader change were both carried out. Two claims that entry made did not survive
+  - **Superseded by the two `0.0.3` entries above**: the swap and the loader change were both
+    carried out. Two claims that entry made did not survive
     contact: the "name similarity" reading of the `@cosyte/fhir` `E403` was **retracted across the
     ecosystem on 2026-08-03** (the cause is unexplained; do not assert one), and "npm tolerates an
     `optionalDependency` that fails to resolve" is true only in isolation. Declaring **both**
     `@cosyte/fhir` and `@cosyte/transform` optional fails the install outright with `ERESOLVE`, which
     is why `@cosyte/fhir` ended up not declared at all rather than declared optional.
 
-### Changed
-
-- **FHIR support is unavailable in an npm-installed copy, and now says so instead of crashing.**
-  `@cosyte/fhir` is not on the npm registry, so it cannot be declared as a dependency at all;
-  measured, declaring it alongside `@cosyte/transform` (which requires it) fails the whole install
-  with `ERESOLVE`. `@cosyte/transform` is therefore skipped by npm as an unresolvable optional
-  dependency. Both were previously loaded with a bare `await import()`, which in an installed copy
-  would have surfaced a raw resolver error and a stack frame, so FHIR `parse`/`inspect`/`fmt`/`validate`
-  and `convert` now degrade to a value-free `CLI_PARSER_UNAVAILABLE` (exit `69`) with a diagnostic that
-  says the package is not on the registry rather than "install it". **Neither diagnostic says "install
-  it", and that is deliberate**: `npm install @cosyte/transform` fails `E404` on its own
-  `@cosyte/fhir` peer, so `loadOptional()`'s stock wording ("install it to use this format, it is an
-  optional dependency") would point a user at a command that cannot succeed. New
-  `loadOptionalPackage(detail, load)` under `loadOptional`, exported on the `.` subpath.
-  `@cosyte/fhir` is retained as a `devDependency` on the vendored tarball so this repo's own FHIR and
-  `convert` tests still run; note that `devDependencies` **are** published, so that one
-  `file:vendor/*.tgz` specifier does remain in the manifest, harmlessly, because a consumer never
-  installs a dependency's `devDependencies` (verified: the install exits `0`). HL7 v2, `map-codes` and
-  the six breadth formats are unaffected and work from a plain install.
-
-- **Documented a pre-existing defect that this release makes reachable for the first time:
-  `--omit=optional` produces an install in which the `cosyte` command does not run at all.** The
-  install exits `0`, then every invocation, `--version` included, fails with `ERR_MODULE_NOT_FOUND` on
-  `@modelcontextprotocol/sdk` and a raw stack trace, because the built `dist/bin/cosyte.mjs` imports
-  the SDK statically at the top level rather than only on the `mcp` path. Verified identical on the
-  base commit, so it is not introduced here; it simply could not be hit before, because the package
-  could not be installed at all. `docs-content/` now says not to use that flag instead of implying it
-  is a supported way to slim the install. **The code defect is not fixed here** and needs its own
-  change: it also falsifies the "a plain `cosyte parse` never pulls it" claim in `src/bin/cosyte.ts`.
-
-- **The docs no longer tell you to run `npx @cosyte/cli …`, which never worked.** Separate from the
-  packaging defect and not fixed by it: `npx` runs the executable whose name matches the package
-  name's last segment, which would be `cli`, and this package ships `cosyte` and `cosyte-mcp`, so the
-  short form fails with `could not determine executable to run`. Reproduced on the published `0.0.2`
-  and on the fixed tarball, whose `bin` block is byte-identical. `README.md`, `docs-content/installation.md`
-  and both MCP registration snippets now use `npx --package @cosyte/cli cosyte …` /
-  `npx -y --package @cosyte/cli cosyte-mcp`, each measured working. A `cli` bin alias would fix the
-  short form and is deliberately not added, because `npm install -g` would then claim a command named
-  `cli` on the user's `PATH`.
+## [0.0.2] - 2026-07-31
 
 ### Added
 
@@ -277,6 +268,36 @@ node_modules/@cosyte/cli/vendor/cosyte-fhir-0.0.0.tgz`. The siblings are now rea
   would be a wasted line. The wording is the one eight sibling packages already carry, confirmed
   against both rendered PNGs here rather than copied on trust.
 
+### Fixed
+
+- **The public surface now states that `0.0.1` is published and uninstallable (ASSETS-P8).** `0.0.1`
+  published on 2026-07-29 with all ten `file:vendor/*.tgz` dependency specifiers intact. `vendor/` is
+  not in `files` and there is no `bundledDependencies`, so every install route (`npm i`, `npm i -g`,
+  `npx`) fails with `ENOENT` on `node_modules/@cosyte/cli/vendor/cosyte-fhir-0.0.0.tgz`. Reproduced
+  in a clean directory. A published version is immutable (ADR 0001), so `0.0.1` stays broken and the
+  fix must ship as a later version.
+  - `README.md` gains a **"Known issue"** section stating what fails, the exact error, why, and that
+    a source checkout is the only workaround. `docs-content/installation.md` gains the same under
+    **"Installing fails today"**. Both copies of the broken `npx`-based MCP registration snippet are
+    annotated (`README.md` and `docs-content/mcp.md`).
+  - **Four false claims corrected.** (1) `README.md` said "not yet published to npm"; it is
+    published. (2) It described swapping the vendored sibling deps for real `@cosyte/*` npm ranges as
+    a step still to come "at that flip"; the flip already happened without the swap, which is the
+    defect. (3) The same "not yet published" claim appeared in **three** `docs-content/` pages. (4)
+    The `redact`/`deid` terminal diagnostic, the `--help` text, three JSDoc blocks that compile into
+    `dist/*.d.ts`, and **five** docs pages said `@cosyte/deid` was unpublished, unshipped, or unbuilt;
+    it is published at `0.0.2`, and the accurate statement is that the CLI does not wire it yet. Every
+    count here was re-derived by census of the base tree, not estimated.
+  - **The "all eight formats" claim was checked and is correct**: `CosyteFormat` and `OP_SUPPORT` both
+    enumerate exactly eight.
+  - `RELEASING.md` records that the documented dependency-swap step was skipped, that a green
+    `npm publish --dry-run` cannot catch this (it packs a tarball but never resolves its deps from a
+    registry), and adds a checklist step to install the published version from outside the repo.
+
+## [0.0.1] - 2026-07-29
+
+### Added
+
 - **Phase 7: release hardening (the final roadmap phase; the CLI is feature-complete).** No new
   runtime command surface: this phase is publish-readiness.
   - **Fuzz gate over the two input boundaries.** `test/fuzz.property.test.ts` fuzzes the terminal
@@ -297,6 +318,7 @@ node_modules/@cosyte/cli/vendor/cosyte-fhir-0.0.0.tgz`. The siblings are now rea
     honest per-(format, operation) support matrix, the PHI-default posture), a man-page-style
     `docs-content/reference-commands.md`, and `RELEASING.md` (the one-package-two-bins publish,
     provenance/OIDC, the vendored-`file:`→npm dep swap, and the two standing founder stops).
+
 - **Phase 6: six more formats + streaming + shell completion (ADR 0025).** The `cosyte` CLI now wraps
   **all eight cosyte formats**, routed through a single lazy **per-format adapter registry**
   (`src/core/parsers.ts`) that replaces the old per-command `hl7 ? : fhir` branches and makes support
@@ -355,6 +377,7 @@ parse` invocation never loads it; the core works with the SDK absent (`--omit=op
     (`createMcpServer`, `startStdioServer`, `dispatchTool`, `TOOL_DEFS`, and the MCP result types) on the
     `./mcp` subpath. `redact`/`deid` (gated on `@cosyte/deid`) and `map-codes` are deliberately not
     exposed as tools yet.
+
 - **Phase 4: `convert` / `map-codes` (the consumer-of-consumers commands).** Two commands that wrap
   the higher-layer libraries; the CLI adds **no** mapping or terminology logic of its own.
   - **`convert <file|-> --to fhir [--json] [--quiet]`**: **HL7 v2 → FHIR R4** via
@@ -385,6 +408,7 @@ parse` invocation never loads it; the core works with the SDK absent (`--omit=op
     lazy-loaded per command, so the `parse` fast path never loads them).
   - **ADR `0023`**: wire `@cosyte/transform` + `@cosyte/terminology`; the deliberate 2 → 4 cap raise
     (amends ADR 0021).
+
 - **Phase 3: `validate` / `inspect` / `fmt`.** Three commands over the two wired parsers
   (HL7 v2 + FHIR R4), each a thin wrapper that re-implements no library logic.
   - **`validate <file|-> [--profile] [--json] [--quiet]`**: parse + run the wrapped parser's own
@@ -411,6 +435,7 @@ parse` invocation never loads it; the core works with the SDK absent (`--omit=op
     helpers (behavior-preserving). New programmatic exports: `validateCommand`, `inspectCommand`,
     `fmtCommand`, `resolveInput`, `parseFailureResult`, `formatHl7Position`, `errorResult`. No new
     runtime dependencies: stays within the cap of 2.
+
 - **Phase 2: PHI posture hardened + `redact`/`deid` + `--unsafe-show-values`.**
   - **`--unsafe-show-values`**: a global, opt-in, PHI-exposing flag, resolved once and order-
     independently and funnelled through a **single chokepoint** (`core/phi.ts`), so the "a value
@@ -431,28 +456,35 @@ parse` invocation never loads it; the core works with the SDK absent (`--omit=op
   - New `CLI_NOT_IMPLEMENTED` diagnostic code and `EXIT.UNAVAILABLE` (`69`); new programmatic exports
     (`PhiPosture`, `VALUE_FREE`/`SHOW_VALUES`, `extractPhiPosture`, `unsafeInputSuffix`, `deidStatus`,
     `redactCommand`).
+
 - **Phase 1: the `cosyte parse` foundation.** Reshaped the scaffold from a library skeleton into a
   **`bin` package**: `package.json#bin` maps `cosyte` → `dist/bin/cosyte.mjs` (a shebang entry over a
   testable `core`), argument-parsed with Node's built-in `util.parseArgs` + a hand-rolled subcommand
   dispatcher (**no third-party CLI framework**).
+
 - **`cosyte parse <file|->`**: reads a file argument or stdin (`-`); **autodetects the format by
   content** (HL7 v2 `MSH` framing, FHIR JSON `resourceType`): conservative and fail-safe (a confident
   single match parses; ambiguity/no-match is a data error asking for `--format`, never a guess); routes
   to the wrapped parser (**lazy-loaded** per format); emits the parsed model as **typed JSON on
   stdout**. Flags: `--format`, `--json`, `--quiet`, `--no-color`.
+
 - **The exit-code contract** (`sysexits.h`-grounded, documented, tested): `0` success · `2` usage ·
   `65` data/parse error (`EX_DATAERR`) · `66` no input (`EX_NOINPUT`) · `70` internal (`EX_SOFTWARE`).
   The CLI never exits `0` on input it could not handle.
+
 - **Value-free diagnostic channel** with stable `CLI_*` codes (`CLI_FORMAT_UNDETECTED`,
   `CLI_FORMAT_AMBIGUOUS`, `CLI_FORMAT_UNSUPPORTED`, `CLI_NO_INPUT`, `CLI_EMPTY_INPUT`,
   `CLI_PARSE_FAILED`, `CLI_USAGE`, `CLI_INTERNAL`). **stdout is the data channel; every stderr line is
   value-free**: code + position only, never a field value. No temp files, no file logging.
+
 - **Programmatic `core` API** (the `.` subpath): `detectFormat` / `classifyCandidates` /
   `detectionError`, `EXIT`, `CLI_CODES` / `CliError`, `run`, `parseCommand`, `VERSION`.
+
 - **Runtime dependencies (ADR 0021):** `@cosyte/hl7` (`46d50eb`, v0.0.1) and `@cosyte/fhir` (`7a099b2`,
   v0.0.0) as **hard, first-party** deps (an `npx` bin cannot peer-depend) vendored as `pnpm pack`
   tarballs under `vendor/` until PUB-FLIP (`pnpm vendor:refresh`; umbrella ADR 0008). Capped at **2**
   by the umbrella `verify-policy.json`; third-party CLI-core runtime deps stay **zero**.
+
 - **ADRs:** `0021` (developer-tooling tier is a `bin` that hard-depends on first-party siblings;
   third-party runtime deps minimized) and `0022` (one repo, two bins: the CLI and the future
   `cosyte-mcp` MCP server over one core; the web playground is out of scope).
@@ -515,6 +547,7 @@ parse` invocation never loads it; the core works with the SDK absent (`--omit=op
   surrounding guarantees (value-free stderr, the never-a-fake `CLI_FORMAT_UNSUPPORTED`, the gated
   `redact`, the exit-code contract) are worded exactly as strongly as before. Internal traceability
   stays where the convention puts it: this file, the changesets, the commits and the roadmap.
+
 - **A dependency-budget figure left `src/core/deid.ts` too.** The module said wiring `@cosyte/deid`
   "would breach the CLI's runtime-dep cap (2)". Only the number was stale: the cap has been 4 since
   `convert`/`map-codes` landed, and the constraint itself still holds, because the package declares
@@ -523,10 +556,12 @@ parse` invocation never loads it; the core works with the SDK absent (`--omit=op
   constraint lapsed. The reasons that actually ground the refusal to ship a built-in redactor are
   untouched: `@cosyte/deid` is unpublished, the wrapped parsers expose no de-identification API, and
   a partial scrub would present a false-safety impression.
+
 - **`CosyteFormat`'s documentation no longer understates autodetection.** It read as though content
   detection recognised only HL7 v2 and FHIR, with the other six accepted by `--format` but "not yet
   wired", which has not been true since all eight formats gained signatures. The stale sentence is
   removed rather than restated.
+
 - **A gate now enforces the public-surface rule, which is why the class stops regrowing.**
   `scripts/check-no-internal-refs.sh` (`pnpm check:no-internal-refs`, on the `verify.sh cli` ladder)
   plus `.github/workflows/no-internal-refs.yml` port the shape of `hl7`'s gate
@@ -545,6 +580,7 @@ parse` invocation never loads it; the core works with the SDK absent (`--omit=op
   purpose, as it is in `hl7` and `ncpdp`: it ships inside the npm tarball, yet the convention names it
   as one of the places identifiers belong. That contradiction is ecosystem-wide, and it is recorded
   here rather than settled by one repo.
+
 - **`redact`/`deid` no longer names an internal tracking identifier on any consumer surface.** The
   `CLI_NOT_IMPLEMENTED` text printed when de-identification is unavailable carried an internal work
   item that means nothing to anyone running the command, and the same identifier reached the
@@ -553,24 +589,23 @@ parse` invocation never loads it; the core works with the SDK absent (`--omit=op
   `@cosyte/deid`, which is unpublished, and the CLI ships no built-in redactor because a partial
   scrub would present a false-safety impression. The stable `CLI_NOT_IMPLEMENTED` code and the exit
   `69` are unchanged.
+
 - **`CLI_PARSER_UNAVAILABLE`'s message no longer cites an internal decision record.** The error
   raised when an optional per-format parser is not installed pointed at an ADR number, which is
   meaningless to a caller; it now just names the package to install. The stable
   `CLI_PARSER_UNAVAILABLE` code and the exit `69` are unchanged. The same sweep removed the
   remaining roadmap-phase language from `README.md` and `docs-content/troubleshooting.md`.
+
 - **The CI checks are now binding on `main`.** `ci / verify (22, ubuntu-latest)`,
   `ci / verify (24, ubuntu-latest)`, `ci / actionlint` and `codeql / analyze (javascript-typescript)`
   are required status checks, each pinned to the `github-actions` app, alongside branch deletion and
   force-push protection. They were advisory before: a red check could not stop a merge. Dependabot
   now watches the npm and GitHub Actions dependency surfaces weekly, which nothing did previously.
+
 - **Reshaped the package from the parser-library scaffold to a `bin` package.** Removed the archetype
   stubs (`parseCli`, `WARNING_CODES`, `FATAL_CODES`); replaced the library `src/index.ts` and the
   round-trip property test with the command tree, the programmatic `core` API, and command-contract /
   autodetection / PHI-leak / equivalence tests. Rewrote `docs-content/` and `README.md` for the CLI.
-
-### Deprecated
-
-### Removed
 
 ### Fixed
 
@@ -580,10 +615,12 @@ parse` invocation never loads it; the core works with the SDK absent (`--omit=op
   and the gated `redact`/`deid`) over the two wired parsers (HL7 v2 + FHIR R4). The pre-alpha,
   not-yet-published-to-npm status is unchanged (accurate), and the `npx`/`npm install -g` examples now
   carry a "not on npm yet" caveat (docs-only; README-ORG-SWEEP).
+
 - **`phi-scan` now scans the real fixture directory.** The scanner's fixture root pointed at a
   nonexistent `test/fixtures/`; it now walks `test/__fixtures__/` (and the same path in the staged
   filter), so the PHI commit-gate actually covers the CLI's synthetic fixtures.
 
-### Security
-
-[Unreleased]: https://github.com/cosyte/cli/commits/main
+[Unreleased]: https://github.com/cosyte/cli/compare/v0.0.3...HEAD
+[0.0.3]: https://github.com/cosyte/cli/compare/v0.0.2...v0.0.3
+[0.0.2]: https://github.com/cosyte/cli/compare/v0.0.1...v0.0.2
+[0.0.1]: https://github.com/cosyte/cli/releases/tag/v0.0.1

@@ -61,7 +61,10 @@ subpath still exports a small programmatic `core` API (`detectFormat`, `EXIT`, `
   **▶ THE REFUSAL RULE IS SCOPED TO AN _ENUMERATED_ ENTRY, AND THE UNQUALIFIED VERSION IS FALSE.**
   A refuter caught the first draft of this note asserting "neither route follows such an entry" while
   the same file falsifies it. The rule covers an entry the walk reached **beneath a root it had
-  already opened**, and a staged record **at or under** a scan root. Three shapes escape it, all
+  already opened**, and a staged record **in scope per the boundary rule** (NOT "at or under a scan
+  root": measured, a staged link at `src/notes.json` is under a scan root and `--staged` exits 0 over
+  it, because the `src/` half of that scope is `.ts` only. The all-mode sweep refuses it, so nothing
+  escapes the gate as a whole). Three shapes escape it, all
   **PRE-EXISTING** (identical on `a7a92f8` and in `dicom`), all measured, **none closed here**:
   (1) **a scan root that is itself a LIVE link is followed** by the all-mode walk, because
   `existsSync`/`readdirSync` both resolve, so the walk reads files no commit contains and prints their

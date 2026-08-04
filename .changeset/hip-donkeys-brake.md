@@ -51,7 +51,9 @@ Stated rather than left to be inferred, all pre-existing and none closed:
 - Under `src/` the staged route still covers only `.ts` files while the all-mode walk covers every
   non-`.md` file, so the CI sweep is what covers the difference.
 - **The refusal rule is scoped to an _enumerated_ entry**: one the walk reached beneath a root it had
-  already opened, or a staged record at or under a scan root. Three shapes escape it. A scan root
+  already opened, or a staged record in scope per the boundary rule, which under `src/` is `.ts`
+  files only (so a staged link at `src/notes.json` is under a scan root and `--staged` still exits 0
+  over it, while the all-mode sweep refuses it). Three shapes escape the rule. A scan root
   that is itself a **live** link is followed by the all-mode walk (`existsSync` and `readdirSync`
   both resolve), so the walk reads files no commit contains and reports their values under a
   fabricated in-repo path that holds no such file; the **dangling** direction is the mirror image,

@@ -78,8 +78,12 @@
  * ▶ READ "ENUMERATED" IN THAT RULE AS LOAD-BEARING, BECAUSE THE UNQUALIFIED
  * VERSION OF THE SENTENCE IS FALSE AND THIS FILE FALSIFIES IT. The rule covers
  * an entry the walk reached BENEATH A ROOT IT HAD ALREADY OPENED, and a staged
- * record AT OR UNDER a scan root. It does not reach the three shapes below, all
- * PRE-EXISTING, all measured on this repo, none closed here:
+ * record IN SCOPE PER THE BOUNDARY PARAGRAPH BELOW. Do not paraphrase that
+ * second half as "at or under a scan root": measured, a staged link at
+ * `src/notes.json` is under a scan root and `--staged` exits 0 over it, because
+ * the `src/` half of the scope is `.ts` only. The all-mode sweep does refuse it,
+ * so nothing escapes the gate as a whole. The rule does not reach the three
+ * shapes below either, all PRE-EXISTING, all measured on this repo, none closed:
  *
  *   1. A SCAN ROOT THAT IS ITSELF A LIVE LINK IS FOLLOWED, in the all-mode walk.
  *      `existsSync` and `readdirSync` both resolve links, so with
