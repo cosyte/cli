@@ -34,7 +34,8 @@ this file is maintained by hand (Changesets handles the version bump and publish
     with `--raw -z` and **refuses** (exit `2`) any in-scope entry whose destination mode is not a
     regular blob. A refusal names the entry's own repo-relative path and an engine-owned token for
     its kind, and **never the link target**, which is working-tree text that can itself carry PHI.
-    Every offender is named, not just the first.
+    Every offender is named, not just the first. That guarantee is about a **refusal** and does not
+    extend to a hit; see the linked-scan-root residual below.
   - **`T` (typechange) is now in the filter**, because replacing a _tracked_ regular fixture with a
     link is neither an add nor a modify (`:100644 120000 <sha> <sha> T`), so `--diff-filter=AM`
     deleted the record before any mode could be read. The reverse direction, a link replaced by a
@@ -61,16 +62,28 @@ this file is maintained by hand (Changesets handles the version bump and publish
     was measured rather than assumed: `git commit` refuses an unmerged index outright. Under `src/`
     the staged route still covers only `.ts` files while the all-mode walk covers every non-`.md`
     file, so the CI sweep is what covers the difference; widening the staged half is a scope
-    decision and was not taken here. And in the all-mode route only, a scan root that is a
-    **dangling** link is followed by `existsSync`, answers false, and the walk reports clean over a
-    corpus it never opened. That needs a refuse-a-scan-that-observed-nothing rule, which is its own
-    change. The `--staged` half of that same shape **is** closed.
+    decision and was not taken here.
+  - **The refusal rule is scoped to an _enumerated_ entry, and the unqualified version of it is
+    false.** It covers an entry the walk reached beneath a root it had already opened, and a staged
+    record at or under a scan root. Three shapes escape it, all pre-existing, all measured, none
+    closed here: **(1)** a scan root that is itself a **live** link is followed by the all-mode walk,
+    because `existsSync` and `readdirSync` both resolve, so the walk reads files no commit contains
+    and reports their values under a **fabricated in-repo path** that holds no such file (the
+    **dangling** direction is the mirror image: it reports clean over a corpus it never opened);
+    **(2)** an **ancestor** of a scan root is in neither route's scope, so staging `test` as a link
+    leaves `--staged` at exit 0 and the walk then follows it; **(3)** paths mode follows an
+    explicitly named link, because `statSync` resolves. The `--staged` half of shape (1) **is**
+    closed here. Closing the rest needs a refuse-a-scan-that-observed-nothing rule plus a decision
+    about how far above a scan root to look, which is its own change.
   - `test/scripts/phi-scan.test.ts` builds throwaway git repositories for all of it, because these
     are properties of what `git diff --cached` reports and cannot be reproduced by scanning a path.
-    **16 of its 30 tests run red against the scanner on `a7a92f8`**; the 14 that stay green are the
-    pre-existing floor tests and the deliberate controls (an ordinary staged hit, a clean pass, a
+    **16 of its 34 tests run red against the scanner on `a7a92f8`**; the 18 that stay green are the
+    pre-existing floor tests, the deliberate controls (an ordinary staged hit, a clean pass, a
     staged link outside both roots, an ignored link, and a check that the payload under test is
-    something this scanner would otherwise catch). Synthetic values only.
+    something this scanner would otherwise catch), and the four that **pin the disclosed residuals
+    above**. Those four are green on both trees by design: they pin behaviour this change does not
+    alter, so that the scoped wording of the refusal rule cannot quietly revert to the absolute one.
+    Synthetic values only.
   - **No change to the CLI's runtime surface**: no command, flag, exit code, diagnostic code or
     export moves. This is repository tooling.
 

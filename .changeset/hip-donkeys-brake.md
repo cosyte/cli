@@ -43,11 +43,20 @@ unreadable scan root, both threw past every handler and exited **1** with a stac
 contract's code for *hits found*, so a caller branching on the exit code read a broken invocation as
 a PHI finding. Both are now exit `2` with a diagnostic.
 
-Stated rather than left to be inferred, both pre-existing and neither closed: the staged route still
-does not enumerate `D` (a deletion has no staged blob) or `U` (an unmerged path has no single one).
-The `U` half costs nothing that can reach a commit, and that was measured rather than assumed: `git
-commit` refuses an unmerged index outright. Under `src/` the staged route still covers only `.ts`
-files while the all-mode walk covers every non-`.md` file, so the CI sweep is what covers the
-difference.
+Stated rather than left to be inferred, all pre-existing and none closed:
+
+- The staged route still does not enumerate `D` (a deletion has no staged blob) or `U` (an unmerged
+  path has no single one). The `U` half costs nothing that can reach a commit, and that was measured
+  rather than assumed: `git commit` refuses an unmerged index outright.
+- Under `src/` the staged route still covers only `.ts` files while the all-mode walk covers every
+  non-`.md` file, so the CI sweep is what covers the difference.
+- **The refusal rule is scoped to an _enumerated_ entry**: one the walk reached beneath a root it had
+  already opened, or a staged record at or under a scan root. Three shapes escape it. A scan root
+  that is itself a **live** link is followed by the all-mode walk (`existsSync` and `readdirSync`
+  both resolve), so the walk reads files no commit contains and reports their values under a
+  fabricated in-repo path that holds no such file; the **dangling** direction is the mirror image,
+  reporting clean over a corpus it never opened. An **ancestor** of a scan root is in neither route's
+  scope. And paths mode follows an explicitly named link, because `statSync` resolves. The
+  `--staged` half of the first shape **is** closed here.
 
 No change to the CLI's runtime surface: no command, flag, exit code, diagnostic code or export moves.

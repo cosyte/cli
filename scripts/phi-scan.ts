@@ -56,9 +56,9 @@
  * Exit codes: 0 (clean), 1 (hits found), 2 (invocation error).
  *
  * ===========================================================================
- * AN IN-SCOPE ENTRY THAT IS NOT A REGULAR FILE REFUSES THE SCAN (exit 2). It is
- * never silently skipped, because BOTH enumerating routes are blind to it in a
- * way that reads as clean:
+ * AN ENUMERATED IN-SCOPE ENTRY THAT IS NOT A REGULAR FILE REFUSES THE SCAN
+ * (exit 2). It is never silently skipped, because both enumerating routes are
+ * blind to it in a way that reads as clean:
  *
  *   - the walk enumerates `Dirent.isFile()`, which is an lstat answer, so a
  *     symbolic link is neither a file nor a directory and used to fall out of
@@ -68,12 +68,40 @@
  *     symbolic link as its TARGET PATH under mode 120000, so that route is
  *     handed the path text and never the target's bytes.
  *
- * Neither route is made to follow such an entry: following would read bytes the
- * enumeration does not control (outside the repo, a loop, a device, a FIFO that
- * blocks the gate forever), and git does not carry those bytes anyway, so a hit
- * on them would be a claim about something no commit contains. Refusing states
- * the only true thing available: there is an entry here the scan cannot account
- * for, so the scan is not clean.
+ * Such an entry is not FOLLOWED: following would read bytes the enumeration does
+ * not control (outside the repo, a loop, a device, a FIFO that blocks the gate
+ * forever), and git does not carry those bytes anyway, so a hit on them would be
+ * a claim about something no commit contains. Refusing states the only true
+ * thing available: there is an entry here the scan cannot account for, so the
+ * scan is not clean.
+ *
+ * ▶ READ "ENUMERATED" IN THAT RULE AS LOAD-BEARING, BECAUSE THE UNQUALIFIED
+ * VERSION OF THE SENTENCE IS FALSE AND THIS FILE FALSIFIES IT. The rule covers
+ * an entry the walk reached BENEATH A ROOT IT HAD ALREADY OPENED, and a staged
+ * record AT OR UNDER a scan root. It does not reach the three shapes below, all
+ * PRE-EXISTING, all measured on this repo, none closed here:
+ *
+ *   1. A SCAN ROOT THAT IS ITSELF A LIVE LINK IS FOLLOWED, in the all-mode walk.
+ *      `existsSync` and `readdirSync` both resolve links, so with
+ *      `test/__fixtures__` pointing at a directory outside the repository the
+ *      walk reads files no commit contains and reports their values under a
+ *      FABRICATED in-repo path that holds no such file. That is a confident
+ *      wrong provenance, on the same channel this banner argues is itself a PHI
+ *      surface. The DANGLING direction is the mirror image of the same shape:
+ *      `existsSync` follows the link, answers false, and the walk reports clean
+ *      over a corpus it never opened.
+ *   2. AN ANCESTOR of a scan root is in neither route's scope. Fact 3 below puts
+ *      `test/__fixtures__` and `src` in scope, but not `test`, so staging `test`
+ *      as a link leaves `--staged` at exit 0 (measured), and the walk then
+ *      follows it exactly as in (1).
+ *   3. PATHS MODE FOLLOWS AN EXPLICITLY NAMED LINK. `buildTargetsForPaths` uses
+ *      `statSync`, which resolves, so `pnpm phi-scan <link>` reads the target's
+ *      bytes. A caller naming a path is a different act from an enumeration
+ *      reaching one, but it is stated here rather than left to be discovered.
+ *
+ * Closing any of those needs a refuse-a-scan-that-observed-nothing rule plus a
+ * decision about how far ABOVE a scan root to look, which is its own slice. The
+ * `--staged` half of shape (1) IS closed here, by fact 3 below.
  *
  * ▶ THE PRE-COMMIT HOLE THAT MADE THIS URGENT WAS RENAME DETECTION, AND IT IS
  * NOT LIMITED TO LINKS. `R` and `C` are returned by neither `--diff-filter=AM`
@@ -136,13 +164,11 @@
  * it is: it is the same locus every hit already carries, it is a path a developer
  * chose and git would record in a commit, and a refusal that will not say WHICH
  * entry it means cannot be acted on. Nothing from the other side of the link
- * joins it.
- *
- * KNOWN AND NOT CLOSED HERE, in the all-mode route only: with a scan root that
- * is a DANGLING link, `existsSync` follows it, answers false, and the walk
- * reports clean over a corpus it never opened. That needs a
- * refuse-a-scan-that-observed-nothing rule, which is its own slice. The
- * `--staged` half of that same shape IS closed, by fact 3 above.
+ * joins it. That guarantee is about a REFUSAL. It says nothing about shape (1)
+ * above, where the walk follows a linked scan root and prints ordinary hits
+ * carrying the target's values under an in-repo path: those are hits, not
+ * refusals, and they are the reason that shape is disclosed rather than
+ * described as harmless.
  * ===========================================================================
  */
 

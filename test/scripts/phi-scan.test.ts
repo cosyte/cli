@@ -311,6 +311,18 @@ describe(
         writeFileSync(join(root, "test", "__fixtures__", "copy.txt"), SYNTHETIC_PHI);
         git(root, ["add", "test/__fixtures__/copy.txt"]);
 
+        // Detection ON first, so the claim "`copies` is not hypothetical, it
+        // emits a live C100" is asserted here rather than only stated in prose.
+        // Without this, the loop would pass just as happily if git had stopped
+        // producing the record shape this whole change is about.
+        const on = gitOut(root, ["diff", "--cached", "--raw"]);
+        if (value === "copies") {
+          expect(on, "diff.renames=copies must emit a live C record").toMatch(/\sC\d*\t/);
+        }
+        if (value !== "false") {
+          expect(on, `diff.renames=${value} must emit a live R record`).toMatch(/\sR\d*\t/);
+        }
+
         const off = gitOut(root, ["diff", "--cached", "--raw", "--no-renames"]);
         expect(off, `diff.renames=${value}`).not.toMatch(/\s[RC]\d*\t/);
         for (const line of off.split("\n").filter((l) => l.length > 0)) {
@@ -563,7 +575,8 @@ describe("phi-scan --staged: the scope is widened, never narrowed", { timeout: S
       encoding: "utf8",
       shell: false,
     });
-    expect(attempt.status).not.toBe(0);
+    // 128, not merely non-zero: the disclosure names that exit code.
+    expect(attempt.status).toBe(128);
     expect(`${attempt.stdout}${attempt.stderr}`).toContain("unmerged files");
   });
 });
@@ -664,6 +677,78 @@ describe(
       const r = runScanner([], root);
       expect(r.code, `stderr: ${r.stderr}`).toBe(0);
       expect(r.stdout).toMatch(/OK, no hits/);
+    });
+  },
+);
+
+describe(
+  "phi-scan: the disclosed residuals, pinned so the disclosure cannot drift",
+  { timeout: SLOW_MS },
+  () => {
+    // These pin behaviour that is PRE-EXISTING, WRONG, and deliberately NOT closed
+    // in this change. They exist because the module header's refusal rule is
+    // scoped to an ENUMERATED entry, and the unqualified version of that sentence
+    // is false. A test that pins the exception is what stops the scoped wording
+    // from quietly reverting to the absolute one.
+    //
+    // If one of these starts failing because the behaviour was FIXED, that is
+    // good news: delete the test and the matching disclosure together.
+
+    it("FOLLOWS a scan root that is itself a live link, and misreports provenance", () => {
+      // The walk reaches `readdirSync` through `existsSync`, and both resolve
+      // links. So the corpus root can point outside the repository and the walk
+      // reads bytes no commit contains, reporting them under an in-repo path that
+      // holds no such file.
+      const root = makeRepo();
+      const outside = realpathSync(mkdtempSync(join(tmpdir(), "cli-phi-scan-outside-")));
+      repos.push(outside);
+      writeFileSync(join(outside, "real-notes.txt"), SYNTHETIC_PHI);
+      rmSync(join(root, "test", "__fixtures__"), { recursive: true });
+      symlinkSync(outside, join(root, "test", "__fixtures__"));
+
+      const r = runScanner([], root);
+      expect(r.code, `stderr: ${r.stderr}`).toBe(1);
+      // The provenance defect, stated as an assertion: an in-repo path is printed
+      // for a file that is not in the repo.
+      expect(r.stderr).toContain("test/__fixtures__/real-notes.txt");
+      expect(existsSync(join(root, "test", "__fixtures__", "real-notes.txt"))).toBe(true);
+      expect(gitOut(root, ["ls-files", "test/__fixtures__/real-notes.txt"]).trim()).toBe("");
+    });
+
+    it("reports clean over a corpus it never opened when a scan root DANGLES", () => {
+      const root = makeRepo();
+      rmSync(join(root, "test", "__fixtures__"), { recursive: true });
+      symlinkSync(join("..", "nowhere-at-all"), join(root, "test", "__fixtures__"));
+
+      const r = runScanner([], root);
+      expect(r.code, `stderr: ${r.stderr}`).toBe(0);
+      expect(r.stdout).toMatch(/OK, no hits/);
+    });
+
+    it("does not see an ANCESTOR of a scan root staged as a link", () => {
+      // Fact 3 puts `test/__fixtures__` and `src` in scope, but not `test`. The
+      // "git records no index entry for a directory" argument applies to `test`
+      // verbatim, so this is the same shape one level up.
+      const root = makeRepo();
+      writeFileSync(join(root, TARGET_NAME), SYNTHETIC_PHI);
+      rmSync(join(root, "test"), { recursive: true });
+      symlinkSync(TARGET_NAME, join(root, "test"));
+      git(root, ["add", "test"]);
+
+      expect(gitOut(root, ["ls-files", "--stage", "test"])).toMatch(/^120000 /);
+      expect(runScanner(["--staged"], root).code).toBe(0);
+    });
+
+    it("FOLLOWS an explicitly named link in paths mode, because statSync resolves", () => {
+      const root = makeRepo();
+      const outside = realpathSync(mkdtempSync(join(tmpdir(), "cli-phi-scan-outside-")));
+      repos.push(outside);
+      writeFileSync(join(outside, "payload.txt"), SYNTHETIC_PHI);
+      symlinkSync(join(outside, "payload.txt"), join(root, "link.txt"));
+
+      const r = runScanner(["link.txt"], root);
+      expect(r.code, `stderr: ${r.stderr}`).toBe(1);
+      expect(r.stderr).toContain(SYNTHETIC_SSN);
     });
   },
 );
