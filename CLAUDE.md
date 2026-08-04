@@ -23,6 +23,30 @@ subpath still exports a small programmatic `core` API (`detectFormat`, `EXIT`, `
 
 ## Status
 
+- **▶ `docs-content/sidebars.json` IS BOUND BY AN IA SPINE THAT NOTHING IN THIS REPO CHECKS, AND
+  BREAKING IT STOPS THE WHOLE DOCS SITE DEPLOYING.** This package shipped two off-spine top-level
+  categories, **"MCP server"** and **"Reference"**. The docs site lints the sidebar out of each
+  package's released `docs-content.tar.gz`, and in strict mode a non-canonical top-level label is an
+  **error**, so `cli` was one of two packages holding a site that had not deployed for four days.
+  It was pre-existing and masked: every build died earlier, on memory, before reaching the gate.
+  **The canonical top-level order is `Overview` (the `intro` DOC REFERENCE, not a category),
+  `Installation`, `Quickstart`, `Core Concepts`, `Guides`, `API Reference`, `Troubleshooting`.**
+  Categories are OPTIONAL; the rule is that whatever you have is labelled and ordered canonically, so
+  `{"docs":["intro"]}` is fully compliant. `mcp` and `reference-commands` now sit under **Guides**,
+  `limitations` under **Core Concepts**; nothing was orphaned.
+  **🔴 NEVER AUTHOR AN `API Reference` CATEGORY.** It is injected by the docs site's sidebar resolver
+  when the package ships API sources, and a hand-authored one is a distinct, harder **error** than
+  the off-spine label it would be replacing. Renaming "Reference" to "API Reference" trades one
+  failing check for another.
+  **Nothing in `verify.sh` or this repo's CI can catch this** (`pack:docs` checks only that
+  `intro.md` and `sidebars.json` EXIST), so verify a sidebar edit against the site's own linter,
+  `docs/scripts/check-ia-conformance.ts`. It self-executes on import, so `NODE_ENV=test` is required
+  to call `lintSidebar` directly. **Use the previously shipped sidebar as a negative control**: if it
+  does not report errors, the probe is wrong, not the sidebar.
+  **Only a NEW RELEASE clears the gate**, because it reads the shipped artifact and releases are
+  immutable, so every already-published version keeps its sidebar forever. Archived versions are
+  reported at `info` and never gate. Do not try to fix history.
+
 - **▶ THE PRE-COMMIT PHI GATE WAS BLIND TO `git mv`, AND THE HOLE WAS NOT LIMITED TO LINKS.**
   `scripts/phi-scan.ts --staged` is the `pre-commit` hook (`simple-git-hooks`). It listed the index
   with `git diff --cached --name-only --diff-filter=AM`. Rename detection is **on by default**, so

@@ -17,6 +17,36 @@ still do. Each entry was assigned to the release whose tag first contains it, re
 
 ### Fixed
 
+- **The shipped documentation sidebar was off the canonical IA spine, and it was holding up the
+  docs site's deploy (CLI-SIDEBAR-IA-NONCANONICAL).** `docs-content/sidebars.json` declared two
+  top-level categories that are not on the spine, **"MCP server"** and **"Reference"**. The docs
+  site lints the sidebar it receives from each package's released `docs-content.tar.gz`, and in
+  strict mode a non-canonical top-level label grades as an error, so this package failed that gate
+  and the site stopped deploying. Pre-existing since the pages were authored; it surfaced only once
+  an unrelated build failure stopped masking it.
+  - Both categories are removed and their pages folded into categories this package already had, so
+    **no page left the navigation and none was orphaned** (verified: the nine documents in
+    `docs-content/` and the nine referenced by the sidebar are the same nine). **`mcp`** and
+    **`reference-commands`** join **Guides**, next to `guides-overview`, both being task-oriented:
+    what to run and what comes back. **`limitations`** joins **Core Concepts**, next to
+    `concepts-archetype`, being the mental model a reader needs before relying on the tool rather
+    than a recipe.
+  - Top-level navigation is now `Overview` (the `intro` doc reference), `Installation`,
+    `Quickstart`, `Core Concepts`, `Guides`, `Troubleshooting`, in that order.
+  - **"Reference" was deliberately NOT renamed to "API Reference".** That category is injected by
+    the docs site's sidebar resolver when a package ships API-reference sources, and a hand-authored
+    one is refused outright rather than warned about, so the rename would have traded a failing
+    check for a differently failing one. The resolver still inserts it just before
+    `Troubleshooting`.
+  - Verified against the site's own linter rather than by inspection, with the sidebar shipped in
+    the previous release as a **negative control**: that one produces two errors and this one
+    produces no findings. **Only a new release can clear the gate**, because it reads the sidebar
+    out of the released artifact and published releases are immutable, so the previous release
+    keeps its non-canonical sidebar permanently. That is reported without gating once a release is
+    no longer current.
+  - Documentation-artifact change only: no command, flag, exit code, diagnostic code or export
+    moves, and no page content was rewritten.
+
 - **The pre-commit PHI gate never saw a `git mv` into a scan root
   (PHI-SCAN-RENAME-BLIND-AT-PRECOMMIT).** `scripts/phi-scan.ts --staged` listed the index with
   `git diff --cached --name-only --diff-filter=AM`. Rename detection is on by default, so

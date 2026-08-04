@@ -13,24 +13,14 @@
     },
     {
       "type": "category",
-      "label": "MCP server",
-      "items": ["mcp"]
-    },
-    {
-      "type": "category",
       "label": "Core Concepts",
       "collapsed": false,
-      "items": ["concepts-archetype"]
+      "items": ["concepts-archetype", "limitations"]
     },
     {
       "type": "category",
       "label": "Guides",
-      "items": ["guides-overview"]
-    },
-    {
-      "type": "category",
-      "label": "Reference",
-      "items": ["reference-commands", "limitations"]
+      "items": ["guides-overview", "mcp", "reference-commands"]
     },
     {
       "type": "category",
