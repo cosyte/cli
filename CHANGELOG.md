@@ -43,9 +43,9 @@ still do. Each entry was assigned to the release whose tag first contains it, re
   - **Deliberately NOT in this change: `release.yml`'s version-PR trap note.** It carries a stale
     required-context count and a claim about the "Version Packages" PR arriving with zero check runs
     whose truth depends on whether `RELEASE_PR_TOKEN` is authoring that PR. Two attempts to correct
-    it inside this change each produced a fresh false claim about its history, so it is cut out to
-    its own change rather than rewritten a third time. Nothing about it is made worse here; it is
-    left exactly as it was.
+    it inside this change each produced a fresh false claim: the first a false operational premise,
+    the second a false claim about the note's own history. So it is cut out to its own change rather
+    than rewritten a third time. Nothing about it is made worse here; it is left exactly as it was.
 
 - **The shipped documentation sidebar was off the canonical IA spine, and it was holding up the
   docs site's deploy (CLI-SIDEBAR-IA-NONCANONICAL).** `docs-content/sidebars.json` declared two

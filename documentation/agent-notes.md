@@ -455,9 +455,10 @@ _after_ the write, because their head shas produce the new context. It does noth
 that ran before it existed: that PR now needs a context nothing will ever post for it, so it goes
 `BLOCKED` and stays there.
 
-**Attribute this by measuring each head sha, not by listing what is open.** Of the five open PRs at
-the time of this write, exactly **three** were stranded by it, and the first draft of this paragraph
-named the wrong set by reading `mergeStateStatus` instead of the check runs:
+**Attribute this by measuring each head sha, not by listing what is open.** Six pull requests were
+open at the time of this write, one of them being the PR performing it; of the other five, exactly
+**three** were stranded by it, and the first draft of this paragraph named the wrong set by reading
+`mergeStateStatus` instead of the check runs:
 
 | PR  | head sha   | state before the write                                  | stranded by this write? |
 | --- | ---------- | ------------------------------------------------------- | ----------------------- |
@@ -489,6 +490,33 @@ red it. That cost is real and is disclosed upstream: the `pnpm install --frozen-
 has no registry-outage softening, unlike the pack layer's `inconclusive` verdict. It was accepted
 here anyway, because an advisory pre-publish gate on the branch that publishes is the exact shape of
 "a green check that cannot block a merge".
+
+### The one time a required check actually blocked something in this slice, and what it caught
+
+**▶ THE DEMONSTRATION THIS WHOLE SUBJECT HAD BEEN MISSING, AND IT LANDED ON THE AUTHOR.** Everything
+above is about a check that reports without blocking. While shipping it, the first thing a required
+context actually blocked was **this author's own prose**: editing the pull request body turned
+`no-emdash` **red**, twice, on a **required** context, over four `U+2014` characters that had been
+typed into the PR body's explanatory sections. The pull request went `mergeStateStatus: BLOCKED` and
+stayed unmergeable until the body was rewritten (runs at `12:14:31Z` and `12:14:59Z` failed;
+`12:16:34Z` passed).
+
+**Why it is worth a section rather than a footnote.** It is the concrete counter-example to the
+failure this section documents. A red X that does not block a merge is documentation; this was a red
+X that stopped a merge dead, and the difference between the two is exactly one line in a ruleset.
+
+**And it landed on the half of the gate that nothing local can see.** `scripts/check-no-emdash.sh`
+scans **tracked files** and was green throughout, both in the pre-commit hook and in `verify.sh`;
+`git diff` over the branch carried zero `U+2014`. The offending text was never in a file. The PR
+body is a surface that exists only on GitHub, reached only by `no-emdash.yml`'s `edited` trigger, and
+**no local run of anything in this repo could have caught it**. So the two halves of that gate are not
+redundant: the tracked-file half is the one a worker exercises constantly and the PR-text half is the
+one that catches what a worker writes *about* the work.
+
+**Read alongside the standing note that the PR body lands under none of the three merge methods.**
+That is still true, and the gate scans it anyway as deliberate over-strictness. This is what that
+over-strictness buys, observed rather than argued: without it, four em dashes would have gone onto a
+public pull request on a public repository, and the ban is absolute.
 
 **Not built, and it must not be built without answering one question first.** A gate inside CI that
 `curl`s this repo's own ruleset and asserts the required set would close the observability gap named
