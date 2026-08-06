@@ -40,15 +40,21 @@ still do. Each entry was assigned to the release whose tag first contains it, re
     scoped to splitting a step out of `verify` locally. The `uses:` reference is unpinned, so a job
     added upstream emits a new `ci / <job>` context here with no commit in this repo, and it always
     arrives unrequired.
-  - **`release.yml` was telling the next releaser to expect four contexts on the version PR, and
-    the ruleset had six.** That comment documents the escape from a real trap (a "Version Packages"
-    PR opened by `github-actions[bot]` arrives with zero check runs, and a required context that
-    never arrives is pending rather than failing, unmergeable by anyone), so a wrong count there
-    sends someone to declare the escape finished early. The count is **deleted rather than
-    corrected**: a number in a workflow comment has nothing to keep it honest, and the derivation
-    is now written in its place. The same comment records that the escape got more expensive, since
-    the empty commit it prescribes now runs a real pack-and-install of the version about to be
-    published.
+  - **`release.yml`'s trap note was wrong twice over, and the second error was the one that
+    mattered.** It told the next releaser to expect four required contexts on the "Version Packages"
+    PR while the ruleset had six, and the count is now **deleted rather than corrected**: a number in
+    a workflow comment has nothing to keep it honest, so the derivation is written in its place.
+    - **More seriously, it asserted that the version PR "arrives with ZERO check runs" and
+      prescribed pushing an empty commit as the escape. That is not true of this repo and has not
+      been for months.** The shared release workflow authors that PR with `RELEASE_PR_TOKEN`, a live
+      org secret this caller supplies through `secrets: inherit`, so the checks do arrive. Measured
+      on the last three version PRs: each carries exactly one bot-authored commit, and all four
+      workflows started on that commit within about ten seconds, at `run_attempt=1`, with no human
+      commit anywhere. The note now states the measured behaviour, keeps the empty commit only as a
+      diagnosed fallback for a genuinely check-less PR, and gives the command to tell the two apart.
+    - Getting this wrong was not free: an unnecessary push onto the branch that publishes now runs a
+      real pack-and-install of the version about to be released, so a registry blip would red a
+      **required** context. The note says so at the fallback rather than as general advice.
 
 - **The shipped documentation sidebar was off the canonical IA spine, and it was holding up the
   docs site's deploy (CLI-SIDEBAR-IA-NONCANONICAL).** `docs-content/sidebars.json` declared two

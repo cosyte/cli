@@ -426,10 +426,16 @@ until `ci / prepublish` was added and it moves whenever the called workflow does
 **▶ A `ci / *` CONTEXT CAN APPEAR IN THIS REPO WITH NO COMMIT IN THIS REPO, AND IT ARRIVES NOT
 REQUIRED.** `ci.yml` calls `cosyte/.github/.github/workflows/ci.yml@main`, unpinned. A job added to
 that reusable workflow starts emitting `ci / <job>` on every PR here immediately, the ruleset does
-not name it, and so **a red result from it shows a red X and the merge lands anyway** (this repo's
-merge queue is `pull_request` with 0 approvals). Nothing errors, nothing warns, and no commit in this
-repo records that the surface changed. Every previously written form of the "a required job gates all
-of its steps" warning was scoped to a **local** split, so none of them covered this.
+not name it, and so **a red result from it shows a red X and the merge lands anyway**. Nothing
+errors, nothing warns, and no commit in this repo records that the surface changed. Every previously
+written form of the "a required job gates all of its steps" warning was scoped to a **local** split,
+so none of them covered this.
+
+(There is **no merge queue** on this repo. `gh api repos/cosyte/cli/branches/main/protection` returns
+`404 Branch not protected` and the ruleset carries no `merge_queue` rule. What lets a red
+non-required check merge is that the ruleset's `pull_request` rule sets
+`required_approving_review_count: 0`. An earlier draft of this paragraph said "merge queue" and it
+was wrong.)
 
 That is not hypothetical. The `prepublish` job was added upstream in `cosyte/.github#35` (`6142ac4`,
 2026-08-05) and its second layer was defaulted on in `#36` (`90936ea`, the same day). **The census
@@ -440,6 +446,17 @@ real check run before this slice, and requiring it earlier would have been the `
 mistake (naming a context nothing emits) rather than a fix. **The order is load-bearing: it has to
 run first, then be added, in that order.** It was read off the real check run on the pull request
 that shipped this section before the ruleset was written.
+
+**▶ THE COST THAT ORDERING DOES NOT COVER, DISCLOSED BECAUSE IT WAS PAID: ADDING A REQUIRED CONTEXT
+STRANDS EVERY OPEN PULL REQUEST WHOSE HEAD SHA ALREADY RAN.** The ordering protects PRs opened
+_after_ the write, because their head shas produce the new context. It does nothing for a head sha
+that ran before it existed: that PR now needs a context nothing will ever post for it, so it goes
+`BLOCKED` and stays there. Measured immediately after this write: `#33` (`f69ab63a`) went
+`mergeStateStatus: BLOCKED` carrying all seven older contexts green and no `ci / prepublish`, and
+`#29` (`95510b9d`) is the same shape. **The remedy is one push to each affected branch**, which
+re-runs CI and produces the context; it is not a ruleset problem and must not be fixed by removing
+the requirement. Check for this before the next such write:
+`gh pr list --state open --json number,mergeStateStatus`.
 
 **What it gates, and why leaving it unrequired was the expensive kind of hole.** `prepublish` runs
 two layers: an offline **manifest lint** that refuses a dependency specifier no registry can resolve,

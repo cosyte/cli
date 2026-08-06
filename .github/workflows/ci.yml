@@ -35,10 +35,19 @@ jobs:
   #
   # `prepublish` is the pre-publish gate: it refuses a dependency specifier no registry can resolve
   # (offline manifest lint) and then packs this tree and installs the tarball into a clean directory.
-  # Both layers are ON by default upstream and this caller passes neither input, so the defaults are
-  # the whole story. It is the only place a consumer's install question gets asked while the answer
-  # can still prevent a permanent publish: `@cosyte/cli@0.0.1` and `0.0.2` are on the registry
-  # uninstallable forever, and this job is what would have refused them.
+  # Both layers are ON by default upstream and this caller passes neither toggle, so the defaults are
+  # the whole story for whether it runs. It is the only place a consumer's install question gets
+  # asked while the answer can still prevent a permanent publish: `@cosyte/cli@0.0.1` and `0.0.2` are
+  # on the registry uninstallable forever, and this job is what would have refused them.
+  #
+  # ONE DEFAULT IS PERMANENTLY STALE HERE, AND THE OBVIOUS "FIX" FOR IT IS FORBIDDEN. The upstream
+  # default for `expect-unpublished-deps` is `@cosyte/fhir=blocked`, and this package deliberately
+  # declares no `@cosyte/fhir` in any form, so the allowance names a package that is not a consumer
+  # dependency of this one and the gate reports it as stale on every run. That notice never fails the
+  # job, and it must NOT be silenced by adding `@cosyte/fhir` to the manifest: declaring it in any
+  # form alongside `@cosyte/transform` fails the whole install with `ERESOLVE`, which is the measured
+  # reason it is absent. See CLAUDE.md. If the notice is ever worth silencing, the way is to pass an
+  # empty `expect-unpublished-deps` from this caller, not to touch dependencies.
   #
   # Universal gates from the shared pipeline (typecheck, lint, format, test, coverage, build, attw,
   # dual ESM/CJS smoke, actionlint) on the standard Node matrix. Repo-specific extra jobs (e.g. an
