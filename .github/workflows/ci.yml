@@ -41,13 +41,18 @@ jobs:
   # on the registry uninstallable forever, and this job is what would have refused them.
   #
   # ONE DEFAULT IS PERMANENTLY STALE HERE, AND THE OBVIOUS "FIX" FOR IT IS FORBIDDEN. The upstream
-  # default for `expect-unpublished-deps` is `@cosyte/fhir=blocked`, and this package deliberately
-  # declares no `@cosyte/fhir` in any form, so the allowance names a package that is not a consumer
-  # dependency of this one and the gate reports it as stale on every run. That notice never fails the
-  # job, and it must NOT be silenced by adding `@cosyte/fhir` to the manifest: declaring it in any
-  # form alongside `@cosyte/transform` fails the whole install with `ERESOLVE`, which is the measured
-  # reason it is absent. See CLAUDE.md. If the notice is ever worth silencing, the way is to pass an
-  # empty `expect-unpublished-deps` from this caller, not to touch dependencies.
+  # default for `expect-unpublished-deps` is `@cosyte/fhir=blocked`. Be precise about why that is
+  # stale, because the short version is false: `@cosyte/fhir` IS declared in this manifest, as
+  # `devDependencies: {"@cosyte/fhir": "file:vendor/cosyte-fhir-0.0.0.tgz"}`, which is what lets this
+  # repo's own FHIR tests run. The operative fact is that `prepublish-check.mjs` does not read
+  # `devDependencies` at all (a `file:` specifier is fine there, since no consumer installs them), so
+  # the allowance names a package that is not a CONSUMER dependency of this one and is reported stale
+  # on every run. That notice never fails the job.
+  #
+  # It must NOT be silenced by promoting `@cosyte/fhir` into `dependencies` or `optionalDependencies`:
+  # declaring it in either, alongside `@cosyte/transform`, fails the whole install with `ERESOLVE`,
+  # which is the measured reason it is not there. See CLAUDE.md. If the notice is ever worth
+  # silencing, the way is to pass an empty `expect-unpublished-deps` from this caller.
   #
   # Universal gates from the shared pipeline (typecheck, lint, format, test, coverage, build, attw,
   # dual ESM/CJS smoke, actionlint) on the standard Node matrix. Repo-specific extra jobs (e.g. an

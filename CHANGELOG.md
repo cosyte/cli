@@ -40,21 +40,12 @@ still do. Each entry was assigned to the release whose tag first contains it, re
     scoped to splitting a step out of `verify` locally. The `uses:` reference is unpinned, so a job
     added upstream emits a new `ci / <job>` context here with no commit in this repo, and it always
     arrives unrequired.
-  - **`release.yml`'s trap note was wrong twice over, and the second error was the one that
-    mattered.** It told the next releaser to expect four required contexts on the "Version Packages"
-    PR while the ruleset had six, and the count is now **deleted rather than corrected**: a number in
-    a workflow comment has nothing to keep it honest, so the derivation is written in its place.
-    - **More seriously, it asserted that the version PR "arrives with ZERO check runs" and
-      prescribed pushing an empty commit as the escape. That is not true of this repo and has not
-      been for months.** The shared release workflow authors that PR with `RELEASE_PR_TOKEN`, a live
-      org secret this caller supplies through `secrets: inherit`, so the checks do arrive. Measured
-      on the last three version PRs: each carries exactly one bot-authored commit, and all four
-      workflows started on that commit within about ten seconds, at `run_attempt=1`, with no human
-      commit anywhere. The note now states the measured behaviour, keeps the empty commit only as a
-      diagnosed fallback for a genuinely check-less PR, and gives the command to tell the two apart.
-    - Getting this wrong was not free: an unnecessary push onto the branch that publishes now runs a
-      real pack-and-install of the version about to be released, so a registry blip would red a
-      **required** context. The note says so at the fallback rather than as general advice.
+  - **Deliberately NOT in this change: `release.yml`'s version-PR trap note.** It carries a stale
+    required-context count and a claim about the "Version Packages" PR arriving with zero check runs
+    whose truth depends on whether `RELEASE_PR_TOKEN` is authoring that PR. Two attempts to correct
+    it inside this change each produced a fresh false claim about its history, so it is cut out to
+    its own change rather than rewritten a third time. Nothing about it is made worse here; it is
+    left exactly as it was.
 
 - **The shipped documentation sidebar was off the canonical IA spine, and it was holding up the
   docs site's deploy (CLI-SIDEBAR-IA-NONCANONICAL).** `docs-content/sidebars.json` declared two

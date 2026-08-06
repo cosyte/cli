@@ -431,11 +431,13 @@ errors, nothing warns, and no commit in this repo records that the surface chang
 written form of the "a required job gates all of its steps" warning was scoped to a **local** split,
 so none of them covered this.
 
-(There is **no merge queue** on this repo. `gh api repos/cosyte/cli/branches/main/protection` returns
-`404 Branch not protected` and the ruleset carries no `merge_queue` rule. What lets a red
-non-required check merge is that the ruleset's `pull_request` rule sets
-`required_approving_review_count: 0`. An earlier draft of this paragraph said "merge queue" and it
-was wrong.)
+(Two corrections this paragraph has already needed, kept visible because both are easy to write
+again. There is **no merge queue** on this repo: `gh api repos/cosyte/cli/branches/main/protection`
+returns `404 Branch not protected` and the ruleset carries no `merge_queue` rule. And
+`required_approving_review_count: 0` is **not** the reason a red non-required check merges: a context
+absent from `required_status_checks` blocks nothing at **any** approval count, because the ruleset
+only ever evaluates the contexts it names. The approval count is why the merge needs no **review**,
+which is a different question and does not bear on this one.)
 
 That is not hypothetical. The `prepublish` job was added upstream in `cosyte/.github#35` (`6142ac4`,
 2026-08-05) and its second layer was defaulted on in `#36` (`90936ea`, the same day). **The census
@@ -451,12 +453,26 @@ that shipped this section before the ruleset was written.
 STRANDS EVERY OPEN PULL REQUEST WHOSE HEAD SHA ALREADY RAN.** The ordering protects PRs opened
 _after_ the write, because their head shas produce the new context. It does nothing for a head sha
 that ran before it existed: that PR now needs a context nothing will ever post for it, so it goes
-`BLOCKED` and stays there. Measured immediately after this write: `#33` (`f69ab63a`) went
-`mergeStateStatus: BLOCKED` carrying all seven older contexts green and no `ci / prepublish`, and
-`#29` (`95510b9d`) is the same shape. **The remedy is one push to each affected branch**, which
-re-runs CI and produces the context; it is not a ruleset problem and must not be fixed by removing
-the requirement. Check for this before the next such write:
-`gh pr list --state open --json number,mergeStateStatus`.
+`BLOCKED` and stays there.
+
+**Attribute this by measuring each head sha, not by listing what is open.** Of the five open PRs at
+the time of this write, exactly **three** were stranded by it, and the first draft of this paragraph
+named the wrong set by reading `mergeStateStatus` instead of the check runs:
+
+| PR  | head sha   | state before the write                                  | stranded by this write? |
+| --- | ---------- | ------------------------------------------------------- | ----------------------- |
+| #33 | `f69ab63a` | six older required contexts green                        | **yes**                 |
+| #18 | `73758565` | six older required contexts green                        | **yes**                 |
+| #16 | `6cc21d8a` | six older required contexts green                        | **yes**                 |
+| #29 | `95510b9d` | `ci / verify` **red on both matrix legs**                | no, already unmergeable  |
+| #15 | `b63cd115` | no `no-emdash`, no `no-internal-refs` (predates both)     | no, already stranded     |
+
+All three affected PRs are Dependabot's, and Dependabot regenerates its branches, so **nothing was
+pushed to them**: a push onto a branch this slice does not own, to clear a condition this slice
+created, is the more intrusive fix. **The remedy, when it is yours to apply, is one push per
+branch**, which re-runs CI and produces the context. It is not a ruleset problem and must not be
+fixed by removing the requirement. Check before the next such write:
+`gh api repos/cosyte/cli/commits/<head>/check-runs`, per open PR.
 
 **What it gates, and why leaving it unrequired was the expensive kind of hole.** `prepublish` runs
 two layers: an offline **manifest lint** that refuses a dependency specifier no registry can resolve,

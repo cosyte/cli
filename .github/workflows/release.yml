@@ -4,51 +4,20 @@ name: Release
 # this repo is public) -> docs artifacts -> GitHub release -> repository_dispatch to cosyte/docs.
 # Requires the NPM_TOKEN and DOCS_REPO_DISPATCH_TOKEN secrets (passed via `secrets: inherit`).
 #
-# ▶ A KNOWN TRAP THAT IS CURRENTLY LATENT, NOT LIVE. Read the whole note before acting on it: an
-# earlier version of it described the trap as live and prescribed a workaround that is not needed
-# today, and it was wrong for long enough that nobody noticed.
-#
-# The shape of it: the `ci-required-checks` ruleset on this repo requires several contexts with
-# `bypass_actors: []`. THE NUMBER IS DELIBERATELY NOT WRITTEN HERE: it read `4` in this comment
-# while the ruleset had `6`, because a count in a workflow comment has nothing to keep it honest,
-# and a required context this text does not know about is exactly the thing the reader is here to
-# satisfy. Derive it instead, which takes two seconds:
-#
-#   gh api repos/cosyte/cli/rulesets/19907924 \
-#     --jq '[.rules[]|select(.type=="required_status_checks").parameters.required_status_checks[].context]'
-#
-# IF the "Version Packages" PR is opened with the default `GITHUB_TOKEN`, GitHub does not start
-# workflow runs for events raised by that token, so the PR arrives with ZERO check runs. Required
-# contexts that never arrive are PENDING, not failing, and with no bypass actors nobody, including
-# an admin, can merge past them.
-#
-# ▶ THAT `IF` IS NOT SATISFIED HERE, AND IT WAS ASSERTED AS FACT FOR MONTHS WITHOUT BEING CHECKED.
-# The shared release workflow uses `secrets.RELEASE_PR_TOKEN || secrets.GITHUB_TOKEN`,
-# `RELEASE_PR_TOKEN` is a live cosyte ORG secret, and this caller passes `secrets: inherit`, so the
-# PR is authored with the PAT and the checks DO arrive. Measured on the last three version PRs
-# (#24, #26, #31): each carries exactly ONE commit, authored by `github-actions[bot]`, and all four
-# workflows started on that commit within about ten seconds of it, at `run_attempt=1`, with no
-# human commit anywhere. Upstream even emits a `Version PR will land with zero checks` warning only
-# when the secret is ABSENT. Verify before you assume it is still true:
-#
-#   gh api "repos/cosyte/cli/actions/runs?head_sha=$(gh pr view <n> --json headRefOid --jq .headRefOid)" \
-#     --jq '.workflow_runs[]|"\(.name) \(.event) attempt=\(.run_attempt)"'
-#
-# So the trap returns only if `RELEASE_PR_TOKEN` lapses, is unset, or loses its scopes. In THAT
-# case, and only then, the escape is one commit onto `changeset-release/main`, which raises a normal
-# `pull_request` event and produces every context:
+# ▶ KNOWN TRAP, documented rather than bypassed. The `ci-required-checks` ruleset on this repo
+# requires four contexts with `bypass_actors: []`. Changesets opens the "Version Packages" PR as
+# `github-actions[bot]` using the default `GITHUB_TOKEN`, and GitHub does not start workflow runs
+# for events raised by that token, so that PR arrives with ZERO check runs. Four required contexts
+# that never arrive are PENDING, not failing, and with no bypass actors nobody, including an admin,
+# can merge past them. The escape, done last and immediately before merging, is one commit onto
+# `changeset-release/main`, which raises a normal `pull_request` event and produces all four
+# contexts:
 #
 #   gh pr checkout <n> && git commit --allow-empty -m "chore: run CI on the version PR" && git push
 #
-# Do not run that as routine. It is a fallback for a diagnosed no-checks PR, and pushing an
-# unnecessary commit onto the branch that publishes a healthcare package is not free: since
-# 2026-08-06 `ci / prepublish` is required, and its second layer packs this tree and installs the
-# tarball into a clean directory over the live registry, so the push runs a real install of the
-# version about to be published and a registry blip reds a REQUIRED context. When the PAT is
-# working, that probe has already run on the bot's own commit and the extra commit buys nothing.
-#
 # Adding a bypass actor would also clear it and is DELIBERATELY REJECTED: it would let a human merge
-# a red PR on a published healthcare package.
+# a red PR on a published healthcare package. The durable fix is to author the Version PR with a PAT
+# in the shared `cosyte/.github` release workflow, which is tracked upstream, not here.
 
 on:
   push:
