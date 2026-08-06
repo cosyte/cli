@@ -14,16 +14,31 @@ permissions:
   contents: read
 
 jobs:
-  # ┌─────────────────────────────────────────────────────────────────────────────────────────┐
-  # │ A REQUIRED JOB GATES ALL OF ITS STEPS. The `ci-required-checks` ruleset on this repo     │
-  # │ requires the CONTEXTS `ci / verify (22, ubuntu-latest)`, `ci / verify (24,               │
-  # │ ubuntu-latest)` and `ci / actionlint`. Every gate the shared pipeline runs (typecheck,   │
-  # │ lint, format:check, PHI scan, test, gating coverage, build, attw, dual ESM/CJS smoke) is │
-  # │ a STEP inside `verify`, and is required only because that job is. Promote any one of     │
-  # │ them to its own job and it is silently NO LONGER REQUIRED: the ruleset names contexts,   │
-  # │ the new context is not in it, and nothing anywhere errors or warns. If you split a step  │
-  # │ out, add its context to the ruleset in the same change.                                 │
-  # └─────────────────────────────────────────────────────────────────────────────────────────┘
+  # ┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
+  # │ A REQUIRED JOB GATES ALL OF ITS STEPS. The `ci-required-checks` ruleset on this repo requires    │
+  # │ all four contexts this caller emits: `ci / verify (22, ubuntu-latest)`, `ci / verify (24,        │
+  # │ ubuntu-latest)`, `ci / prepublish` and `ci / actionlint`. Every gate the shared pipeline runs    │
+  # │ (typecheck, lint, format:check, PHI scan, test, gating coverage, build, attw, dual ESM/CJS       │
+  # │ smoke) is a STEP inside `verify`, and is required only because that job is. Promote any one of   │
+  # │ them to its own job and it is silently NO LONGER REQUIRED: the ruleset names contexts, the new   │
+  # │ context is not in it, and nothing anywhere errors or warns. If you split a step out, add its     │
+  # │ context to the ruleset in the same change.                                                       │
+  # │                                                                                                  │
+  # │ AND THE HAZARD IS NOT ONLY A LOCAL SPLIT: THE CALLED WORKFLOW CAN GROW A JOB UPSTREAM. The       │
+  # │ `uses:` below is pinned to `@main`, so a job added over there starts emitting a new `ci / <job>` │
+  # │ context here with NO COMMIT IN THIS REPO, and it arrives NOT REQUIRED: a red X that does not     │
+  # │ block a merge. That is not hypothetical. `prepublish` arrived exactly that way on 2026-08-05 and │
+  # │ was unrequired here until it was measured off a real check run and added. A `ci / *` context you │
+  # │ do not see in the list above is that same event happening again. Decide it, and write the        │
+  # │ decision down: require it, or record here why it must not be.                                    │
+  # └──────────────────────────────────────────────────────────────────────────────────────────────────┘
+  #
+  # `prepublish` is the pre-publish gate: it refuses a dependency specifier no registry can resolve
+  # (offline manifest lint) and then packs this tree and installs the tarball into a clean directory.
+  # Both layers are ON by default upstream and this caller passes neither input, so the defaults are
+  # the whole story. It is the only place a consumer's install question gets asked while the answer
+  # can still prevent a permanent publish: `@cosyte/cli@0.0.1` and `0.0.2` are on the registry
+  # uninstallable forever, and this job is what would have refused them.
   #
   # Universal gates from the shared pipeline (typecheck, lint, format, test, coverage, build, attw,
   # dual ESM/CJS smoke, actionlint) on the standard Node matrix. Repo-specific extra jobs (e.g. an

@@ -402,19 +402,66 @@ advisory: `ci`, `codeql`, `scorecard` and `fuzz` could all be red and the merge 
 Required contexts, each pinned to **`integration_id: 15368`** (the `github-actions` app) so that a
 commit status of the same name posted by any other actor with write access cannot satisfy it:
 
-| context                                    |
-| ------------------------------------------ |
-| `ci / verify (22, ubuntu-latest)`          |
-| `ci / verify (24, ubuntu-latest)`          |
-| `ci / actionlint`                          |
-| `codeql / analyze (javascript-typescript)` |
-| `no-internal-refs`                         |
-| `no-emdash`                                |
+| context                                    | added      |
+| ------------------------------------------ | ---------- |
+| `ci / verify (22, ubuntu-latest)`          | 2026-07-28 |
+| `ci / verify (24, ubuntu-latest)`          | 2026-07-28 |
+| `ci / actionlint`                          | 2026-07-28 |
+| `ci / prepublish`                          | 2026-08-06 |
+| `codeql / analyze (javascript-typescript)` | 2026-07-28 |
+| `no-internal-refs`                         | 2026-07-28 |
+| `no-emdash`                                | 2026-07-28 |
 
 These are the names GitHub actually reports, read off real check runs, **not** off a workflow's
 `name:` field. Requiring a context nothing emits does not fail a PR; it leaves it pending and
 unmergeable forever. None of `ci.yml`, `codeql.yml`, `no-internal-refs.yml` or `no-emdash.yml`
 carries a `paths:` filter, so no PR can skip one.
+
+**Do not quote the row count from memory, and do not carry it into another document.** It was `6`
+until `ci / prepublish` was added and it moves whenever the called workflow does. Derive it:
+`gh api repos/cosyte/cli/rulesets/19907924 --jq '[.rules[]|select(.type=="required_status_checks").parameters.required_status_checks[].context]'`.
+
+### `ci / prepublish`, and the hazard that a context can arrive with no commit here
+
+**▶ A `ci / *` CONTEXT CAN APPEAR IN THIS REPO WITH NO COMMIT IN THIS REPO, AND IT ARRIVES NOT
+REQUIRED.** `ci.yml` calls `cosyte/.github/.github/workflows/ci.yml@main`, unpinned. A job added to
+that reusable workflow starts emitting `ci / <job>` on every PR here immediately, the ruleset does
+not name it, and so **a red result from it shows a red X and the merge lands anyway** (this repo's
+merge queue is `pull_request` with 0 approvals). Nothing errors, nothing warns, and no commit in this
+repo records that the surface changed. Every previously written form of the "a required job gates all
+of its steps" warning was scoped to a **local** split, so none of them covered this.
+
+That is not hypothetical. The `prepublish` job was added upstream in `cosyte/.github#35` (`6142ac4`,
+2026-08-05) and its second layer was defaulted on in `#36` (`90936ea`, the same day). **The census
+that proves it was unrequired**: on the eight most recent `pull_request` head shas here (`#27`
+through `#34`), `ci / prepublish` appears **zero** times, because the newest of them (`#34`) merged
+`2026-08-04T22:22:24Z` and the upstream job postdates it. So the job could not have been read off a
+real check run before this slice, and requiring it earlier would have been the `knowledgebase`
+mistake (naming a context nothing emits) rather than a fix. **The order is load-bearing: it has to
+run first, then be added, in that order.** It was read off the real check run on the pull request
+that shipped this section before the ruleset was written.
+
+**What it gates, and why leaving it unrequired was the expensive kind of hole.** `prepublish` runs
+two layers: an offline **manifest lint** that refuses a dependency specifier no registry can resolve,
+and a **pack-and-install** probe that `npm pack`s this tree and installs the tarball into a clean
+anonymous directory. Both default on upstream and this caller passes neither input. This package is
+the reason that gate exists: `@cosyte/cli@0.0.1` and `0.0.2` were published carrying
+`file:vendor/*.tgz` specifiers and are **permanently uninstallable** (ADR 0001, a published version
+never moves backwards). The manifest lint would have refused both. A gate that catches that, and then
+does not block the merge that reintroduces it, is documentation.
+
+**It is required, not merely present, deliberately.** The alternative considered and rejected was to
+leave it advisory on the grounds that it touches the network on every PR and a registry blip would
+red it. That cost is real and is disclosed upstream: the `pnpm install --frozen-lockfile` in this job
+has no registry-outage softening, unlike the pack layer's `inconclusive` verdict. It was accepted
+here anyway, because an advisory pre-publish gate on the branch that publishes is the exact shape of
+"a green check that cannot block a merge".
+
+**Not built, and it must not be built without answering one question first.** A gate inside CI that
+`curl`s this repo's own ruleset and asserts the required set would close the observability gap named
+at the end of this section. Anonymous GitHub API is **60 requests per hour, per IP, and hosted
+runners share IPs**, so such a gate trades a false green for a **flaky red on a required context**,
+which is worse than the hole. Answer the flakiness question with a measurement before writing it.
 
 **`no-internal-refs` is the one that is NOT `<workflow> / <job>`, and the shape is worth knowing.**
 `ci / verify (22, ubuntu-latest)` is prefixed because `verify` runs inside a _called_ reusable

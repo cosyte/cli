@@ -17,6 +17,30 @@ still do. Each entry was assigned to the release whose tag first contains it, re
 
 ### Fixed
 
+- **A red pre-publish gate showed a red X and merged anyway, because `ci / prepublish` was a
+  required check nowhere (CI-REQUIRED-CHECKS).** The shared pipeline this repo calls grew a
+  `prepublish` job on 2026-08-05 (`cosyte/.github#35`, `6142ac4`; its second layer defaulted on in
+  `#36`, `90936ea`), so `ci.yml` began emitting a `ci / prepublish` context on every pull request
+  here **with no commit landing in this repo**. Repository ruleset `19907924` did not name it, so
+  the job could fail and the merge still landed on `main`, which is the branch that publishes.
+  `ci / prepublish` is now a required context, `integration_id`-pinned like the other six.
+  - **What it gates is this package's own worst shipped defect.** The job is an offline manifest
+    lint that refuses a dependency specifier no registry can resolve, plus a probe that packs this
+    tree and installs the tarball into a clean directory. `@cosyte/cli@0.0.1` and `0.0.2` reached
+    the registry carrying `file:vendor/*.tgz` specifiers and are permanently uninstallable; the
+    manifest lint would have refused both. A gate that catches that and then cannot block the merge
+    reintroducing it is documentation.
+  - **The order was load-bearing and is recorded because it is easy to get backwards.** The context
+    name was read off a real `pull_request` check run before the ruleset was written, never off the
+    workflow's `name:` field. Requiring a context nothing emits does not fail a pull request, it
+    leaves it pending and unmergeable forever. A census of the eight most recent head shas here
+    (`#27` through `#34`) finds `ci / prepublish` **zero** times, because the newest of them merged
+    before the upstream job existed, so it could not have been required any earlier.
+  - **`ci.yml`'s banner now covers the hazard that actually bit.** Every previous wording of it was
+    scoped to splitting a step out of `verify` locally. The `uses:` reference is unpinned, so a job
+    added upstream emits a new `ci / <job>` context here with no commit in this repo, and it always
+    arrives unrequired.
+
 - **The shipped documentation sidebar was off the canonical IA spine, and it was holding up the
   docs site's deploy (CLI-SIDEBAR-IA-NONCANONICAL).** `docs-content/sidebars.json` declared two
   top-level categories that are not on the spine, **"MCP server"** and **"Reference"**. The docs
