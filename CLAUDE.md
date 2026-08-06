@@ -254,11 +254,21 @@ Full ruleset, the required-context table and the per-check reasoning:
 [agent-notes § Branch protection](documentation/agent-notes.md#branch-protection-and-the-limits-of-this-claim).
 
 - `main` is protected by the repository ruleset **`ci-required-checks`** (id `19907924`). Before it
-  existed every check here was advisory, on the branch that publishes. Six required contexts, each
-  pinned to **`integration_id: 15368`** so a same-named status from another actor cannot satisfy it.
+  existed every check here was advisory, on the branch that publishes. **Seven** required contexts,
+  each pinned to **`integration_id: 15368`** so a same-named status from another actor cannot satisfy
+  it. **Do not quote that count without re-deriving it** (`gh api repos/cosyte/cli/rulesets/19907924`):
+  it was `6` until `ci / prepublish` was added, and it moves when the called workflow does.
 - **Read a required context off a REAL check run, never off a workflow's `name:` field.** Requiring a
   context nothing emits does not fail a PR: it leaves it **pending and unmergeable forever**, with no
   error and no warning.
+- **▶ A `ci / *` CONTEXT CAN APPEAR HERE WITH NO COMMIT IN THIS REPO, AND IT ARRIVES NOT REQUIRED.**
+  `ci.yml` calls `cosyte/.github/.github/workflows/ci.yml@main` unpinned, so a job added upstream
+  starts emitting a context here that the ruleset does not name: **a red X that does not block a
+  merge**, which is the failure this repo's whole protection claim exists to prevent. `ci / prepublish`
+  arrived that way on 2026-08-05 and was unrequired until measured and added. **Census `ci / *` against
+  a real check run whenever `.github` moves**, then require it or write down why not, in `ci.yml`'s
+  banner. Detail:
+  [agent-notes § Branch protection](documentation/agent-notes.md#branch-protection-and-the-limits-of-this-claim).
 - **`no-internal-refs` and `no-emdash` are bare JOB IDS**, not `<workflow> / <job>`, because they are
   ordinary jobs in this repo's own workflows. **Renaming the job silently detaches the required
   check.** Rename the job and the ruleset together, or neither.
