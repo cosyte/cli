@@ -5,15 +5,29 @@ name: Release
 # Requires the NPM_TOKEN and DOCS_REPO_DISPATCH_TOKEN secrets (passed via `secrets: inherit`).
 #
 # ▶ KNOWN TRAP, documented rather than bypassed. The `ci-required-checks` ruleset on this repo
-# requires four contexts with `bypass_actors: []`. Changesets opens the "Version Packages" PR as
-# `github-actions[bot]` using the default `GITHUB_TOKEN`, and GitHub does not start workflow runs
-# for events raised by that token, so that PR arrives with ZERO check runs. Four required contexts
-# that never arrive are PENDING, not failing, and with no bypass actors nobody, including an admin,
-# can merge past them. The escape, done last and immediately before merging, is one commit onto
-# `changeset-release/main`, which raises a normal `pull_request` event and produces all four
-# contexts:
+# requires several contexts with `bypass_actors: []`. THE NUMBER IS DELIBERATELY NOT WRITTEN HERE:
+# it was `4` in this comment while the ruleset had `6`, because a count in a workflow comment has
+# nothing to keep it honest, and a required context this text does not know about is exactly the
+# thing the reader is here to satisfy. Derive it instead, which takes two seconds:
+#
+#   gh api repos/cosyte/cli/rulesets/19907924 \
+#     --jq '[.rules[]|select(.type=="required_status_checks").parameters.required_status_checks[].context]'
+#
+# Changesets opens the "Version Packages" PR as `github-actions[bot]` using the default
+# `GITHUB_TOKEN`, and GitHub does not start workflow runs for events raised by that token, so that
+# PR arrives with ZERO check runs. Required contexts that never arrive are PENDING, not failing, and
+# with no bypass actors nobody, including an admin, can merge past them. The escape, done last and
+# immediately before merging, is one commit onto `changeset-release/main`, which raises a normal
+# `pull_request` event and produces every context:
 #
 #   gh pr checkout <n> && git commit --allow-empty -m "chore: run CI on the version PR" && git push
+#
+# ▶ AND THAT ESCAPE GOT MORE EXPENSIVE ON 2026-08-06, WHICH IS WORTH KNOWING BEFORE YOU RUN IT.
+# `ci / prepublish` is now required, and its second layer packs this tree and installs the tarball
+# into a clean directory over the network. So the empty commit above no longer just re-runs static
+# gates on the version PR: it runs a real install of the version about to be published, against the
+# live registry, and a registry blip reds it. That is the intended cost. A version PR whose
+# pre-publish probe cannot pass is a version that must not publish.
 #
 # Adding a bypass actor would also clear it and is DELIBERATELY REJECTED: it would let a human merge
 # a red PR on a published healthcare package. The durable fix is to author the Version PR with a PAT

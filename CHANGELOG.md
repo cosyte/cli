@@ -40,6 +40,15 @@ still do. Each entry was assigned to the release whose tag first contains it, re
     scoped to splitting a step out of `verify` locally. The `uses:` reference is unpinned, so a job
     added upstream emits a new `ci / <job>` context here with no commit in this repo, and it always
     arrives unrequired.
+  - **`release.yml` was telling the next releaser to expect four contexts on the version PR, and
+    the ruleset had six.** That comment documents the escape from a real trap (a "Version Packages"
+    PR opened by `github-actions[bot]` arrives with zero check runs, and a required context that
+    never arrives is pending rather than failing, unmergeable by anyone), so a wrong count there
+    sends someone to declare the escape finished early. The count is **deleted rather than
+    corrected**: a number in a workflow comment has nothing to keep it honest, and the derivation
+    is now written in its place. The same comment records that the escape got more expensive, since
+    the empty commit it prescribes now runs a real pack-and-install of the version about to be
+    published.
 
 - **The shipped documentation sidebar was off the canonical IA spine, and it was holding up the
   docs site's deploy (CLI-SIDEBAR-IA-NONCANONICAL).** `docs-content/sidebars.json` declared two
