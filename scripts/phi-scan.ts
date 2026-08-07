@@ -333,19 +333,62 @@ const OVERRIDE_LOG_PATH = join(REPO_ROOT, "phi-scan-overrides.md");
 // spelled as a quantified character class and holds no digits in the matched
 // arrangement, which is why it does not red on itself.
 //
+// ▶ THE ONE CONSEQUENCE OF THAT PRESSURE A READER WOULD NOT GUESS, AND IT IS THE
+// ALLOW-LIST'S OWN BYTES. `scripts/phi-allow-list.txt` documents `ID <value>` as
+// "synthetic id matching an SSN / MRN / member-id shape", and the dashed-SSN
+// check below is UNCONDITIONAL: it consults no allow-list at all. So an `ID`
+// entry written in THE DASHED NINE-DIGIT SHAPE THAT CHECK MATCHES now reds the
+// gate on the allow-list itself. Measured, not reasoned: appending one exits 0
+// on `ba059a2` and exits 1 here, naming `scripts/phi-allow-list.txt`. Today's
+// file declares its only id in the `MRN-` form, which the floor does not match,
+// so this is LATENT rather than live - but `scanTarget`'s TODO asks a future
+// worker to add the structured id detector that CONSUMES `allow.ids`, which is
+// exactly when it stops being latent. The case is pinned in
+// `test/scripts/phi-scan.test.ts`, which is where the literal may live: THIS
+// FILE MAY NOT SPELL ONE, and a draft of this very paragraph that did was caught
+// by this gate reporting a hit on itself.
+//
+// THE REMEDY IS TO SPELL THE SYNTHETIC ID IN A SHAPE THE FLOOR DOES NOT MATCH
+// (`MRN-000123`, as this file already does), AND IT IS DELIBERATELY NEITHER OF
+// THE TWO THE HIT MESSAGE PRINTS:
+//   - "declare it in scripts/phi-allow-list.txt" is CIRCULAR here: the
+//     declaration is the thing that produced the hit, because the SSN pass reads
+//     no allow-list.
+//   - "run with --allow-fixture <path>" does not reach this sweep at all.
+//     `parseArgs` sends an `--allow-fixture` invocation down PATHS mode, and the
+//     one named target is then filtered out, so it opens ZERO files and prints
+//     "OK, no hits" at exit 0. That collapse is PRE-EXISTING (it behaves
+//     identically on `ba059a2`) and is deliberately not fixed here; it is
+//     recorded because widening the walk is what makes it the tempting answer.
+// AND IT IS NOT `DELIBERATE_VIOLATOR_SOURCES` EITHER. Exempting the allow-list
+// would leave the one file a developer is most likely to paste a real value into
+// unswept, which is the opposite of what this root was added for.
+//
 // WHAT IS DELIBERATELY *NOT* A ROOT, each for a measured reason rather than an
 // omission:
 //   - `vendor/`: ten `pnpm pack` tarballs. A DEFLATE stream decoded as UTF-8 is
 //     not text this gate can say anything true about, and these are third-party
 //     build artifacts rather than this repository's authored corpus. The em-dash
 //     gate's NUL-exclusion grounding cites them for the same reason.
-//   - `docs-content/`, `documentation/` and `.changeset/`: every tracked file
-//     under them is `.md`, which the walk skips by design, so declaring them
-//     would add reconciliation surface and open not one new byte.
-//   - `.github/` and the repository root: measured clean under the floor, and
-//     neither is where this package's PHI-shaped literals live. Rooting at the
-//     repository root is a shape exactly one sibling has, and it is the one that
-//     got caught enumerating a build transient.
+//   - `docs-content/`, `documentation/` and `.changeset/`: almost every tracked
+//     file under them is `.md`, which the walk skips by design. RE-COUNTED
+//     RATHER THAN ROUNDED OFF, because the shorter sentence ("every tracked file
+//     under them is `.md`, so declaring them would open not one new byte") was
+//     written here and was FALSE: `documentation/` is 6 of 6 `.md`, but
+//     `docs-content/` is 9 of 10 (`docs-content/sidebars.json`) and `.changeset/`
+//     is 3 of 4 (`.changeset/config.json`). Declaring all three would open TWO
+//     files, not none. They stay out because two JSON manifests are not where
+//     this package writes messages, not because there is nothing there.
+//   - `.github/`: 8 tracked files, measured clean under the floor.
+//   - the repository root: NOT clean, and that is the honest reason rather than
+//     the one first written here. `phi-scan package.json` exits 1: the `author`
+//     field carries the brand's own contact address, which is a real address at
+//     a domain the floor has no allow-list entry for. So rooting at the
+//     repository root would red the gate TODAY on a value that is correct, on
+//     top of being the shape exactly one sibling has, which is the one that got
+//     caught enumerating a build transient. (The address is not spelled here,
+//     for the reason the `scripts` note gives; the case is pinned in
+//     `test/scripts/phi-scan.test.ts`.)
 //
 // THIS LIST IS NOT A CLAIM THAT NOTHING ELSE COULD EVER CARRY PHI. It is a claim
 // about where this repository writes messages, which is `src/`, `test/` and
@@ -366,12 +409,24 @@ const SCRIPTS_ROOT = join(REPO_ROOT, "scripts");
  * each hit twice. That is why the fixture directory was REPLACED by `test` rather
  * than joined by it.
  *
- * THE FIXTURE DIRECTORY DID NOT STOP BEING WATCHED BY LOSING ITS ROOT STATUS, and
- * that is worth knowing rather than rediscovering. An emptied or missing
- * `test/__fixtures__` is still refused, through the OTHER condition of the
- * observation rule: git tracks in-scope files under `test` that the walk did not
- * open, and the refusal names each one. What changes is only which root the
- * message is filed under.
+ * THE FIXTURE DIRECTORY DID NOT STOP BEING WATCHED BY LOSING ITS ROOT STATUS,
+ * BUT THE COVER IT KEEPS IS CONDITIONAL AND THE CONDITION MUST BE STATED. An
+ * emptied or missing `test/__fixtures__` is still refused through the OTHER
+ * condition of the observation rule: git tracks in-scope files under `test` that
+ * the walk did not open, and the refusal names each one. That holds HERE, where
+ * git tracks seven files under the fixture directory, and it is what four
+ * updated assertions in the suite pin.
+ *
+ * WHERE GIT TRACKS NOTHING UNDER IT, THE COVER IS GONE, AND THAT IS A REAL
+ * BEHAVIOUR CHANGE RATHER THAN A RESTATEMENT. As a declared root, an empty
+ * `test/__fixtures__` refused by the opened-NOTHING floor whatever git carried;
+ * as an ordinary directory beneath `test`, an empty one contributes no entry and
+ * there is no expected path for the reconciliation to miss. Measured on a
+ * scratch repo tracking `src/ok.ts` and `test/foo.test.ts` and nothing under the
+ * fixture directory: `ba059a2` exits 2 ("test/__fixtures__: opened nothing"),
+ * this exits 0. Arguably the correct answer, since a directory nothing is filed
+ * under is not evidence of a starved corpus, but it is a LOSS and is recorded as
+ * one rather than implied away.
  */
 const SCAN_ROOTS: readonly { abs: string; rel: string }[] = [
   { abs: SRC_ROOT, rel: "src" },

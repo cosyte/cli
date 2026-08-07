@@ -238,7 +238,9 @@ address written into `test/planted.test.ts`, in this repo's own inline-message s
 message as one `.ts` string literal with `\r` escapes between segments), exited **0** `OK, no hits`
 in all mode, while `phi-scan test/planted.test.ts` reported both at **exit 1** over the same bytes. A
 file written to `scripts/` behaved identically. After the change both routes report both hits.
-**Fourteen of the suite's 68 cases red against `ba059a2`'s scanner.**
+**Sixteen of the suite's 74 cases red against `ba059a2`'s scanner**, re-derived by swapping that
+scanner under the head suite rather than quoted from a first draft (which read 14 of 68, before the
+gate pass below added cases).
 
 **The roots are `src`, `test`, `scripts`, re-derived from this repository's own files.** `test`
 REPLACES `test/__fixtures__` rather than joining it: `buildTargetsForAll` walks each root
@@ -248,21 +250,50 @@ still refused, through the observation rule's OTHER condition (git tracks in-sco
 that the walk did not open), and the refusal still names each one. Only the root the message is filed
 under changed, which is what the four updated assertions in the suite are.
 
+**But that cover is CONDITIONAL, and the first draft of the sentence above stated it flat.** It holds
+where git tracks files under the fixture directory, which here is seven. Where git tracks NOTHING
+under it, the cover is gone: as a declared root an empty `test/__fixtures__` refused by the
+opened-NOTHING floor whatever git carried, and as an ordinary directory it contributes no entry and
+the reconciliation has no expected path to miss. Measured on a scratch repo tracking `src/ok.ts` and
+`test/foo.test.ts` only: `ba059a2` exits **2**, this exits **0**. Arguably the more correct answer,
+but it is a LOSS and a test now pins it.
+
 **`scripts` is included, and that is this repository's answer rather than a sibling's.** The
 recogniser's patterns, the allow-list the scanner refuses to run without, and the override log it
 points a developer at all live there, so the one directory guaranteed to hold PHI-shaped text was the
 one nothing enumerated. All nine files were measured against the floor before the root was declared:
 zero hits, so the widening lands green on its own bytes rather than on a new carve-out. **Keep it that
 way**: `scripts/phi-scan.ts` is now under its own scan, so an example SSN written into a comment there
-reds the gate.
+reds the gate. **That is not hypothetical: the gate pass below caught this worker writing exactly such
+a literal into the scanner's own banner, and the sweep reported a hit on itself.** The banner now
+names the shapes without spelling them; the literals live in the exempt test file.
 
-**What is deliberately NOT a root, each measured rather than omitted.** `vendor/` (ten `pnpm pack`
-tarballs; a DEFLATE stream decoded as UTF-8 is not text this gate can say anything true about, and the
-em-dash gate's NUL grounding cites them); `docs-content/`, `documentation/` and `.changeset/` (every
-tracked file under them is `.md`, which the walk skips by design, so declaring them would add
-reconciliation surface and open not one byte); `.github/` and the repository root (measured clean, and
-neither is where this package writes messages - and rooting at the repository root is the one sibling
-shape that got caught enumerating a build transient).
+**▶ THE COST OF THE `scripts` ROOT THAT NOBODY WOULD GUESS: THE ALLOW-LIST'S OWN BYTES.**
+`phi-allow-list.txt` documents `ID <value>` as "synthetic id matching an SSN / MRN / member-id shape",
+and the dashed-SSN check consults **no allow-list at all**. So an `ID` entry written in that dashed
+shape now reds the gate on the allow-list itself: measured, it exits **0** on `ba059a2` and **1**
+here. Latent today (the shipped file declares its only id in the `MRN-` form, and a test pins that),
+and it stops being latent the moment a worker acts on `scanTarget`'s TODO to add the structured id
+detector that consumes `allow.ids`. **The remedy is to spell the id in a shape the floor does not
+match.** It is NOT to make the SSN pass consult `allow.ids` (that DELETES a detection the base had),
+and it is NOT to exempt the allow-list (that leaves the one file a developer is likeliest to paste a
+real value into unswept). **Neither remedy the hit message itself prints works here**: "declare it in
+the allow-list" is circular, and `--allow-fixture` routes the invocation down paths mode where the one
+named target is then filtered out, so it opens ZERO files and prints `OK, no hits`. That collapse is
+**PRE-EXISTING** (identical on `ba059a2`), disclosed and pinned rather than fixed.
+
+**What is deliberately NOT a root, and TWO OF THE THREE ORIGINAL MEASUREMENTS WERE FALSE.** `vendor/`
+(ten `pnpm pack` tarballs; a DEFLATE stream decoded as UTF-8 is not text this gate can say anything
+true about, and the em-dash gate's NUL grounding cites them). `docs-content/`, `documentation/` and
+`.changeset/`: the first draft said every tracked file under them is `.md` so declaring them would
+open not one byte, and that is **wrong** - `documentation/` is 6 of 6, but `docs-content/` is 9 of 10
+(`sidebars.json`) and `.changeset/` is 3 of 4 (`config.json`), so declaring all three opens **two**
+files. `.github/`: 8 files, measured clean. **The repository root is NOT clean**, which the first draft
+also got wrong: `phi-scan package.json` exits **1** on the brand's own contact address in the `author`
+field, so rooting there would red today on a correct value, on top of being the one sibling shape that
+got caught enumerating a build transient. **All four are now checks in the suite rather than sentences
+a reader has to trust** - this is the third time this repository has been caught writing down a
+measurement it did not take.
 
 **The deliberate-violator exemption, one entry long.** `test/scripts/phi-scan.test.ts` carries the
 payload on purpose, so with `test/` a root the sweep would red on the scanner's own suite forever.

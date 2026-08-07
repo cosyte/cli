@@ -18,9 +18,17 @@ enumeration rather than a live exposure.
 `test` replaces `test/__fixtures__` rather than joining it, because the roots must stay disjoint: each
 is walked independently and the results concatenated, so a nested root would enumerate every file
 beneath it twice. The fixture directory is still watched, through the other condition of the
-unobserved-root rule. `scripts/` is included because the scanner, its allow-list and its override log
-all live there, so the one directory guaranteed to hold identifier-shaped text was the one nothing
-enumerated; all nine files there were measured against the detector before the root was declared.
+unobserved-root rule, wherever the repository tracks files under it. One cover was lost and is stated
+rather than implied away: where nothing is tracked under it, an empty fixture directory no longer
+refuses. `scripts/` is included because the scanner, its allow-list and its override log all live
+there, so the one directory guaranteed to hold identifier-shaped text was the one nothing enumerated;
+all nine files there were measured against the detector before the root was declared.
+
+Scanning `scripts/` has one consequence worth knowing before it surprises someone: the allow-list
+documents an id entry as matching a social-security, medical-record or member-id shape, and the
+dashed-id check consults no allow-list, so declaring one in the dashed shape now reports a hit on the
+allow-list itself. Nothing shipped is affected, and the remedy is to write the synthetic id in a shape
+the check does not match, never to weaken the check or to exempt the file.
 
 The scanner's own test file carries violator literals on purpose and is the single exempt path. That
 exemption is applied after the file is read, so it still counts as observed and an unreadable one

@@ -3,8 +3,7 @@
 > **The narrative lives in [`documentation/agent-notes.md`](documentation/agent-notes.md). Read it
 > before you touch anything a rule below tells you not to touch.** This file is always-read by every
 > worker that enters this repo, so the per-incident write-ups, the shipped-phase histories and the
-> long rationales were relocated there **verbatim**; that file's own header records when and why, and
-> nothing was deleted.
+> long rationales were relocated there **verbatim**; nothing was deleted.
 >
 > What stays here is the cursor, the rules, and **every** trap, each compressed to a one-line
 > imperative with a link to the section that proves it. **"I did not read the reason" is not a licence
@@ -181,6 +180,9 @@ Why: [agent-notes § The pre-commit PHI gate and git mv](documentation/agent-not
   comment there reds the gate**. `test/scripts/phi-scan.test.ts` is the **ONE** exempt path: at the
   **scan** (still read + reconciled), **all-mode only** (paths mode must still report it or a
   detection is DELETED), **per path**. `EMAILDOMAIN` is global; never allow-list to green a file.
+- **`scripts/` IS SWEPT: name a PHI shape, never SPELL a literal** (a draft banner red the gate on
+  itself). The SSN check reads **no** allow-list, so an `ID` in dashed shape reds
+  `phi-allow-list.txt`: respell `MRN-`.
 - **🛑 THE WIDENING BOUGHT THE SSN/EMAIL FLOOR OVER 38 MORE FILES AND NOTHING ELSE** (all hand-read:
   enumeration gap, not exposure). **The recogniser was NOT widened, on measurement** - this floor is
   anchor-free, so it never had the "file IS the document" defect, and an escape-decoded view finds
@@ -348,9 +350,8 @@ return 0`, so no `--profile`, `--ignore-rules` or config setting reaches that ea
   token" of the ARGV refusal, never "wholesale"** (the stronger wording was live and was refuted); the
   `.attw.json` refusal **is** wholesale, and the two messages differ on purpose.
 - **Two holes are disclosed and deliberately left open**: clustered short forms `-fjson` / `-Pf json`,
-  and a declared path not starting with `.`. The bare invocation this replaced exited 0 with **no**
-  arguments at all, so the gate is strictly better either way and a short-option parser is a moving
-  part the guard does not need.
+  and a declared path not starting with `.`. Left open on purpose; the reasoning is in the linked
+  section.
 - `test/scripts/attw-gate.test.ts` pins both nets, the upstream exit 0 itself, a negative control, and
   that a real `attw` failure still fails with `attw`'s own status.
 
@@ -395,10 +396,10 @@ Mirrors the three disciplines in the meta-repo's `documentation/conventions.md`.
      consumer came here for. The negative self-tests exist to make that attempt red.
    - **Repair the head**: a sentence with an identifier stripped off the front reads worse than the
      text it replaced.
-   - **CUT, do not rewrite.** This package's whole posture is honesty about what it _cannot_ do:
-     gated stubs that exit `69`, value-free stderr, the `OP_SUPPORT` matrix. Softening a stated limit
-     into an implied capability while tidying a sentence is a worse defect than the bookkeeping being
-     removed. Delete the claim rather than replace it, and revert a rewrite verbatim.
+   - **CUT, do not rewrite.** This package's posture is honesty about what it _cannot_ do (gated
+     stubs at `69`, value-free stderr, `OP_SUPPORT`). Softening a stated limit into an implied
+     capability while tidying is worse than the bookkeeping removed. **Delete the claim rather than
+     replace it, and revert a rewrite verbatim.**
    - **The gate catches identifiers, not English sentences about our process**, and it reads `src/`,
      never `dist/`. A new programme prefix has to be added by hand. **The reviewer still owns half the
      rule.**

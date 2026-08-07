@@ -34,10 +34,22 @@ still do. Each entry was assigned to the release whose tag first contains it, re
   - **`test` REPLACES `test/__fixtures__` rather than joining it.** Roots must stay disjoint: each is
     walked independently and the results concatenated, so a nested root would enumerate every file
     beneath it twice and report each hit twice. The fixture directory is still watched, through the
-    observation rule's other condition; only the root a refusal is filed under changed.
+    observation rule's other condition, **wherever git tracks files under it** (here, seven); only the
+    root a refusal is filed under changed.
+  - **One cover was LOST, and it is stated rather than implied away:** where git tracks NOTHING under
+    `test/__fixtures__`, an empty one no longer refuses. As a declared root it refused by the
+    opened-nothing floor whatever git carried; as an ordinary directory it contributes no entry and the
+    reconciliation has no expected path to miss. A test pins it.
   - **`scripts/` is a root because the scanner, its allow-list and its override log live there**, so
     the one directory guaranteed to hold PHI-shaped text was the one nothing enumerated. All nine
     files there were measured against the detector before the root was declared: no hits.
+  - **The cost of that root nobody would guess: the allow-list's own bytes.** The allow-list documents
+    `ID <value>` as a synthetic id "matching an SSN / MRN / member-id shape", and the dashed-SSN check
+    consults no allow-list, so an `ID` entry written in that dashed shape now reds the gate on the
+    allow-list itself. Latent today (the shipped file declares its only id in the `MRN-` form, and a
+    test pins that). **The remedy is to spell the id in a shape the check does not match**, never to
+    make that check consult the allow-list (which would delete a detection) and never to exempt the
+    file (which would leave the likeliest place for a real value unswept).
   - **A narrowing that came with it:** `test/__fixtures__` is no longer a declared root, so a live or
     dangling symbolic link at that path is now an enumerated entry and is refused outright, whatever
     it points at. Only the three top-level roots can still be followed.
@@ -51,6 +63,10 @@ still do. Each entry was assigned to the release whose tag first contains it, re
     unimplemented, and a test now pins that limit rather than leaving it as prose.
   - **`--staged` is deliberately unchanged**, because widening it changes what a commit is blocked on.
     The two routes therefore differ widely, and the scanner's own documentation says by how much.
+  - **Four claims about which directories are deliberately NOT scan roots are now checks rather than
+    prose**, after two of them were measured false: `docs-content/` and `.changeset/` each carry one
+    tracked non-markdown file, and the repository root is not clean under the detector (the `author`
+    field carries a real off-domain contact address). `documentation/` and `.github/` were correct.
 
 - **`pnpm phi-scan` printed `OK, no hits` and exited 0 over a corpus it never opened
   (PHI-SCAN-OBSERVED-NOTHING-IS-GLOBAL).** A declared scan root that the walk never observed is now
