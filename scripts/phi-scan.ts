@@ -162,10 +162,18 @@
  * the index by default), so a stray `.gitignore` line cannot excuse one out of
  * the reconciliation set.
  *
- * TWO RESIDUALS, STATED RATHER THAN DISCOVERED: a root git tracks nothing under
- * is held only by the opened-nothing condition, which is a FLOOR OF ONE (one
- * observed file satisfies it); and the rule says nothing about a path ABOVE a
- * root.
+ * THREE RESIDUALS, STATED RATHER THAN DISCOVERED, and the third is the one an
+ * earlier draft of this list left out while its own shape (1) above was busy
+ * describing it:
+ *
+ *   - the reconciliation compares PATH SETS, not the bytes git carries at those
+ *     paths, so a directory mirroring the tracked NAMES clears both conditions
+ *     with decoy contents (measured, exit 0). Comparing blobs is a different and
+ *     larger rule and is deliberately not taken here;
+ *   - a root git tracks nothing under is held only by the opened-nothing
+ *     condition, which is a FLOOR OF ONE (one observed file satisfies it), and
+ *     is the degenerate case of the first residual rather than a separate one;
+ *   - the rule says nothing about a path ABOVE a root.
  * ===========================================================================
  *
  * ▶ THE PRE-COMMIT HOLE THAT MADE THIS URGENT WAS RENAME DETECTION, AND IT IS
