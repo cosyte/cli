@@ -168,8 +168,10 @@ tracked fixture removed from the working tree with the rest of the root still op
 away. **9 of `test/scripts/phi-scan.test.ts`'s 47 tests run red against `cd221a0`'s scanner** and
 green against this one. **Name the denominator and re-derive it, because this very number went stale
 inside the paragraph correcting a stale number**: it read `8` of `45` one commit earlier, and adding
-the unmerged-count test moved it. The 38 that stay green are the floor tests, the controls, and the
-ones that PIN a residual, which are green on both trees by design.
+the unmerged-count test moved it. **The composition of the 38 that stay green was stated here twice
+and was wrong both times, so it is CUT rather than restated a third time**: 33 of them are tests
+`cd221a0`'s suite already carried, most of them regression guards from earlier slices that fit none
+of the tidy categories a summary reaches for. Re-derive it if you need it; do not summarise it.
 
 **The remedy is reconciliation, not counting.** Each root's walk is compared against
 `git ls-files -z -- <root>`, and two independent conditions refuse: the root contributed nothing, or
