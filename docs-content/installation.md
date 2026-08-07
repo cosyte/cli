@@ -102,7 +102,7 @@ autodetector, the exit-code contract, and the value-free diagnostic types:
 ```ts runnable
 import { VERSION } from "@cosyte/cli";
 
-VERSION; // => "0.0.4"
+VERSION; // => "0.0.5"
 ```
 
 If that resolves and prints the release you installed, the install is good: head to the
