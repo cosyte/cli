@@ -17,6 +17,49 @@ still do. Each entry was assigned to the release whose tag first contains it, re
 
 ### Fixed
 
+- **`pnpm phi-scan` printed `OK, no hits` and exited 0 over a corpus it never opened
+  (PHI-SCAN-OBSERVED-NOTHING-IS-GLOBAL).** A declared scan root that the walk never observed is now
+  a refusal at **exit 2**, in the all-mode sweep CI runs. Each root's walk is reconciled against
+  `git ls-files`, and two independent conditions refuse: the root contributed **nothing**, or git
+  tracks an in-scope file under the root that the walk did not open.
+  - **Six states measured on this repository, every one of them previously exiting 0 with
+    `OK, no hits`:** the root missing; the root emptied; the root a **dangling** symbolic link; the
+    root a **live** symbolic link to a directory outside the repository; a single tracked fixture
+    removed from the working tree with the rest of the root still opened; and `src` moved away.
+  - **The dangling case is why a kind check cannot stand in for this rule.** `existsSync` follows
+    the link and answers false, so `walk()` returns before `readdirSync` and the existing
+    not-a-regular-file refusal never fires. Nothing about the entry is ever inspected, so no check
+    on its kind can reach it. Refusing on what was **observed** needs no opinion about the entry.
+  - **A denominator is deliberately not what this is.** A count counts the roots and the files that
+    did exist, so a healthy-looking total is exactly what a starved root produces. This scanner
+    prints no file count and one was not added.
+  - **Existence is not observation, which is why both conditions ship.** Refusing only a missing
+    root leaves the emptied one open; refusing only an empty result leaves the swapped one open,
+    because a root pointed at another directory opens plenty. Neither subsumes the other.
+  - **Exit 2 was derived from this scanner's own contract, not ported from a sibling.** `1` means
+    "hits found" here; `walk()` already raises an unreadable root as an invocation failure, and a
+    root replaced by a regular file already exits 2 through `readdirSync`. Sibling scanners disagree
+    on this code, and carrying one across would have been the defect.
+  - **`git ls-files` failing refuses rather than answering the empty set**, because an empty answer
+    is indistinguishable from "this root tracks nothing" and would switch the rule off in silence.
+  - **The rule is one-directional on purpose.** A tracked in-scope file the walk missed refuses; an
+    untracked working-tree file the walk found does not, because scanning more than git carries is
+    the safe direction.
+  - **Scope, stated rather than left to be inferred:** all-mode only. `--staged` is a diff and not a
+    corpus, and widening it would change what a **commit** is blocked on, which is a separate
+    decision. Naming paths explicitly is unchanged.
+  - **Narrowed, not closed, and still disclosed in the module header:** a scan root that is itself a
+    live link is still followed. It is now refused whenever git tracks an in-scope file under the
+    root that the link's target does not also carry **at the same relative path**, so a link to an
+    unrelated directory refuses; the reconciliation compares path **sets** rather than the bytes git
+    carries at those paths, so a target mirroring the tracked names still passes at exit 0, and a
+    root git tracks nothing under is the degenerate case of that rather than the whole of it. An
+    **ancestor** of a scan root remains out of the staged route's scope, and paths mode still follows
+    a link a caller names.
+- **A present-but-unreadable `phi-scan-overrides.md` exited 1, the code reserved for "hits found".**
+  `loadOverrideLog` threw a raw filesystem error past every handler while its sibling reader,
+  `loadAllowList`, had already been wrapped. It now exits 2 with a diagnostic. A caller branching on
+  the exit code read a broken invocation as a PHI finding.
 - **A red pre-publish gate showed a red X and merged anyway, because `ci / prepublish` was a
   required check nowhere (CI-REQUIRED-CHECKS).** The shared pipeline this repo calls grew a
   `prepublish` job on 2026-08-05 (`cosyte/.github#35`, `6142ac4`; its second layer defaulted on in

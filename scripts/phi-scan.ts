@@ -83,29 +83,98 @@
  * `src/notes.json` is under a scan root and `--staged` exits 0 over it, because
  * the `src/` half of the scope is `.ts` only. The all-mode sweep does refuse it,
  * so nothing escapes the gate as a whole. The rule does not reach the three
- * shapes below either, all PRE-EXISTING, all measured on this repo, none closed:
+ * shapes below either. THE OBSERVATION RULE IN THE NEXT BANNER NOW REACHES MOST
+ * OF THEM, IN THE ALL-MODE WALK ONLY, and each is restated with exactly what is
+ * left rather than ticked off:
  *
- *   1. A SCAN ROOT THAT IS ITSELF A LIVE LINK IS FOLLOWED, in the all-mode walk.
- *      `existsSync` and `readdirSync` both resolve links, so with
- *      `test/__fixtures__` pointing at a directory outside the repository the
- *      walk reads files no commit contains and reports their values under a
- *      FABRICATED in-repo path that holds no such file. That is a confident
- *      wrong provenance, on the same channel this banner argues is itself a PHI
- *      surface. The DANGLING direction is the mirror image of the same shape:
- *      `existsSync` follows the link, answers false, and the walk reports clean
- *      over a corpus it never opened.
+ *   1. A SCAN ROOT THAT IS ITSELF A LIVE LINK IS STILL FOLLOWED, in the all-mode
+ *      walk: `existsSync` and `readdirSync` both resolve links. Following is not
+ *      what got fixed; being unable to TELL is. With `test/__fixtures__`
+ *      pointing at a directory outside the repository the walk reads files no
+ *      commit contains and would report their values under a FABRICATED in-repo
+ *      path that holds no such file - a confident wrong provenance, on the same
+ *      channel this banner argues is itself a PHI surface. The observation rule
+ *      now REFUSES that (exit 2, measured) whenever git tracks an in-scope file
+ *      under the root that the link's target does not also carry at the same
+ *      relative path: seven files here, so a link to an UNRELATED directory
+ *      refuses here. STILL OPEN, AND STATED RATHER THAN IMPLIED AWAY, BECAUSE
+ *      THE SHORTER VERSION OF THIS SENTENCE IS FALSE AND WAS MEASURED FALSE: the
+ *      reconciliation compares PATH SETS, not the bytes git carries at those
+ *      paths, so a target directory that mirrors the tracked NAMES satisfies both
+ *      conditions and is followed silently, decoy contents and all - measured at
+ *      exit 0 over this repo's own seven tracked fixture names. A root git tracks
+ *      NOTHING under is the degenerate case of that, not the whole of it. The
+ *      DANGLING direction IS closed outright, whatever is tracked, because it
+ *      opens nothing.
  *   2. AN ANCESTOR of a scan root is in neither route's scope. Fact 3 below puts
  *      `test/__fixtures__` and `src` in scope, but not `test`, so staging `test`
- *      as a link leaves `--staged` at exit 0 (measured), and the walk then
- *      follows it exactly as in (1).
+ *      as a link leaves `--staged` at exit 0 (measured) - STILL OPEN, and it is
+ *      the half that gates a commit. The all-mode walk no longer follows it
+ *      quietly: replacing `test` leaves `test/__fixtures__` unopenable, which
+ *      the observation rule refuses. HOW FAR ABOVE A ROOT TO LOOK IS STILL NOT
+ *      DECIDED, and is deliberately not decided here.
  *   3. PATHS MODE FOLLOWS AN EXPLICITLY NAMED LINK. `buildTargetsForPaths` uses
  *      `statSync`, which resolves, so `pnpm phi-scan <link>` reads the target's
- *      bytes. A caller naming a path is a different act from an enumeration
- *      reaching one, but it is stated here rather than left to be discovered.
+ *      bytes. UNCHANGED AND STILL OPEN: paths mode has no corpus to reconcile
+ *      against, because a caller naming a path is asking about that path. It is
+ *      a floor of one and it is its own slice.
  *
- * Closing any of those needs a refuse-a-scan-that-observed-nothing rule plus a
- * decision about how far ABOVE a scan root to look, which is its own slice. The
- * `--staged` half of shape (1) IS closed here, by fact 3 below.
+ * ===========================================================================
+ * A DECLARED SCAN ROOT THE WALK DID NOT OBSERVE REFUSES THE SCAN (exit 2), IN
+ * ALL MODE. `existsSync` and `readdirSync` describe a WORKING TREE; what a scan
+ * result is a claim about is the CORPUS GIT CARRIES. So each root's walk is
+ * reconciled against `git ls-files`, and TWO independent conditions refuse:
+ *
+ *   - the root contributed NOTHING, or
+ *   - git tracks an in-scope file under the root that the walk did not open.
+ *
+ * NEITHER SUBSUMES THE OTHER AND BOTH SHIP. Measured on this repo, all six of
+ * these previously printed `OK, no hits` and exited 0: the root missing, the root
+ * emptied, the root a DANGLING link, the root a LIVE link to an outside
+ * directory, one tracked fixture removed from the working tree, and `src` moved
+ * away. The middle two are exactly why one condition is not enough - a swapped
+ * root opens plenty, an emptied one opens nothing.
+ *
+ * ▶ THE DANGLING CASE IS WHY A KIND CHECK CANNOT STAND IN. `existsSync` FOLLOWS
+ * the link and answers false, so `walk()` returns before `readdirSync` and the
+ * not-a-regular-file rule above never fires: nothing about the entry is ever
+ * inspected. Refusing on what was OBSERVED needs no opinion about the entry.
+ *
+ * ▶ A DENOMINATOR IS NOT THIS RULE AND WAS DELIBERATELY NOT ADDED. A count
+ * counts the roots and the files that DID exist, so a healthy-looking total is
+ * precisely what a starved root produces. This scanner prints no file count and
+ * one is not added here; the reconciliation is the signal.
+ *
+ * ▶ IT IS ONE-DIRECTIONAL ON PURPOSE. A tracked in-scope file the walk missed
+ * refuses; an untracked working-tree file the walk found does NOT, because
+ * scanning more than git carries is the safe direction, and refusing it would
+ * red the gate on every fixture a developer has written but not yet added.
+ *
+ * ▶ SCOPED TO ALL MODE. `--staged` is a DIFF, not a corpus, and has no corpus to
+ * reconcile against; paths mode is a caller naming paths. Widening either is a
+ * different decision, and widening `--staged` changes what a COMMIT is blocked
+ * on, so neither is taken here.
+ *
+ * ▶ `git ls-files` FAILING REFUSES rather than answering the empty set. An empty
+ * answer is indistinguishable from "this root tracks nothing", so a broken git
+ * would switch the whole rule off silently and restore the green it exists to
+ * end. A tracked path is also never reported by `git check-ignore` (it consults
+ * the index by default), so a stray `.gitignore` line cannot excuse one out of
+ * the reconciliation set.
+ *
+ * THREE RESIDUALS, STATED RATHER THAN DISCOVERED, and the third is the one an
+ * earlier draft of this list left out while its own shape (1) above was busy
+ * describing it:
+ *
+ *   - the reconciliation compares PATH SETS, not the bytes git carries at those
+ *     paths, so a directory mirroring the tracked NAMES clears both conditions
+ *     with decoy contents (measured, exit 0). Comparing blobs is a different and
+ *     larger rule and is deliberately not taken here;
+ *   - a root git tracks nothing under is held only by the opened-nothing
+ *     condition, which is a FLOOR OF ONE (one observed file satisfies it), and
+ *     is the degenerate case of the first residual rather than a separate one;
+ *   - the rule says nothing about a path ABOVE a root.
+ * ===========================================================================
  *
  * ▶ THE PRE-COMMIT HOLE THAT MADE THIS URGENT WAS RENAME DETECTION, AND IT IS
  * NOT LIMITED TO LINKS. `R` and `C` are returned by neither `--diff-filter=AM`
@@ -194,6 +263,17 @@ const OVERRIDE_LOG_PATH = join(REPO_ROOT, "phi-scan-overrides.md");
 // real PHI either.
 const FIXTURE_ROOT = join(REPO_ROOT, "test", "__fixtures__");
 const SRC_ROOT = join(REPO_ROOT, "src");
+
+/**
+ * The declared scan roots, each paired with the repo-relative identity used both
+ * in a refusal and in the `git ls-files` reconciliation below. The pair is here
+ * rather than derived with `normalizePath` so a root's reported name cannot
+ * depend on whether the root currently resolves.
+ */
+const SCAN_ROOTS: readonly { abs: string; rel: string }[] = [
+  { abs: FIXTURE_ROOT, rel: "test/__fixtures__" },
+  { abs: SRC_ROOT, rel: "src" },
+];
 
 // ---------------------------------------------------------------------------
 // Types
@@ -357,7 +437,19 @@ function normalizePath(p: string): string {
 
 function loadOverrideLog(): Set<string> {
   if (!existsSync(OVERRIDE_LOG_PATH)) return new Set();
-  const raw = readFileSync(OVERRIDE_LOG_PATH, "utf8");
+  // Same reason as `loadAllowList` above, and it was still open here: a
+  // present-but-unreadable override log threw a raw fs error past every handler
+  // and node exited 1, which is this contract's code for "hits found".
+  let raw: string;
+  try {
+    raw = readFileSync(OVERRIDE_LOG_PATH, "utf8");
+  } catch (err) {
+    throw new InvocationError(
+      `could not read the override log at ${OVERRIDE_LOG_PATH}: ${
+        err instanceof Error ? err.message : String(err)
+      }`,
+    );
+  }
   const out = new Set<string>();
   for (const lineRaw of raw.split(/\r?\n/)) {
     const m = /^###\s+(.+?)\s*$/.exec(lineRaw);
@@ -480,22 +572,147 @@ function gitIgnored(paths: string[]): Set<string> {
   return ignored;
 }
 
-function buildTargetsForAll(): Target[] {
-  const files: string[] = [];
-  const unscannable: Unscannable[] = [];
-  walk(FIXTURE_ROOT, files, unscannable);
-  walk(SRC_ROOT, files, unscannable);
+/**
+ * Every path git tracks under `rel`, repo-relative, in git's own spelling.
+ *
+ * This is the GROUND TRUTH the walk gets reconciled against. `existsSync` and
+ * `readdirSync` describe a WORKING TREE, and a working tree can be missing,
+ * emptied, or pointed at another directory entirely while the commit git would
+ * produce from the index is unchanged. Asking git what it carries is the only
+ * question whose answer a scan result is allowed to be a statement about.
+ *
+ * A failure REFUSES rather than answering the empty set, and that is the whole
+ * design: an empty answer is indistinguishable from "this root tracks nothing",
+ * so a broken `git` would silently switch the reconciliation off and restore
+ * exactly the green-over-an-unopened-corpus this rule exists to end.
+ */
+function trackedUnder(rel: string): string[] {
+  let out: Buffer;
+  try {
+    // SECURITY: array-form execFileSync, no shell. `--` ends the option list, so
+    // a root name can never be read as one.
+    out = execFileSync("git", ["ls-files", "-z", "--", rel], {
+      encoding: "buffer",
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+  } catch (err) {
+    throw new InvocationError(
+      `could not ask git what it tracks under ${rel}: ${
+        err instanceof Error ? err.message : String(err)
+      }. Refusing rather than reconciling the walk against an empty list.`,
+    );
+  }
+  // De-duplicated: `git ls-files` emits an UNMERGED path once per stage, so a
+  // conflicted fixture was named three times in one refusal, reading as three
+  // missing files. The refusal was right; only its count was not.
+  return [
+    ...new Set(
+      out
+        .toString("utf8")
+        .split("\0")
+        .filter((p) => p.length > 0),
+    ),
+  ];
+}
 
-  // One `git check-ignore` over both lists. An ignored entry is already out of
+/** What one scan root actually contributed, against what git says is under it. */
+interface RootObservation {
+  rel: string;
+  /** In-scope files the walk actually opened under this root. */
+  opened: number;
+  /** Tracked, in-scope paths under this root that the walk did NOT open. */
+  unopened: string[];
+}
+
+/**
+ * Refuse (exit 2) when a declared scan root was not observed. TWO independent
+ * conditions, and the second is "in addition to", never "instead of":
+ *
+ *   - the root contributed NOTHING. A missing root, an emptied one and a
+ *     DANGLING link all reach this the same way, and the dangling one is why a
+ *     kind check cannot stand in: `existsSync` FOLLOWS the link and answers
+ *     false, so `walk()` returns before `readdirSync` and the not-a-regular-file
+ *     rule never fires. Nothing about the entry is ever inspected.
+ *   - git tracks an in-scope file under the root that the walk did not open. An
+ *     EMPTIED root opens nothing but so does a root whose corpus was moved
+ *     aside, and a root swapped for another directory opens plenty. Counting is
+ *     no help for either: a COUNT COUNTS THE FILES THAT WERE THERE, which is why
+ *     a denominator is deliberately not what this rule is.
+ *
+ * Exit 2, from THIS scanner's own contract and not ported from a sibling (they
+ * differ, and porting one is the bug): `1` means "hits found" here, `walk()`
+ * already raises an unreadable root as an InvocationError, and a root replaced
+ * by a regular file already exits 2 through `readdirSync`'s ENOTDIR. A starved
+ * root belongs with those, not with a finding.
+ */
+function refuseUnobserved(observations: RootObservation[]): void {
+  const bad = observations.filter((o) => o.opened === 0 || o.unopened.length > 0);
+  if (bad.length === 0) return;
+  const lines = bad.map((o) => {
+    if (o.unopened.length === 0) return `  - ${o.rel}: opened nothing`;
+    const names = o.unopened.map((p) => `      - ${p}`).join("\n");
+    return (
+      `  - ${o.rel}: opened ${String(o.opened)} file(s), and git tracks ` +
+      `${String(o.unopened.length)} in-scope file(s) under it that the walk never opened:\n${names}`
+    );
+  });
+  const noun = bad.length === 1 ? "scan root was" : "scan roots were";
+  throw new InvocationError(
+    `refusing the scan: ${String(bad.length)} ${noun} not observed:\n${lines.join("\n")}\n` +
+      "A root the walk never opened has not been cleared by it, so reporting no hits would state " +
+      "a result about a corpus nobody read. Restore the root as a real directory holding the " +
+      "files git tracks under it, or stop declaring it as a scan root.",
+  );
+}
+
+function buildTargetsForAll(): Target[] {
+  const perRoot = SCAN_ROOTS.map((root) => {
+    const files: string[] = [];
+    const unscannable: Unscannable[] = [];
+    walk(root.abs, files, unscannable);
+    // Asked BEFORE any refusal below, so one `git check-ignore` can cover the
+    // walked entries and the tracked ones together.
+    return { ...root, files, unscannable, tracked: trackedUnder(root.rel) };
+  });
+
+  const files = perRoot.flatMap((r) => r.files);
+  const unscannable = perRoot.flatMap((r) => r.unscannable);
+
+  // One `git check-ignore` over every list. An ignored entry is already out of
   // scope for the file route, so applying the same rule to a link keeps a single
   // boundary rather than inventing a second, stricter one for links alone.
-  const ignored = gitIgnored([...files.map(normalizePath), ...unscannable.map((u) => u.path)]);
+  //
+  // A TRACKED path is never reported ignored (check-ignore consults the index by
+  // default), so this filter is a no-op on the reconciliation set and a tracked
+  // file cannot be excused out of it by a stray .gitignore line.
+  const ignored = gitIgnored([
+    ...files.map(normalizePath),
+    ...unscannable.map((u) => u.path),
+    ...perRoot.flatMap((r) => r.tracked),
+  ]);
 
   refuseUnscannable(
     unscannable.filter((u) => !ignored.has(u.path)),
     "The walk can neither read such an entry nor vouch for what is on the other side of it.",
     "Remove it, replace it with a regular file, or (if it is genuinely not part of the " +
       "corpus) untrack it and add it to .gitignore.",
+  );
+
+  // The observation rule. It runs AFTER the unscannable refusal because that one
+  // names a specific entry and is the more actionable message when both apply.
+  refuseUnobserved(
+    perRoot.map((r) => {
+      const opened = new Set(r.files.map(normalizePath).filter((p) => !ignored.has(p)));
+      // Filtered by the walk's OWN in-scope rule, so the two sides of the
+      // comparison mean the same thing: a `.md` file the walk skips by design is
+      // not evidence that the walk was starved.
+      const expected = r.tracked.filter((p) => !p.toLowerCase().endsWith(".md") && !ignored.has(p));
+      return {
+        rel: r.rel,
+        opened: opened.size,
+        unopened: expected.filter((p) => !opened.has(p)),
+      };
+    }),
   );
 
   return files

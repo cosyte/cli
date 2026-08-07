@@ -581,6 +581,225 @@ describe("phi-scan --staged: the scope is widened, never narrowed", { timeout: S
   });
 });
 
+/**
+ * `makeRepo()` with both scan roots' contents ADDED to the index, which is what
+ * `git ls-files` answers off. Every reconciliation case below needs a TRACKED
+ * corpus, because the rule compares what git carries against what the walk
+ * opened, and a repo tracking nothing has nothing to reconcile. A commit is not
+ * needed: `git ls-files` reads the index.
+ */
+function makeTrackedRepo(): string {
+  const root = makeRepo();
+  git(root, ["add", "test/__fixtures__/ordinary.txt", "src/ok.ts"]);
+  // Assert the premise rather than assume it. If the add ever stopped taking,
+  // every case below would hold over an empty expected set and pass vacuously,
+  // which is the failure mode this file has already sprung twice.
+  expect(gitOut(root, ["ls-files", "test/__fixtures__"]).trim()).toBe(
+    "test/__fixtures__/ordinary.txt",
+  );
+  return root;
+}
+
+describe(
+  "phi-scan: a declared scan root the walk never observed refuses (exit 2)",
+  { timeout: SLOW_MS },
+  () => {
+    // CI runs `pnpm phi-scan` with no arguments, so this route is the one that
+    // can print `OK, no hits` and exit 0 over a corpus nobody opened. Each case
+    // here exited 0 with that message before the observation rule, measured.
+
+    it("stays green when both roots are healthy and fully observed", () => {
+      // The premise, first: a refusal rule that reds the ordinary case teaches
+      // people to disable it, and every case below would pass vacuously against
+      // a scanner that had simply started refusing everything.
+      const root = makeTrackedRepo();
+      const r = runScanner([], root);
+      expect(r.code, `stderr: ${r.stderr}`).toBe(0);
+      expect(r.stdout).toMatch(/OK, no hits/);
+    });
+
+    it("refuses a MISSING root whose corpus git still tracks", () => {
+      const root = makeTrackedRepo();
+      rmSync(join(root, "test", "__fixtures__"), { recursive: true });
+
+      const r = runScanner([], root);
+      expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+      expect(r.stderr).toContain("test/__fixtures__: opened 0 file(s)");
+      expect(r.stderr).toContain("test/__fixtures__/ordinary.txt");
+      expect(r.stdout).not.toMatch(/OK/);
+    });
+
+    it("refuses an EMPTIED root, which existence alone cannot tell from a clean one", () => {
+      // `existsSync` answers true here and `readdirSync` succeeds: the root is a
+      // real, readable directory. Refusing a MISSING root would leave this half
+      // wide open, which is why the rule is about observation and not existence.
+      const root = makeTrackedRepo();
+      rmSync(join(root, "test", "__fixtures__", "ordinary.txt"));
+      expect(existsSync(join(root, "test", "__fixtures__"))).toBe(true);
+
+      const r = runScanner([], root);
+      expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+      expect(r.stderr).toContain("test/__fixtures__/ordinary.txt");
+    });
+
+    it("refuses a DANGLING root link, which existsSync FOLLOWS and answers false for", () => {
+      // The sharpest case, and the reason a not-a-regular-file check cannot
+      // stand in for this rule: `existsSync` resolves the link, answers false,
+      // and `walk()` returns before `readdirSync`. Nothing about the entry is
+      // ever inspected, so no kind check can fire on it.
+      const root = makeTrackedRepo();
+      rmSync(join(root, "test", "__fixtures__"), { recursive: true });
+      symlinkSync(join("..", "nowhere-at-all"), join(root, "test", "__fixtures__"));
+      expect(existsSync(join(root, "test", "__fixtures__"))).toBe(false);
+
+      const r = runScanner([], root);
+      expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+      expect(r.stderr).toContain("test/__fixtures__/ordinary.txt");
+      expect(r.stdout).not.toMatch(/OK/);
+    });
+
+    it("refuses a root swapped for an outside directory, which a count reads as healthy", () => {
+      // Shape (1) of the module header in its TRACKED form. The walk follows the
+      // link and opens a file, so a denominator or a per-root count looks fine.
+      // What gives it away is that none of the corpus git carries was among what
+      // was opened, and the reported path resolves while naming nothing tracked.
+      const root = makeTrackedRepo();
+      const outside = realpathSync(mkdtempSync(join(tmpdir(), "cli-phi-scan-outside-")));
+      repos.push(outside);
+      writeFileSync(join(outside, "unrelated.txt"), "synthetic placeholder\n");
+      rmSync(join(root, "test", "__fixtures__"), { recursive: true });
+      symlinkSync(outside, join(root, "test", "__fixtures__"));
+
+      const r = runScanner([], root);
+      expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+      expect(r.stderr).toContain("test/__fixtures__: opened 1 file(s)");
+      expect(r.stderr).toContain("test/__fixtures__/ordinary.txt");
+    });
+
+    it("refuses one tracked file removed while the rest of the root is opened", () => {
+      // Root granularity would miss this: the root exists, is readable, and
+      // yields files. The rule is per tracked FILE, not per root.
+      const root = makeTrackedRepo();
+      writeFileSync(join(root, "test", "__fixtures__", "second.txt"), "synthetic placeholder\n");
+      git(root, ["add", "test/__fixtures__/second.txt"]);
+      rmSync(join(root, "test", "__fixtures__", "ordinary.txt"));
+
+      const r = runScanner([], root);
+      expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+      expect(r.stderr).toContain("test/__fixtures__: opened 1 file(s)");
+      expect(r.stderr).toContain("test/__fixtures__/ordinary.txt");
+      expect(r.stderr).not.toContain("test/__fixtures__/second.txt");
+    });
+
+    it("refuses when src/ is the starved root, not only the fixture root", () => {
+      const root = makeTrackedRepo();
+      rmSync(join(root, "src"), { recursive: true });
+
+      const r = runScanner([], root);
+      expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+      expect(r.stderr).toContain("src: opened 0 file(s)");
+      expect(r.stderr).toContain("src/ok.ts");
+    });
+
+    it("is ONE-DIRECTIONAL: an untracked file the walk found is not a refusal", () => {
+      // Scanning more than git carries is the safe direction. Refusing it would
+      // red the gate on every fixture a developer has written but not yet added.
+      const root = makeTrackedRepo();
+      writeFileSync(join(root, "test", "__fixtures__", "not-added-yet.txt"), "placeholder\n");
+      expect(gitOut(root, ["ls-files", "test/__fixtures__/not-added-yet.txt"]).trim()).toBe("");
+
+      const r = runScanner([], root);
+      expect(r.code, `stderr: ${r.stderr}`).toBe(0);
+    });
+
+    it("still scans the corpus it reconciles: a tracked violator is a hit, not a refusal", () => {
+      // The rule must not become the only thing the all-mode route reports.
+      const root = makeTrackedRepo();
+      writeFileSync(join(root, "test", "__fixtures__", "violator.txt"), SYNTHETIC_PHI);
+      git(root, ["add", "test/__fixtures__/violator.txt"]);
+
+      const r = runScanner([], root);
+      expect(r.code, `stderr: ${r.stderr}`).toBe(1);
+      expect(r.stderr).toContain("test/__fixtures__/violator.txt");
+      expect(r.stderr).not.toContain("refusing the scan");
+    });
+
+    it("refuses rather than reconciling against an empty list when git cannot answer", () => {
+      // An empty `git ls-files` answer is indistinguishable from "this root
+      // tracks nothing", so a git that cannot answer would switch the whole rule
+      // off in silence and restore the exact green it exists to end.
+      const bare = realpathSync(mkdtempSync(join(tmpdir(), "cli-phi-scan-nogit-")));
+      repos.push(bare);
+      mkdirSync(join(bare, "scripts"));
+      mkdirSync(join(bare, "test", "__fixtures__"), { recursive: true });
+      mkdirSync(join(bare, "src"));
+      copyFileSync(
+        join(REPO_ROOT, "scripts", "phi-allow-list.txt"),
+        join(bare, "scripts", "phi-allow-list.txt"),
+      );
+      writeFileSync(join(bare, "test", "__fixtures__", "ordinary.txt"), "placeholder\n");
+      writeFileSync(join(bare, "src", "ok.ts"), "export const ok = 1;\n");
+      // The premise: this really is outside any repository, so `git ls-files`
+      // fails rather than answering about some enclosing one.
+      expect(gitOut(bare, ["rev-parse", "--show-toplevel"]).trim()).toBe("");
+
+      const r = runScanner([], bare);
+      expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+      expect(r.stderr).toContain("could not ask git what it tracks");
+      expect(r.stdout).not.toMatch(/OK/);
+    });
+
+    it("names an unmerged path ONCE, not once per stage", () => {
+      // `git ls-files` emits an unmerged path once per stage, so a conflicted
+      // fixture was named three times in one refusal and read as three missing
+      // files. The refusal was right either way; a diagnostic nobody can trust
+      // is how a gate stops being read.
+      const root = makeTrackedRepo();
+      git(root, [...COMMIT, "base"]);
+      const base = gitOut(root, ["rev-parse", "--abbrev-ref", "HEAD"]).trim();
+      git(root, ["checkout", "-q", "-b", "other"]);
+      writeFileSync(join(root, "test", "__fixtures__", "ordinary.txt"), "theirs\n");
+      git(root, ["add", "test/__fixtures__/ordinary.txt"]);
+      git(root, [...COMMIT, "theirs"]);
+      git(root, ["checkout", "-q", base]);
+      writeFileSync(join(root, "test", "__fixtures__", "ordinary.txt"), "ours\n");
+      git(root, ["add", "test/__fixtures__/ordinary.txt"]);
+      git(root, [...COMMIT, "ours"]);
+      const merge = spawnSync("git", [...MERGE, "other"], {
+        cwd: root,
+        encoding: "utf8",
+        shell: false,
+      });
+      // The premise, asserted rather than discarded: a merge that does not
+      // conflict leaves one stage, and every assertion below would hold for the
+      // wrong reason. This suite has already shipped that exact vacuity once.
+      expect(merge.status, `merge: ${merge.stdout}${merge.stderr}`).not.toBe(0);
+      expect(gitOut(root, ["ls-files", "-u", "test/__fixtures__"]).trim().split("\n")).toHaveLength(
+        3,
+      );
+      rmSync(join(root, "test", "__fixtures__", "ordinary.txt"));
+
+      const r = runScanner([], root);
+      expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+      expect(r.stderr).toContain("git tracks 1 in-scope file(s)");
+      expect(r.stderr.match(/test\/__fixtures__\/ordinary\.txt/g)).toHaveLength(1);
+    });
+
+    it("leaves --staged alone: it is a diff, with no corpus to reconcile against", () => {
+      // Widening `--staged` changes what a COMMIT is blocked on, which is a
+      // different decision and is deliberately not taken here.
+      const root = makeTrackedRepo();
+      git(root, [...COMMIT, "base"]);
+      rmSync(join(root, "test", "__fixtures__"), { recursive: true });
+      writeFileSync(join(root, "src", "added.ts"), "export const added = 1;\n");
+      git(root, ["add", "src/added.ts"]);
+
+      const r = runScanner(["--staged"], root);
+      expect(r.code, `stderr: ${r.stderr}`).toBe(0);
+    });
+  },
+);
+
 describe("phi-scan: an invocation failure exits 2, never 1", { timeout: SLOW_MS }, () => {
   // `1` is this contract's code for "hits found". A caller branching on the exit
   // code read a broken invocation as a PHI finding; a caller branching on
@@ -596,6 +815,41 @@ describe("phi-scan: an invocation failure exits 2, never 1", { timeout: SLOW_MS 
     expect(r.stderr).toContain("allow-list not found");
     expect(r.stderr).not.toContain("InvocationError:");
     expect(r.stderr).not.toContain("at loadAllowList");
+  });
+
+  it("an unreadable OVERRIDE LOG exits 2, not 1 with a stack trace", () => {
+    // The allow-list reader was wrapped; its sibling, `loadOverrideLog`, was
+    // not, so a present-but-unreadable `phi-scan-overrides.md` threw a raw
+    // EACCES past every handler and node exited 1: this contract's code for
+    // "hits found". Measured at exit 1 before this change.
+    //
+    // `hasAssertions` for the same reason as the case below: under a uid that
+    // ignores mode bits the file stays readable and the early return would be a
+    // silent pass rather than a visible skip.
+    expect.hasAssertions();
+    const root = makeRepo();
+    const log = join(root, "phi-scan-overrides.md");
+    writeFileSync(log, "# overrides\n\n### test/__fixtures__/ordinary.txt\n");
+    let r: RunResult;
+    try {
+      spawnSync("chmod", ["000", log], { encoding: "utf8", shell: false });
+      let readable = true;
+      try {
+        readFileSync(log, "utf8");
+      } catch {
+        readable = false;
+      }
+      expect(typeof readable).toBe("boolean");
+      if (readable) return;
+      r = runScanner(["--allow-fixture", "test/__fixtures__/ordinary.txt"], root);
+    } finally {
+      spawnSync("chmod", ["644", log], { encoding: "utf8", shell: false });
+    }
+    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+    expect(r.stderr).toContain("[phi-scan]");
+    expect(r.stderr).toContain("could not read the override log");
+    expect(r.stderr).not.toContain("InvocationError:");
+    expect(r.stderr).not.toContain("at loadOverrideLog");
   });
 
   it("an unreadable scan root exits 2, rather than throwing out of readdirSync", () => {
@@ -709,6 +963,14 @@ describe(
       // links. So the corpus root can point outside the repository and the walk
       // reads bytes no commit contains, reporting them under an in-repo path that
       // holds no such file.
+      //
+      // NARROWED, NOT CLOSED, AND THE NARROWING IS THE WHOLE POINT OF USING
+      // `makeRepo()` HERE RATHER THAN THE TRACKED HELPER: the observation rule
+      // refuses this shape as soon as git tracks anything under the root (the
+      // tracked form is asserted in the observation suite). What survives is
+      // exactly this - a root git carries NOTHING under, so the reconciliation
+      // has no expected path to miss and the walk's one hit satisfies the
+      // opened-nothing floor.
       const root = makeRepo();
       const outside = realpathSync(mkdtempSync(join(tmpdir(), "cli-phi-scan-outside-")));
       repos.push(outside);
@@ -727,10 +989,24 @@ describe(
       expect(gitOut(root, ["ls-files", "test/__fixtures__/real-notes.txt"]).trim()).toBe("");
     });
 
-    it("reports clean over a corpus it never opened when a scan root DANGLES", () => {
-      const root = makeRepo();
+    it("FOLLOWS a root link whose target MIRRORS the tracked names, corpus fully tracked", () => {
+      // The exact shape a refuter used to falsify the shorter disclosure. The
+      // reconciliation compares PATH SETS, not the bytes git carries at those
+      // paths, so a target directory holding the same relative filenames
+      // satisfies both conditions with decoy contents and the gate prints the
+      // headline sentence this whole rule exists to end. "Survives only where
+      // git tracks nothing under it" is FALSE, and this pins that it is false.
+      const root = makeTrackedRepo();
+      const decoy = realpathSync(mkdtempSync(join(tmpdir(), "cli-phi-scan-decoy-")));
+      repos.push(decoy);
+      writeFileSync(join(decoy, "ordinary.txt"), "decoy, not the tracked bytes\n");
       rmSync(join(root, "test", "__fixtures__"), { recursive: true });
-      symlinkSync(join("..", "nowhere-at-all"), join(root, "test", "__fixtures__"));
+      symlinkSync(decoy, join(root, "test", "__fixtures__"));
+      // The premise: git really does carry a DIFFERENT blob at that path, so a
+      // pass here is a pass over a corpus that was never opened.
+      expect(gitOut(root, ["show", ":test/__fixtures__/ordinary.txt"])).toContain(
+        "synthetic placeholder",
+      );
 
       const r = runScanner([], root);
       expect(r.code, `stderr: ${r.stderr}`).toBe(0);

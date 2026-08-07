@@ -160,14 +160,25 @@ Why: [agent-notes § The pre-commit PHI gate and git mv](documentation/agent-not
   path is printed deliberately and every offender is named. **That guarantee is about a REFUSAL and
   does not extend to a hit.**
 - **Exit `1` means "hits found", so a broken invocation must never exit `1`.** An unreadable
-  allow-list or scan root is **exit 2**; both used to throw past every handler and read as a finding.
+  allow-list, **override log** or scan root is **exit 2**; all three threw past every handler and
+  read as a finding.
+- **A declared scan root the all-mode walk never OBSERVED refuses at exit 2**, reconciled per root
+  against `git ls-files`: it opened nothing, or git tracks an in-scope file it did not open. **Both
+  conditions ship, neither subsumes the other** (an emptied root opens nothing, a swapped one opens
+  plenty). **The dangling link is why a kind check cannot stand in**: `existsSync` follows it and
+  answers false, so `walk()` returns before `readdirSync` and nothing is ever inspected. **Never add
+  a denominator instead** (a count counts the roots that DID exist). **Exit 2 is derived from this
+  contract, never ported from a sibling.** `git ls-files` failing REFUSES, never the empty set.
+  **One-directional**: an untracked file the walk found is not a refusal. **All-mode only**;
+  widening `--staged` changes what a COMMIT is blocked on.
 - **Never state the refusal rule unqualified.** It is scoped to an **enumerated** entry; a refuter
   falsified "neither route follows such an entry" using this very file.
-- **Three escapes are PRE-EXISTING, measured, and deliberately NOT closed** (a scan root that is
-  itself a live link is followed by the all-mode walk and prints values under a fabricated in-repo
-  path; an **ancestor** of a scan root is in neither route's scope; paths mode follows a named link).
-  **Do not "fix" them inside an unrelated slice**: closing them needs a
-  refuse-a-scan-that-observed-nothing rule plus a decision about how far above a root to look.
+- **Three escapes remain, NARROWED not closed** (a scan root that is itself a live link is still
+  followed, and **never say it survives "only where git tracks nothing"**: the reconciliation
+  compares PATH SETS, so a target mirroring the tracked NAMES passes at exit 0, decoy bytes and all,
+  measured; an **ancestor** of a scan root is in neither route's scope; paths mode follows a named
+  link). **Do not "fix" them inside an unrelated slice**: what is left needs a decision about how far
+  ABOVE a root to look.
 - **Other residuals, also not closed:** `D` and `U` are unenumerated (`U` costs nothing that can reach
   a commit: `git commit` refuses an unmerged index, exit 128); under `src/` the staged route covers
   `.ts` only while the all-mode walk covers every non-`.md` file, and the CI sweep is the cover.

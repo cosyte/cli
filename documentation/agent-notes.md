@@ -16,8 +16,8 @@ relocation target. **Read the bound off `REPO_CLAUDE` in `.claude/hooks/doc-budg
 number written down here.** The mechanism is a per-repo ratchet that is LOWERED as relocations land,
 and the first number quoted for it went stale within a day, which is the same defect this whole
 audit exists to fix. That amendment's own warning is the one that binds here:
-*"These files are where the traps that cost a defect to learn are written down. Relocate the
-narrative; keep the cursor, the rule, and every trap."*
+_"These files are where the traps that cost a defect to learn are written down. Relocate the
+narrative; keep the cursor, the rule, and every trap."_
 
 ---
 
@@ -136,6 +136,83 @@ exactly as it stood, including its leading `- ` bullet.
   `diff.renames` loop asserted only the detection-OFF side, so it would have passed just as happily
   if git had stopped emitting the record shape the whole change is about. **Assert the premise, not
   only the remedy.**
+
+### Refusing a scan root the walk never observed (2026-08-07)
+
+The measurement first, because the class this belongs to is one where a phrase sweep reads as
+authoritative while measuring nothing, and every number below was re-derived here rather than carried
+from a sibling.
+
+Every count below is **as of `cd221a0`**, the base this was measured on, and the anchor is not
+decoration: this slice adds files of its own, so a bare "122 tracked" goes stale in the commit that
+ships it, and the neither-route and `PID|` counts move with it (this very section is one of the files
+that moves them, since the paragraph below contains the literal it counts). A refuter caught exactly
+that. Re-derive against a named sha or do not write the number down.
+
+- **122 tracked files. The all-mode walk opens 34** (7 under `test/__fixtures__`, 27 under `src/`).
+  **88 are scanned by NEITHER route**, and **6 of those carry an inline `PID|` literal**: five HL7
+  v2 messages built as `.ts` string literals inside `test/*.test.ts`, plus one `"PID|secret"` fed to
+  a locator function to prove it does not echo. All six were read by hand and are placeholder shapes
+  (`DOE^JANE`, `X^^^H^MR`, `123^^^HOSP`); none is a real identifier. **That 88 is an ENUMERATION gap
+  and it is a different item** (`PHI-SCAN-WALK-ROOT-SCOPE`): this change widened no root, so it
+  neither opened nor needed to open any of them.
+- **The recogniser was NOT widened, and the measurement is why.** This slice adds no newly opened
+  file in the healthy state, so there is no new document shape for a detector to miss. The floor is
+  still SSN plus non-test email, still disclosed as a floor in the module banner, and the structured
+  field-level detector the banner demands is still owed.
+
+**What was open, all six measured on this tree, every one of them printing `OK, no hits` and exiting
+0 beforehand:** the fixture root missing; the fixture root emptied; the fixture root a **dangling**
+symbolic link; the fixture root a **live** symbolic link to a directory outside the repository; one
+tracked fixture removed from the working tree with the rest of the root still opened; and `src` moved
+away. **9 of `test/scripts/phi-scan.test.ts`'s 47 tests run red against `cd221a0`'s scanner** and
+green against this one. **Name the denominator and re-derive it, because this very number went stale
+inside the paragraph correcting a stale number**: it read `8` of `45` one commit earlier, and adding
+the unmerged-count test moved it. The 38 that stay green are the floor tests, the controls, and the
+ones that PIN a residual, which are green on both trees by design.
+
+**The remedy is reconciliation, not counting.** Each root's walk is compared against
+`git ls-files -z -- <root>`, and two independent conditions refuse: the root contributed nothing, or
+git tracks an in-scope file under the root that the walk did not open.
+
+- **Neither condition subsumes the other, which is why both ship.** An emptied root opens nothing; a
+  root swapped for another directory opens plenty. Refusing only a missing root would leave the
+  emptied half open, because **existence is not observation**.
+- **The dangling link is why a kind check cannot stand in.** `existsSync` FOLLOWS the link and
+  answers false, so `walk()` returns before `readdirSync` and the not-a-regular-file refusal above
+  never fires. Nothing about the entry is ever inspected, so no check on its kind can reach it.
+- **A denominator was deliberately not added.** A count counts the roots and files that DID exist, so
+  a healthy-looking total is precisely what a starved root produces. This scanner prints no file
+  count and one was not introduced.
+- **Exit 2 was derived from this scanner's own contract and not ported.** `1` means "hits found"
+  here; `walk()` already raises an unreadable root as an invocation failure, and a root replaced by a
+  regular file already exits 2 through `readdirSync`'s `ENOTDIR` (re-measured, not assumed). Sibling
+  scanners disagree on this code and carrying one across would have been the defect.
+- **`git ls-files` failing REFUSES rather than answering the empty set**, because an empty answer is
+  indistinguishable from "this root tracks nothing" and would switch the whole rule off in silence.
+- **One-directional on purpose:** a tracked in-scope file the walk missed refuses; an untracked
+  working-tree file the walk found does not. Scanning more than git carries is the safe direction,
+  and refusing it would red the gate on every fixture written but not yet added.
+- **All-mode only.** `--staged` is a diff and not a corpus, and widening it changes what a COMMIT is
+  blocked on, which is a separate decision that two siblings declined deliberately.
+
+**Two of the three disclosed escapes are narrowed, not closed, and the disclosure says so.** A scan
+root that is itself a live link is still followed. It is refused whenever git tracks an in-scope file
+under the root that the link's target does not also carry **at the same relative path**, so a link to
+an unrelated directory refuses here. **Do NOT shorten that to "survives only where git tracks nothing
+under it": a refuter falsified exactly that sentence in one run**, and it had been written on three
+surfaces at once including this one. The reconciliation compares **path sets**, not the bytes git
+carries at those paths, so a target directory mirroring this repo's own seven tracked fixture NAMES
+passes at exit 0 with decoy contents; a root tracking nothing is the degenerate case of that, not the
+whole of it. An **ancestor** of a scan root is still out of the staged route's scope; the all-mode
+half of it is covered incidentally, because replacing `test` leaves `test/__fixtures__` unopenable.
+Paths mode is untouched. **How far ABOVE a root to look is still undecided.**
+
+**Also fixed, and re-derived rather than inherited:** the two `PRE-EXISTING` minors a sibling named
+were measured **NOT open here** (`loadAllowList` and `readdirSync` were already wrapped to exit 2, and
+an unmerged `U` entry is already pinned as out of scope and unable to reach a commit). Their sibling
+reader **was** open: a present-but-unreadable `phi-scan-overrides.md` threw a raw `EACCES` past every
+handler and node exited **1**, this contract's code for "hits found". Now exit 2.
 
 ### The em-dash brand gate
 
@@ -460,13 +537,13 @@ open at the time of this write, one of them being the PR performing it; of the o
 **three** were stranded by it, and the first draft of this paragraph named the wrong set by reading
 `mergeStateStatus` instead of the check runs:
 
-| PR  | head sha   | state before the write                                  | stranded by this write? |
-| --- | ---------- | ------------------------------------------------------- | ----------------------- |
-| #33 | `f69ab63a` | six older required contexts green                        | **yes**                 |
-| #18 | `73758565` | six older required contexts green                        | **yes**                 |
-| #16 | `6cc21d8a` | six older required contexts green                        | **yes**                 |
-| #29 | `95510b9d` | `ci / verify` **red on both matrix legs**                | no, already unmergeable  |
-| #15 | `b63cd115` | no `no-emdash`, no `no-internal-refs` (predates both)     | no, already stranded     |
+| PR  | head sha   | state before the write                                | stranded by this write? |
+| --- | ---------- | ----------------------------------------------------- | ----------------------- |
+| #33 | `f69ab63a` | six older required contexts green                     | **yes**                 |
+| #18 | `73758565` | six older required contexts green                     | **yes**                 |
+| #16 | `6cc21d8a` | six older required contexts green                     | **yes**                 |
+| #29 | `95510b9d` | `ci / verify` **red on both matrix legs**             | no, already unmergeable |
+| #15 | `b63cd115` | no `no-emdash`, no `no-internal-refs` (predates both) | no, already stranded    |
 
 All three affected PRs are Dependabot's, and Dependabot regenerates its branches, so **nothing was
 pushed to them**: a push onto a branch this slice does not own, to clear a condition this slice
@@ -511,7 +588,7 @@ scans **tracked files** and was green throughout, both in the pre-commit hook an
 body is a surface that exists only on GitHub, reached only by `no-emdash.yml`'s `edited` trigger, and
 **no local run of anything in this repo could have caught it**. So the two halves of that gate are not
 redundant: the tracked-file half is the one a worker exercises constantly and the PR-text half is the
-one that catches what a worker writes *about* the work.
+one that catches what a worker writes _about_ the work.
 
 **Read alongside the standing note that the PR body lands under none of the three merge methods.**
 That is still true, and the gate scans it anyway as deliberate over-strictness. This is what that
@@ -646,41 +723,41 @@ first-time-contributor approval gate nor whether `codeql / analyze` can report o
 The long-form half of standing discipline 4. The rule itself, and the founder directive it comes
 from, stay in `CLAUDE.md`.
 
-   **Four surfaces, three different answers.** `/** */` doc comments compile into `dist/*.d.ts` and
-   `dist/*.d.cts` and render on hover, so they are **gated**, and in this repo they were by far the
-   largest violating surface. String literals reach a consumer as terminal diagnostic text, so they
-   are **gated too**: this package printed an internal work item inside `CLI_NOT_IMPLEMENTED` and an
-   ADR number inside `CLI_PARSER_UNAVAILABLE` before that pass existed. `//` and plain `/* */`
-   comments are **not gated** and identifiers are **welcome** in them, because **the convention says
-   source comments are a place identifiers belong**. That is the whole reason. **Do not justify that
-   boundary from what reaches `dist/`**: two drafts of the `ncpdp` copy tried, a refuter proved both
-   false, and two drafts of this paragraph made the same mistake again. Measured on this tree, at
-   `06abc86`: `dist` is `files[0]`, there is no `.npmignore`, and **24 of the 27** tracked `src/`
-   files appear whole in a build map's `sourcesContent` (`src/index.ts`, `src/core/result.ts` and
-   `src/mcp/index.ts` contribute only re-exports and types, so the bundler erases them). Two
-   sentences that read well and are **false**, so do not write them: "everything in `src/` ships",
-   and "the bundles carry `//` comments verbatim" (measured: of the 43 whole-line `//` comments in
-   tracked `src/*.ts`, exactly **one** survives into any emitted `.mjs`/`.cjs`). **The boundary rests
-   on the convention, not on either fact.** The line is not what a consumer receives; it is what a
-   consumer is **shown**.
+**Four surfaces, three different answers.** `/** */` doc comments compile into `dist/*.d.ts` and
+`dist/*.d.cts` and render on hover, so they are **gated**, and in this repo they were by far the
+largest violating surface. String literals reach a consumer as terminal diagnostic text, so they
+are **gated too**: this package printed an internal work item inside `CLI_NOT_IMPLEMENTED` and an
+ADR number inside `CLI_PARSER_UNAVAILABLE` before that pass existed. `//` and plain `/* */`
+comments are **not gated** and identifiers are **welcome** in them, because **the convention says
+source comments are a place identifiers belong**. That is the whole reason. **Do not justify that
+boundary from what reaches `dist/`**: two drafts of the `ncpdp` copy tried, a refuter proved both
+false, and two drafts of this paragraph made the same mistake again. Measured on this tree, at
+`06abc86`: `dist` is `files[0]`, there is no `.npmignore`, and **24 of the 27** tracked `src/`
+files appear whole in a build map's `sourcesContent` (`src/index.ts`, `src/core/result.ts` and
+`src/mcp/index.ts` contribute only re-exports and types, so the bundler erases them). Two
+sentences that read well and are **false**, so do not write them: "everything in `src/` ships",
+and "the bundles carry `//` comments verbatim" (measured: of the 43 whole-line `//` comments in
+tracked `src/*.ts`, exactly **one** survives into any emitted `.mjs`/`.cjs`). **The boundary rests
+on the convention, not on either fact.** The line is not what a consumer receives; it is what a
+consumer is **shown**.
 
-   **This repo is where the `WORD-N` trap is widest**, because the CLI wraps all eight formats and its
-   pages reach for every one of their vocabularies at once. `CLI-6` is ours; `HL7-V2`, `FHIR-R4`,
-   `DICOM-SR`, `NCPDP-SCRIPT`, `X12-837P`, `CCDA-R2.1`, `MSH-2`, `NM1-03`, `ST-01`, `439-E4` and
-   `ICD-10-CM` are reference material a consumer came here for. Never re-key a rule on the `WORD-N`
-   shape; the negative self-tests exist to make that attempt red.
+**This repo is where the `WORD-N` trap is widest**, because the CLI wraps all eight formats and its
+pages reach for every one of their vocabularies at once. `CLI-6` is ours; `HL7-V2`, `FHIR-R4`,
+`DICOM-SR`, `NCPDP-SCRIPT`, `X12-837P`, `CCDA-R2.1`, `MSH-2`, `NM1-03`, `ST-01`, `439-E4` and
+`ICD-10-CM` are reference material a consumer came here for. Never re-key a rule on the `WORD-N`
+shape; the negative self-tests exist to make that attempt red.
 
-   **Two remediation rules that matter more here than anywhere else.** (1) **Repair the head**: a
-   sentence with an identifier stripped off the front reads worse than the text it replaced. (2)
-   **CUT, do not rewrite.** This package's whole posture is honesty about what it _cannot_ do: gated
-   stubs that exit `69` and never fake a scrub, value-free stderr, the per-(format, operation)
-   `OP_SUPPORT` matrix. Softening a stated limit into an implied capability while tidying a sentence
-   is a worse defect than the bookkeeping being removed. Delete the claim rather than replace it, and
-   revert a rewrite verbatim rather than repair it.
+**Two remediation rules that matter more here than anywhere else.** (1) **Repair the head**: a
+sentence with an identifier stripped off the front reads worse than the text it replaced. (2)
+**CUT, do not rewrite.** This package's whole posture is honesty about what it _cannot_ do: gated
+stubs that exit `69` and never fake a scrub, value-free stderr, the per-(format, operation)
+`OP_SUPPORT` matrix. Softening a stated limit into an implied capability while tidying a sentence
+is a worse defect than the bookkeeping being removed. Delete the claim rather than replace it, and
+revert a rewrite verbatim rather than repair it.
 
-   **What the gate cannot do:** it catches identifiers, not English sentences about our process, and
-   it reads `src/`, never `dist/` (untracked build output it cannot see without building). A new
-   programme prefix has to be added by hand. So the reviewer still owns half the rule.
+**What the gate cannot do:** it catches identifiers, not English sentences about our process, and
+it reads `src/`, never `dist/` (untracked build output it cannot see without building). A new
+programme prefix has to be added by hand. So the reviewer still owns half the rule.
 
 ---
 
