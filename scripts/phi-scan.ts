@@ -3,10 +3,10 @@
  * `@cosyte/cli` PHI scanner: the CI / pre-commit half of the PHI commit-gate.
  *
  * Pure Node. Zero runtime deps. `git` is the only subprocess, always via
- * `execFileSync` with array args (never shell-form). Walks the synthetic test
- * fixtures (and a conservative text pass over `src/`) and REFUSES anything that
- * looks like real PHI, so a developer cannot commit a real-looking fixture by
- * accident.
+ * `execFileSync` with array args (never shell-form). Walks this repository's
+ * authored corpus (`src/`, `test/` and `scripts/`, see `SCAN_ROOTS`) and REFUSES
+ * anything that looks like real PHI, so a developer cannot commit a real-looking
+ * fixture by accident.
  *
  * ===========================================================================
  * ██  STARTER: READ BEFORE YOU RELY ON THIS  ████████████████████████████████
@@ -89,30 +89,36 @@
  *
  *   1. A SCAN ROOT THAT IS ITSELF A LIVE LINK IS STILL FOLLOWED, in the all-mode
  *      walk: `existsSync` and `readdirSync` both resolve links. Following is not
- *      what got fixed; being unable to TELL is. With `test/__fixtures__`
- *      pointing at a directory outside the repository the walk reads files no
- *      commit contains and would report their values under a FABRICATED in-repo
- *      path that holds no such file - a confident wrong provenance, on the same
- *      channel this banner argues is itself a PHI surface. The observation rule
- *      now REFUSES that (exit 2, measured) whenever git tracks an in-scope file
- *      under the root that the link's target does not also carry at the same
- *      relative path: seven files here, so a link to an UNRELATED directory
- *      refuses here. STILL OPEN, AND STATED RATHER THAN IMPLIED AWAY, BECAUSE
- *      THE SHORTER VERSION OF THIS SENTENCE IS FALSE AND WAS MEASURED FALSE: the
- *      reconciliation compares PATH SETS, not the bytes git carries at those
- *      paths, so a target directory that mirrors the tracked NAMES satisfies both
- *      conditions and is followed silently, decoy contents and all - measured at
- *      exit 0 over this repo's own seven tracked fixture names. A root git tracks
- *      NOTHING under is the degenerate case of that, not the whole of it. The
- *      DANGLING direction IS closed outright, whatever is tracked, because it
- *      opens nothing.
+ *      what got fixed; being unable to TELL is. With a root pointing at a
+ *      directory outside the repository the walk reads files no commit contains
+ *      and would report their values under a FABRICATED in-repo path that holds
+ *      no such file - a confident wrong provenance, on the same channel this
+ *      banner argues is itself a PHI surface. The observation rule now REFUSES
+ *      that (exit 2, measured) whenever git tracks an in-scope file under the
+ *      root that the link's target does not also carry at the same relative
+ *      path, and every one of this repo's three roots tracks many, so a link to
+ *      an UNRELATED directory refuses at each of them. STILL OPEN, AND STATED
+ *      RATHER THAN IMPLIED AWAY, BECAUSE THE SHORTER VERSION OF THIS SENTENCE IS
+ *      FALSE AND WAS MEASURED FALSE: the reconciliation compares PATH SETS, not
+ *      the bytes git carries at those paths, so a target directory that mirrors
+ *      the tracked NAMES satisfies both conditions and is followed silently,
+ *      decoy contents and all - measured at exit 0. A root git tracks NOTHING
+ *      under is the degenerate case of that, not the whole of it. The DANGLING
+ *      direction IS closed outright, whatever is tracked, because it opens
+ *      nothing. WHAT THE WIDENING TO `test/` DID CHANGE HERE, and it is a
+ *      narrowing rather than a fix: `test/__fixtures__` is no longer a ROOT, so
+ *      a live link AT that path is now an ENUMERATED entry beneath `test/` and
+ *      is refused by the not-a-regular-file rule above, whatever it points at
+ *      and whatever git tracks. Only the three top-level roots are still
+ *      followable, and only they are what this shape now describes.
  *   2. AN ANCESTOR of a scan root is in neither route's scope. Fact 3 below puts
- *      `test/__fixtures__` and `src` in scope, but not `test`, so staging `test`
- *      as a link leaves `--staged` at exit 0 (measured) - STILL OPEN, and it is
- *      the half that gates a commit. The all-mode walk no longer follows it
- *      quietly: replacing `test` leaves `test/__fixtures__` unopenable, which
- *      the observation rule refuses. HOW FAR ABOVE A ROOT TO LOOK IS STILL NOT
- *      DECIDED, and is deliberately not decided here.
+ *      `test/__fixtures__` and `src` in `--staged`'s scope, but not `test` and
+ *      not `scripts`, so staging `test` as a link leaves `--staged` at exit 0
+ *      (measured) - STILL OPEN, and it is the half that gates a commit. The
+ *      all-mode walk no longer has an ancestor short of the repository root at
+ *      all, because `test` is now a root of its own rather than the directory
+ *      above one. HOW FAR ABOVE A ROOT TO LOOK IS STILL NOT DECIDED, and is
+ *      deliberately not decided here.
  *   3. PATHS MODE FOLLOWS AN EXPLICITLY NAMED LINK. `buildTargetsForPaths` uses
  *      `statSync`, which resolves, so `pnpm phi-scan <link>` reads the target's
  *      bytes. UNCHANGED AND STILL OPEN: paths mode has no corpus to reconcile
@@ -190,13 +196,56 @@
  *
  * "IN SCOPE" IS A NARROWER THING THAN THE PATH PREFIX, AND THE EXACT BOUNDARY IS
  * WORTH STATING RATHER THAN LEAVING TO BE INFERRED, BECAUSE THE GAP BETWEEN THE
- * TWO IS WHERE THIS DEFECT LIVED. The walk covers everything under
- * `test/__fixtures__/` and `src/` except a gitignored entry (the same rule that
- * already excludes a gitignored fixture, so links do not get a second, stricter
- * boundary of their own) and except a `.md` file. `--staged` covers
+ * TWO IS WHERE THIS DEFECT LIVED. The walk covers everything under `src/`,
+ * `test/` and `scripts/` (see `SCAN_ROOTS`) except a gitignored entry (the same
+ * rule that already excludes a gitignored fixture, so links do not get a second,
+ * stricter boundary of their own) and except a `.md` file. `--staged` covers
  * `test/__fixtures__` and everything under it, plus `src` and the `.ts` files
  * under it, restricted to the staged records git reports as ADDED, MODIFIED or
  * TYPECHANGED.
+ *
+ * ===========================================================================
+ * ▶ 🛑 WHAT WIDENING THE WALK BOUGHT, AND WHAT IT DID NOT. READ BOTH HALVES.
+ *
+ * IT BOUGHT THE SSN/EMAIL FLOOR OVER 38 MORE FILES AND NOTHING ELSE. The
+ * structured, field-level detection this scanner needs before it can be called a
+ * PHI gate is still the unimplemented TODO in `scanTarget`, and opening a file
+ * does not implement it. Every one of the 38 was hand-read when the root moved:
+ * every message literal is a placeholder (`DOE^JANE`, `X^^^H^MR`, `SENDER`,
+ * `ZZSENTINEL*`) and the only SSN/email shapes are this scanner's own declared
+ * synthetic payload. So the 89 files the two routes shared no coverage of were an
+ * ENUMERATION gap, not a live exposure - the defect was that the gate could not
+ * SEE them, so nothing would have caught a real one if it appeared.
+ *
+ * THE RECOGNISER WAS NOT WIDENED, AND THAT IS A MEASUREMENT RATHER THAN AN
+ * OMISSION. The usual companion defect is that a recogniser assumes THE FILE IS
+ * THE DOCUMENT, so enumerating a `.ts` source that carries a message as an inline
+ * string literal buys nothing: the detector anchors on a document it cannot find.
+ * That failure mode needs an anchored detector to happen, AND THIS SCANNER HAS
+ * NONE - `scanCommonShapes` is two unanchored `matchAll` passes over the whole
+ * text, so its reach over a `PID|` literal embedded in TypeScript is identical to
+ * its reach over a standalone `.hl7` fixture. Pinned by an anchor-free probe in
+ * `test/scripts/phi-scan.test.ts` rather than left as a claim.
+ *
+ * THE ONE WIDENING A SIBLING SHIPPED HERE WAS MEASURED AND DECLINED: an
+ * ESCAPE-DECODED second view of a source literal (`\x2d`, `-` and friends,
+ * which hide a token from a raw text pass). Run over every file this widening
+ * newly opens, the decoded view finds NOTHING the raw view does not and loses
+ * nothing either - this repository's sources spell their messages literally and
+ * use `\r`/`\n`/`\t` alone. Porting it would have been a guard with no
+ * measurement behind it. THE MEASUREMENT IS PINNED AS A TRIPWIRE, not asserted
+ * once and forgotten: the suite runs both views over the whole newly-opened
+ * corpus and REDS if they ever disagree, which is the signal that the next worker
+ * should widen. A negative control proves the tripwire can see a difference.
+ * ===========================================================================
+ *
+ * ▶ THE TWO ROUTES NOW DISAGREE BY A LOT MORE THAN THEY USED TO, AND THAT IS A
+ * DELIBERATE, STATED ASYMMETRY RATHER THAN AN OVERSIGHT. Widening the walk is a
+ * change to what CI sweeps; widening `--staged` is a change to what a COMMIT is
+ * BLOCKED on, which is a hook decision and is not taken here. So `test/*.ts`,
+ * `test/scripts/**` and every file under `scripts/` are swept by the all-mode
+ * route in CI and are enumerated by NEITHER of `--staged`'s predicates. The CI
+ * sweep is the cover, exactly as it already was for the non-`.ts` half of `src/`.
  *
  * Three boundary facts, each measured on this repo rather than inferred, and
  * each admitting MORE than before rather than less:
@@ -220,10 +269,12 @@
  *     ("Committing is not possible because you have unmerged files", exit 128),
  *     so no `U` entry has ever been one `git commit` away from landing. It is
  *     `git add` on the resolved path that stages it, and that arrives as `M`.
- *   - under `src/`, only `.ts` files. The all-mode walk covers every non-`.md`
- *     file under `src/`, so the two routes disagree there, and the all-mode
- *     sweep in CI is what covers the difference. Widening the staged half is a
- *     scope decision and is deliberately not taken here.
+ *   - under `src/`, only `.ts` files; and, since the walk widened, nothing under
+ *     `test/` outside `test/__fixtures__/` and nothing under `scripts/` at all.
+ *     The all-mode sweep in CI is what covers the difference, and the disclosure
+ *     above says exactly how large that difference now is. Widening the staged
+ *     half is a HOOK decision (it changes what a commit is BLOCKED on) and is
+ *     deliberately not taken here.
  *
  * A refusal names the entry's own repo-relative path and an engine-owned token
  * for its kind. IT NEVER REPORTS THE LINK TARGET, which is text off the working
@@ -257,23 +308,171 @@ const REPO_ROOT = process.cwd();
 const ALLOW_LIST_PATH = join(REPO_ROOT, "scripts", "phi-allow-list.txt");
 const OVERRIDE_LOG_PATH = join(REPO_ROOT, "phi-scan-overrides.md");
 
-// Roots walked in "all" mode. test/__fixtures__ gets the full scan (the real
-// fixture dir this repo uses); src gets the same conservative shape pass because
-// it is hand-written code, not data: JSDoc `@example` snippets must not carry
-// real PHI either.
-const FIXTURE_ROOT = join(REPO_ROOT, "test", "__fixtures__");
+// Roots walked in "all" mode.
+//
+// ▶ THE WALK USED TO ROOT AT `test/__fixtures__` AND `src` ONLY, AND THE GAP THAT
+// LEFT WAS THE WHOLE OF `test/` OUTSIDE THE FIXTURE DIRECTORY. RE-DERIVED FOR
+// THIS REPOSITORY RATHER THAN PORTED FROM A SIBLING, because the sibling shapes
+// differ and porting one is the bug: measured on `ba059a2`, 123 tracked files, of
+// which the walk opened 34 (7 fixtures + 27 `src/`), leaving 89 scanned by
+// NEITHER route and SEVEN of those carrying an inline HL7 `PID|` literal. Back to
+// back on that sha: a dashed SSN and an off-domain address written into
+// `test/planted.test.ts`, in this repo's own inline-message shape, exited 0
+// "OK, no hits" in all mode while `phi-scan test/planted.test.ts` reported both
+// at exit 1 over the same bytes. A file written to `scripts/` did the same.
+//
+// `scripts` IS INCLUDED, AND THAT IS THIS REPOSITORY'S ANSWER RATHER THAN A
+// SIBLING'S. The recogniser's own patterns, the allow-list this scanner refuses
+// to run without, and the override log it points a developer at all live under
+// `scripts/`, so the one directory guaranteed to hold PHI-shaped text was the one
+// nothing enumerated. All nine files there were measured against the floor before
+// the root was declared: zero hits, so the widening lands green on its own bytes
+// rather than on a new carve-out. KEEP IT THAT WAY - this file is now under its
+// own scan, so an example SSN or a real-looking address written into a comment
+// HERE reds the gate. That is the intended pressure. The SSN pattern below is
+// spelled as a quantified character class and holds no digits in the matched
+// arrangement, which is why it does not red on itself.
+//
+// ▶ THE ONE CONSEQUENCE OF THAT PRESSURE A READER WOULD NOT GUESS, AND IT IS THE
+// ALLOW-LIST'S OWN BYTES. `scripts/phi-allow-list.txt` documents `ID <value>` as
+// "synthetic id matching an SSN / MRN / member-id shape", and the dashed-SSN
+// check below is UNCONDITIONAL: it consults no allow-list at all. So an `ID`
+// entry written in THE DASHED NINE-DIGIT SHAPE THAT CHECK MATCHES now reds the
+// gate on the allow-list itself. Measured, not reasoned: appending one exits 0
+// on `ba059a2` and exits 1 here, naming `scripts/phi-allow-list.txt`. Today's
+// file declares its only id in the `MRN-` form, which the floor does not match,
+// so this is LATENT rather than live - but `scanTarget`'s TODO asks a future
+// worker to add the structured id detector that CONSUMES `allow.ids`, which is
+// exactly when it stops being latent. The case is pinned in
+// `test/scripts/phi-scan.test.ts`, which is where the literal may live: THIS
+// FILE MAY NOT SPELL ONE, and a draft of this very paragraph that did was caught
+// by this gate reporting a hit on itself.
+//
+// THE REMEDY IS TO SPELL THE SYNTHETIC ID IN A SHAPE THE FLOOR DOES NOT MATCH
+// (`MRN-000123`, as this file already does), AND IT IS DELIBERATELY NEITHER OF
+// THE TWO THE HIT MESSAGE PRINTS:
+//   - "declare it in scripts/phi-allow-list.txt" is CIRCULAR here: the
+//     declaration is the thing that produced the hit, because the SSN pass reads
+//     no allow-list.
+//   - "run with --allow-fixture <path>" does not reach this sweep at all.
+//     `parseArgs` sends an `--allow-fixture` invocation down PATHS mode, and the
+//     one named target is then filtered out, so it opens ZERO files and prints
+//     "OK, no hits" at exit 0. That collapse is PRE-EXISTING (it behaves
+//     identically on `ba059a2`) and is deliberately not fixed here; it is
+//     recorded because widening the walk is what makes it the tempting answer.
+// AND IT IS NOT `DELIBERATE_VIOLATOR_SOURCES` EITHER. Exempting the allow-list
+// would leave the one file a developer is most likely to paste a real value into
+// unswept, which is the opposite of what this root was added for.
+//
+// WHAT IS DELIBERATELY *NOT* A ROOT, each for a measured reason rather than an
+// omission:
+//   - `vendor/`: ten `pnpm pack` tarballs. A DEFLATE stream decoded as UTF-8 is
+//     not text this gate can say anything true about, and these are third-party
+//     build artifacts rather than this repository's authored corpus. The em-dash
+//     gate's NUL-exclusion grounding cites them for the same reason.
+//   - `docs-content/`, `documentation/` and `.changeset/`: almost every tracked
+//     file under them is `.md`, which the walk skips by design. RE-COUNTED
+//     RATHER THAN ROUNDED OFF, because the shorter sentence ("every tracked file
+//     under them is `.md`, so declaring them would open not one new byte") was
+//     written here and was FALSE: `documentation/` is 6 of 6 `.md`, but
+//     `docs-content/` is 9 of 10 (`docs-content/sidebars.json`) and `.changeset/`
+//     is 3 of 4 (`.changeset/config.json`). Declaring all three would open TWO
+//     files, not none. They stay out because two JSON manifests are not where
+//     this package writes messages, not because there is nothing there.
+//   - `.github/`: 8 tracked files, measured clean under the floor.
+//   - the repository root: NOT clean, and that is the honest reason rather than
+//     the one first written here. `phi-scan package.json` exits 1: the `author`
+//     field carries the brand's own contact address, which is a real address at
+//     a domain the floor has no allow-list entry for. So rooting at the
+//     repository root would red the gate TODAY on a value that is correct, on
+//     top of being the shape exactly one sibling has, which is the one that got
+//     caught enumerating a build transient. (The address is not spelled here,
+//     for the reason the `scripts` note gives; the case is pinned in
+//     `test/scripts/phi-scan.test.ts`.)
+//
+// THIS LIST IS NOT A CLAIM THAT NOTHING ELSE COULD EVER CARRY PHI. It is a claim
+// about where this repository writes messages, which is `src/`, `test/` and
+// `scripts/`, re-derived above rather than assumed.
 const SRC_ROOT = join(REPO_ROOT, "src");
+const TEST_ROOT = join(REPO_ROOT, "test");
+const SCRIPTS_ROOT = join(REPO_ROOT, "scripts");
 
 /**
  * The declared scan roots, each paired with the repo-relative identity used both
  * in a refusal and in the `git ls-files` reconciliation below. The pair is here
  * rather than derived with `normalizePath` so a root's reported name cannot
  * depend on whether the root currently resolves.
+ *
+ * THEY MUST STAY DISJOINT. `buildTargetsForAll` walks each root independently and
+ * concatenates the results, so a root nested inside another (`test/__fixtures__`
+ * kept alongside `test`) would enumerate every file beneath it twice and report
+ * each hit twice. That is why the fixture directory was REPLACED by `test` rather
+ * than joined by it.
+ *
+ * THE FIXTURE DIRECTORY DID NOT STOP BEING WATCHED BY LOSING ITS ROOT STATUS,
+ * BUT THE COVER IT KEEPS IS CONDITIONAL AND THE CONDITION MUST BE STATED. An
+ * emptied or missing `test/__fixtures__` is still refused through the OTHER
+ * condition of the observation rule: git tracks in-scope files under `test` that
+ * the walk did not open, and the refusal names each one. That holds HERE, where
+ * git tracks seven files under the fixture directory, and it is what four
+ * updated assertions in the suite pin.
+ *
+ * WHERE GIT TRACKS NOTHING UNDER IT, THE COVER IS GONE, AND THAT IS A REAL
+ * BEHAVIOUR CHANGE RATHER THAN A RESTATEMENT. As a declared root, an empty
+ * `test/__fixtures__` refused by the opened-NOTHING floor whatever git carried;
+ * as an ordinary directory beneath `test`, an empty one contributes no entry and
+ * there is no expected path for the reconciliation to miss. Measured on a
+ * scratch repo tracking `src/ok.ts` and `test/foo.test.ts` and nothing under the
+ * fixture directory: `ba059a2` exits 2 ("test/__fixtures__: opened nothing"),
+ * this exits 0. Arguably the correct answer, since a directory nothing is filed
+ * under is not evidence of a starved corpus, but it is a LOSS and is recorded as
+ * one rather than implied away.
  */
 const SCAN_ROOTS: readonly { abs: string; rel: string }[] = [
-  { abs: FIXTURE_ROOT, rel: "test/__fixtures__" },
   { abs: SRC_ROOT, rel: "src" },
+  { abs: TEST_ROOT, rel: "test" },
+  { abs: SCRIPTS_ROOT, rel: "scripts" },
 ];
+
+/**
+ * Sources whose bytes are a DELIBERATE VIOLATOR CORPUS: they carry PHI-shaped
+ * literals on purpose, because they are the positive half of this scanner's own
+ * tests, and sweeping them would red the gate forever.
+ *
+ * THIS IS AN EXPLICIT PATH LIST AND MUST STAY ONE. An extension rule cannot tell
+ * a file that carries violator literals ON PURPOSE from one that carries them BY
+ * ACCIDENT, and that distinction is the whole reason this gate exists, so the
+ * exemption is per-path and adding to it is a reviewed act, exactly like adding
+ * an allow-list token. A blanket `.ts` exclusion would take all of `test/` and
+ * all of `src/` back out of the scan and close nothing.
+ *
+ * ALLOW-LISTING THE VALUES INSTEAD WAS REFUSED, AND THE REASON IS THE EMAIL HALF.
+ * `EMAILDOMAIN` is GLOBAL: declaring `hospital.org` to green this one file would
+ * switch the email detector off for the whole corpus, and this file's own
+ * positive case asserts that exact address IS reported. The dashed-SSN check is
+ * unconditional and consults no allow-list at all, so there is no token-level
+ * route for that half either.
+ *
+ * THE EXEMPTION IS APPLIED AT THE SCAN, NOT AT THE ENUMERATION, and that is
+ * load-bearing: the file is still walked, still READ, and therefore still counts
+ * as observed for the per-root rule and as reconciled against `git ls-files`.
+ * Skipping it at enumeration would make it look like a file the walk never
+ * reached, which is the shape both of those rules exist to refuse.
+ *
+ * IT IS SCOPED TO THE ALL-MODE SWEEP, AND SCOPING IT IS NOT OPTIONAL. Naming the
+ * file in paths mode (`pnpm phi-scan test/scripts/phi-scan.test.ts`) still
+ * reports every hit at exit 1, because a caller naming a path is asking about
+ * that path. An unscoped exemption would DELETE a detection the base had, which
+ * is "instead of" where this work is only ever "in addition to".
+ *
+ * THE RESIDUAL, stated rather than hidden: a real SSN or email committed into
+ * this ONE path is not reported by the sweep. It is bounded by the list being
+ * explicit and one entry long, by the file being the scanner's own suite (read by
+ * anyone changing the scanner), by paths mode still reporting it, and by the
+ * value still having to survive review. Widening the list is what would make it
+ * unbounded.
+ */
+const DELIBERATE_VIOLATOR_SOURCES: ReadonlySet<string> = new Set(["test/scripts/phi-scan.test.ts"]);
 
 // ---------------------------------------------------------------------------
 // Types
@@ -478,6 +677,14 @@ function validateAllowFixtures(allowFixtures: string[]): void {
 interface Target {
   path: string; // forward-slash repo-relative path for reporting
   read: () => Buffer;
+  /**
+   * Set only by `buildTargetsForAll`, only for a member of
+   * `DELIBERATE_VIOLATOR_SOURCES`. The target is still READ (so an unreadable one
+   * still refuses) and still counts as observed; only the detectors are skipped.
+   * Never set by `buildTargetsForPaths`, which is what keeps naming the file
+   * directly a hit rather than a silent pass.
+   */
+  sweepExempt?: boolean;
 }
 
 /**
@@ -717,7 +924,16 @@ function buildTargetsForAll(): Target[] {
 
   return files
     .filter((abs) => !ignored.has(normalizePath(abs)))
-    .map((abs) => ({ path: normalizePath(abs), read: () => readFileSync(abs) }));
+    .map((abs) => {
+      const path = normalizePath(abs);
+      return {
+        path,
+        read: (): Buffer => readFileSync(abs),
+        // Applied HERE and not in the walk: the file stays enumerated, stays
+        // read, and stays part of what the observation rule reconciles.
+        sweepExempt: DELIBERATE_VIOLATOR_SOURCES.has(path),
+      };
+    });
 }
 
 function buildTargetsForPaths(paths: string[]): Target[] {
@@ -888,6 +1104,12 @@ function scanTarget(target: Target, allow: AllowList, hits: Hit[]): void {
       `could not read ${target.path}: ${err instanceof Error ? err.message : String(err)}`,
     );
   }
+  // The deliberate-violator exemption, applied AFTER the read so the target still
+  // counts as observed and an unreadable one still refuses. See
+  // `DELIBERATE_VIOLATOR_SOURCES` for why it is a path list, why the values
+  // cannot be allow-listed instead, and why it is scoped to the sweep.
+  if (target.sweepExempt === true) return;
+
   const text = buf.toString("utf8");
 
   // The format-agnostic floor: dashed SSN + non-test email. This runs on every

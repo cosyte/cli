@@ -204,10 +204,12 @@ describe("phi-scan: the scanner under test is THIS package's", () => {
     expect(name).not.toBe("@cosyte/dicom");
     expect(existsSync(SCANNER_PATH)).toBe(true);
     // This repo's own scan roots. A sibling's scanner walks `test/fixtures`, not
-    // `test/__fixtures__`, and none of them walks `src/` as a second root.
+    // `test/__fixtures__`, and none of them exempts THIS path.
     const source = readFileSync(SCANNER_PATH, "utf8");
     expect(source).toContain("test/__fixtures__");
     expect(source).toContain("SRC_ROOT");
+    expect(source).toContain("SCRIPTS_ROOT");
+    expect(source).toContain("test/scripts/phi-scan.test.ts");
     expect(source).not.toContain("PN_TAGS");
   });
 });
@@ -608,7 +610,7 @@ describe(
     // can print `OK, no hits` and exit 0 over a corpus nobody opened. Each case
     // here exited 0 with that message before the observation rule, measured.
 
-    it("stays green when both roots are healthy and fully observed", () => {
+    it("stays green when every root is healthy and fully observed", () => {
       // The premise, first: a refusal rule that reds the ordinary case teaches
       // people to disable it, and every case below would pass vacuously against
       // a scanner that had simply started refusing everything.
@@ -624,7 +626,10 @@ describe(
 
       const r = runScanner([], root);
       expect(r.code, `stderr: ${r.stderr}`).toBe(2);
-      expect(r.stderr).toContain("test/__fixtures__: opened 0 file(s)");
+      // Filed under `test`, which is the ROOT, since the widening replaced
+      // `test/__fixtures__` with its parent. The actionable half is unchanged:
+      // the refusal still names the tracked file that went unopened.
+      expect(r.stderr).toContain("test: opened 0 file(s)");
       expect(r.stderr).toContain("test/__fixtures__/ordinary.txt");
       expect(r.stdout).not.toMatch(/OK/);
     });
@@ -647,14 +652,40 @@ describe(
       // stand in for this rule: `existsSync` resolves the link, answers false,
       // and `walk()` returns before `readdirSync`. Nothing about the entry is
       // ever inspected, so no kind check can fire on it.
+      //
+      // AIMED AT `test` RATHER THAN `test/__fixtures__` SINCE THE WIDENING, and
+      // the reason is the whole point of the case: the fixture directory is no
+      // longer a ROOT, so a link there is an ENUMERATED entry and the kind check
+      // DOES fire on it (pinned separately below). Only a declared root can
+      // still reach `walk()`'s first line, so only a declared root exercises
+      // this rule.
       const root = makeTrackedRepo();
-      rmSync(join(root, "test", "__fixtures__"), { recursive: true });
-      symlinkSync(join("..", "nowhere-at-all"), join(root, "test", "__fixtures__"));
-      expect(existsSync(join(root, "test", "__fixtures__"))).toBe(false);
+      rmSync(join(root, "test"), { recursive: true });
+      symlinkSync("nowhere-at-all", join(root, "test"));
+      expect(existsSync(join(root, "test"))).toBe(false);
 
       const r = runScanner([], root);
       expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+      expect(r.stderr).toContain("test: opened 0 file(s)");
       expect(r.stderr).toContain("test/__fixtures__/ordinary.txt");
+      expect(r.stdout).not.toMatch(/OK/);
+    });
+
+    it("refuses a dangling link AT the old fixture root, by the enumerated-entry rule", () => {
+      // The narrowing the widening bought, asserted rather than claimed.
+      // `test/__fixtures__` used to be a declared root, where a dangling link
+      // reached `walk()`'s `existsSync` and nothing about the entry was ever
+      // inspected. It is now an ordinary entry BENEATH `test`, so `Dirent`'s
+      // lstat answer sees it and the not-a-regular-file refusal fires on it
+      // directly, naming the entry and its kind.
+      const root = makeTrackedRepo();
+      rmSync(join(root, "test", "__fixtures__"), { recursive: true });
+      symlinkSync(join("..", "nowhere-at-all"), join(root, "test", "__fixtures__"));
+
+      const r = runScanner([], root);
+      expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+      expect(r.stderr).toContain("test/__fixtures__");
+      expect(r.stderr).toContain("a symbolic link");
       expect(r.stdout).not.toMatch(/OK/);
     });
 
@@ -667,12 +698,12 @@ describe(
       const outside = realpathSync(mkdtempSync(join(tmpdir(), "cli-phi-scan-outside-")));
       repos.push(outside);
       writeFileSync(join(outside, "unrelated.txt"), "synthetic placeholder\n");
-      rmSync(join(root, "test", "__fixtures__"), { recursive: true });
-      symlinkSync(outside, join(root, "test", "__fixtures__"));
+      rmSync(join(root, "test"), { recursive: true });
+      symlinkSync(outside, join(root, "test"));
 
       const r = runScanner([], root);
       expect(r.code, `stderr: ${r.stderr}`).toBe(2);
-      expect(r.stderr).toContain("test/__fixtures__: opened 1 file(s)");
+      expect(r.stderr).toContain("test: opened 1 file(s)");
       expect(r.stderr).toContain("test/__fixtures__/ordinary.txt");
     });
 
@@ -686,7 +717,7 @@ describe(
 
       const r = runScanner([], root);
       expect(r.code, `stderr: ${r.stderr}`).toBe(2);
-      expect(r.stderr).toContain("test/__fixtures__: opened 1 file(s)");
+      expect(r.stderr).toContain("test: opened 1 file(s)");
       expect(r.stderr).toContain("test/__fixtures__/ordinary.txt");
       expect(r.stderr).not.toContain("test/__fixtures__/second.txt");
     });
@@ -971,12 +1002,18 @@ describe(
       // exactly this - a root git carries NOTHING under, so the reconciliation
       // has no expected path to miss and the walk's one hit satisfies the
       // opened-nothing floor.
+      //
+      // THE LINK IS AT `test` RATHER THAN `test/__fixtures__` SINCE THE
+      // WIDENING. That is not a cosmetic retarget: the fixture directory is no
+      // longer a declared root, so a link there is refused outright and this
+      // shape is now reachable ONLY at one of the three top-level roots. The
+      // escape is one level narrower than it was, and it is still open there.
       const root = makeRepo();
       const outside = realpathSync(mkdtempSync(join(tmpdir(), "cli-phi-scan-outside-")));
       repos.push(outside);
       writeFileSync(join(outside, "real-notes.txt"), SYNTHETIC_PHI);
-      rmSync(join(root, "test", "__fixtures__"), { recursive: true });
-      symlinkSync(outside, join(root, "test", "__fixtures__"));
+      rmSync(join(root, "test"), { recursive: true });
+      symlinkSync(outside, join(root, "test"));
 
       const r = runScanner([], root);
       expect(r.code, `stderr: ${r.stderr}`).toBe(1);
@@ -984,9 +1021,9 @@ describe(
       // RESOLVE, through the link, which is why `existsSync` is true one line
       // down; what makes it a fabrication is that git tracks no such file and no
       // commit contains it. The `ls-files` assertion is doing the real work.
-      expect(r.stderr).toContain("test/__fixtures__/real-notes.txt");
-      expect(existsSync(join(root, "test", "__fixtures__", "real-notes.txt"))).toBe(true);
-      expect(gitOut(root, ["ls-files", "test/__fixtures__/real-notes.txt"]).trim()).toBe("");
+      expect(r.stderr).toContain("test/real-notes.txt");
+      expect(existsSync(join(root, "test", "real-notes.txt"))).toBe(true);
+      expect(gitOut(root, ["ls-files", "test/real-notes.txt"]).trim()).toBe("");
     });
 
     it("FOLLOWS a root link whose target MIRRORS the tracked names, corpus fully tracked", () => {
@@ -999,9 +1036,10 @@ describe(
       const root = makeTrackedRepo();
       const decoy = realpathSync(mkdtempSync(join(tmpdir(), "cli-phi-scan-decoy-")));
       repos.push(decoy);
-      writeFileSync(join(decoy, "ordinary.txt"), "decoy, not the tracked bytes\n");
-      rmSync(join(root, "test", "__fixtures__"), { recursive: true });
-      symlinkSync(decoy, join(root, "test", "__fixtures__"));
+      mkdirSync(join(decoy, "__fixtures__"));
+      writeFileSync(join(decoy, "__fixtures__", "ordinary.txt"), "decoy, not the tracked bytes\n");
+      rmSync(join(root, "test"), { recursive: true });
+      symlinkSync(decoy, join(root, "test"));
       // The premise: git really does carry a DIFFERENT blob at that path, so a
       // pass here is a pass over a corpus that was never opened.
       expect(gitOut(root, ["show", ":test/__fixtures__/ordinary.txt"])).toContain(
@@ -1040,3 +1078,447 @@ describe(
     });
   },
 );
+
+// ---------------------------------------------------------------------------
+// The walk's ROOTS: `src`, `test` and `scripts`, widened from `test/__fixtures__`
+// and `src`.
+//
+// MEASURED BACK TO BACK ON `ba059a2`, THE COMMIT THIS WIDENING LANDED ON, AND
+// RE-DERIVED FOR THIS REPOSITORY RATHER THAN PORTED: 123 tracked files, 34 opened
+// by the walk, 89 scanned by NEITHER route. A dashed SSN and an off-domain
+// address written into `test/planted.test.ts` (in this repo's own inline-message
+// shape) and into `scripts/planted.txt` each exited 0 "OK, no hits" in all mode,
+// while naming the same file in PATHS mode reported both at exit 1 over the same
+// bytes. That gap was ENUMERATION, never detection, which is why the cases below
+// assert the two routes AGREE: a narrowing of the roots reds here.
+// ---------------------------------------------------------------------------
+
+describe(
+  "phi-scan: the walk reaches this repo's whole authored corpus",
+  { timeout: SLOW_MS },
+  () => {
+    for (const rel of [
+      ["test", "planted.test.ts"], // `test/` outside the fixture dir: the item's headline
+      ["test", "scripts", "planted.test.ts"], // and nested under it
+      ["scripts", "planted.txt"], // the directory the scanner itself lives in
+      ["src", "planted.ts"], // the root that was already covered: a control
+      ["test", "__fixtures__", "planted.txt"], // the old root, still covered after the swap
+    ]) {
+      const path = rel.join("/");
+      it(`sweeps a violator at ${path}, and paths mode agrees`, () => {
+        const root = makeRepo();
+        mkdirSync(join(root, ...rel.slice(0, -1)), { recursive: true });
+        writeFileSync(join(root, ...rel), SYNTHETIC_PHI);
+
+        const sweep = runScanner([], root);
+        expect(sweep.code, `stderr: ${sweep.stderr}`).toBe(1);
+        expect(sweep.stderr).toContain(path);
+        expect(sweep.stderr).toContain(SYNTHETIC_SSN);
+
+        // The two routes must say the same thing about the same bytes. Before the
+        // widening the first three of these exited 0 here and 1 below.
+        const named = runScanner([path], root);
+        expect(named.code, `stderr: ${named.stderr}`).toBe(1);
+        expect(named.stderr).toContain(SYNTHETIC_SSN);
+      });
+    }
+
+    it("still reports a clean tree as clean over all three roots (exit 0)", () => {
+      // The premise. A widening that reds the ordinary case is a widening someone
+      // reverts, and every assertion above would pass against a scanner that had
+      // simply started refusing everything.
+      const root = makeRepo();
+      const r = runScanner([], root);
+      expect(r.code, `stderr: ${r.stderr}`).toBe(0);
+      expect(r.stdout).toMatch(/OK, no hits/);
+    });
+
+    it("refuses when `scripts` is the starved root, so the new root is reconciled too", () => {
+      // A root that is declared but not reconciled is the defect this repo closed
+      // one change ago. Adding a root without extending that rule to it would
+      // reopen it for the new root alone.
+      const root = makeRepo();
+      git(root, ["add", "scripts/phi-allow-list.txt", "src/ok.ts"]);
+      rmSync(join(root, "scripts", "phi-allow-list.txt"));
+
+      const r = runScanner([], root);
+      // The allow-list is gone, so the earlier invocation step refuses first. That
+      // is the correct order and is asserted rather than worked around: a
+      // `scripts/` empty enough to starve the observation rule cannot be reached
+      // without first removing the file this scanner refuses to run without.
+      expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+      expect(r.stderr).toContain("allow-list not found");
+    });
+
+    it("reconciles `scripts` against git when the allow-list is present but the corpus is not", () => {
+      const root = makeRepo();
+      writeFileSync(join(root, "scripts", "helper.mjs"), "export const h = 1;\n");
+      git(root, ["add", "scripts/helper.mjs"]);
+      rmSync(join(root, "scripts", "helper.mjs"));
+
+      const r = runScanner([], root);
+      expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+      expect(r.stderr).toContain("scripts/helper.mjs");
+    });
+  },
+);
+
+describe(
+  "phi-scan: what the `scripts` root COSTS, pinned so the disclosure cannot drift",
+  { timeout: SLOW_MS },
+  () => {
+    it("an `ID` entry spelled as a dashed SSN reds the gate on the allow-list itself", () => {
+      // The one consequence of rooting at `scripts` that a reader would not
+      // guess. `phi-allow-list.txt` documents `ID <value>` as "synthetic id
+      // matching an SSN / MRN / member-id shape", and the dashed-SSN pass
+      // consults NO allow-list, so writing that declaration in that shape
+      // creates the hit. Latent today (the real file carries `MRN-000123`, which
+      // the floor does not match) and it exits 0 on the base scanner.
+      //
+      // THE FIX IF THIS EVER FIRES IS TO SPELL THE ID IN A SHAPE THE FLOOR DOES
+      // NOT MATCH. It is NOT to make the SSN pass consult `allow.ids`, which
+      // would DELETE a detection the base had, and it is NOT to add the
+      // allow-list to the exemption, which would leave the one file a developer
+      // is most likely to paste a real value into unswept.
+      const root = makeRepo();
+      const allow = join(root, "scripts", "phi-allow-list.txt");
+      writeFileSync(allow, `${readFileSync(allow, "utf8")}ID ${SYNTHETIC_SSN}\n`);
+
+      const r = runScanner([], root);
+      expect(r.code, `stderr: ${r.stderr}`).toBe(1);
+      expect(r.stderr).toContain("scripts/phi-allow-list.txt");
+      expect(r.stderr).toContain(SYNTHETIC_SSN);
+    });
+
+    it("the shipped allow-list carries no id the floor matches, so the trap stays latent", () => {
+      // The premise of the case above being latent rather than live. If a future
+      // `ID` entry adopts the dashed shape, this reds first and points at the
+      // disclosure instead of at a mystery red on the CI sweep.
+      const declared = readFileSync(join(REPO_ROOT, "scripts", "phi-allow-list.txt"), "utf8")
+        .split(/\r?\n/)
+        .filter((l) => l.startsWith("ID "))
+        .map((l) => l.slice(3).trim());
+      expect(declared.length).toBeGreaterThan(0);
+      for (const id of declared) expect(id).not.toMatch(/\b\d{3}-\d{2}-\d{4}\b/);
+    });
+
+    it("--allow-fixture cannot reach the all-mode sweep, so it is not the remedy either", () => {
+      // PRE-EXISTING and deliberately not fixed here: an `--allow-fixture`
+      // invocation is routed down PATHS mode, and the one named target is then
+      // filtered out, so it opens ZERO files and reports clean. Pinned because
+      // widening the walk is what makes it the tempting answer to the case
+      // above, and because a reader would otherwise take the hit message's own
+      // advice.
+      const root = makeRepo();
+      writeFileSync(join(root, "src", "violator.ts"), SYNTHETIC_PHI);
+      writeFileSync(
+        join(root, "phi-scan-overrides.md"),
+        "# overrides\n\n### src/violator.ts\n\nsynthetic\n",
+      );
+      // The premise: without the flag this really is a hit, so a green below is
+      // the collapse and not an empty corpus.
+      expect(runScanner([], root).code).toBe(1);
+
+      const r = runScanner(["--allow-fixture", "src/violator.ts"], root);
+      expect(r.code, `stderr: ${r.stderr}`).toBe(0);
+      expect(r.stdout).toMatch(/OK, no hits/);
+    });
+
+    it("an empty `test/__fixtures__` git tracks nothing under no longer refuses", () => {
+      // The cover the fixture directory LOST by ceasing to be a declared root,
+      // asserted rather than implied away. As a root it refused by the
+      // opened-NOTHING floor whatever git carried; as an ordinary directory it
+      // contributes no entry and the reconciliation has no expected path to
+      // miss. This exits 2 on `ba059a2` and 0 here.
+      //
+      // Where git DOES track files under it (this repository: seven) the second
+      // condition still fires, which the observation suite above pins.
+      const root = makeRepo();
+      git(root, ["add", "src/ok.ts", "scripts/phi-allow-list.txt"]);
+      rmSync(join(root, "test", "__fixtures__", "ordinary.txt"));
+      writeFileSync(join(root, "test", "foo.test.ts"), "export const t = 1;\n");
+      git(root, ["add", "test/foo.test.ts"]);
+      expect(gitOut(root, ["ls-files", "test/__fixtures__"]).trim()).toBe("");
+
+      const r = runScanner([], root);
+      expect(r.code, `stderr: ${r.stderr}`).toBe(0);
+    });
+  },
+);
+
+describe("phi-scan: the NOT-a-root measurements, re-derived rather than quoted", () => {
+  // The class this repository has now been caught on three times: a measurement
+  // written into a banner and not taken. Two of the three "deliberately not a
+  // root" bullets were FALSE as first written, so each is a check here instead
+  // of a sentence a reader has to trust. A failure means the tree moved and the
+  // banner needs re-wording, never that the banner should be deleted.
+
+  function tracked(...paths: string[]): string[] {
+    return gitOut(REPO_ROOT, ["ls-files", "-z", "--", ...paths])
+      .split("\0")
+      .filter((p) => p.length > 0);
+  }
+
+  it("`documentation/` is all markdown, and `docs-content/` and `.changeset/` are NOT", () => {
+    const nonMd = (paths: string[]): string[] =>
+      paths.filter((p) => !p.toLowerCase().endsWith(".md"));
+    expect(nonMd(tracked("documentation"))).toStrictEqual([]);
+    expect(nonMd(tracked("docs-content"))).toStrictEqual(["docs-content/sidebars.json"]);
+    expect(nonMd(tracked(".changeset"))).toStrictEqual([".changeset/config.json"]);
+  });
+
+  it("`.github/` is clean under the floor, and the repository root is NOT", () => {
+    // The corrected half. `package.json` carries an off-domain `author` address,
+    // so "the repository root is measured clean" was false and rooting there
+    // would red today on a correct value.
+    const github = runScanner(tracked(".github"));
+    expect(github.code, `stderr: ${github.stderr}`).toBe(0);
+
+    const manifest = runScanner(["package.json"]);
+    expect(manifest.code, `stderr: ${manifest.stderr}`).toBe(1);
+    expect(manifest.stderr).toContain("(email)");
+  });
+});
+
+describe("phi-scan: the deliberate-violator exemption", { timeout: SLOW_MS }, () => {
+  // This file carries the payload on purpose, and `test/` is now a scan root, so
+  // without the exemption the sweep would red forever on its own test suite.
+
+  it("the sweep of THIS repository is green, over this file's real payload", () => {
+    // Not a fixture: the actual `pnpm phi-scan` CI invocation, in this tree.
+    const r = runScanner([]);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(0);
+    expect(r.stdout).toMatch(/OK, no hits/);
+  });
+
+  it("names the file in the scanner's own source, so the exemption is reviewable", () => {
+    const source = readFileSync(SCANNER_PATH, "utf8");
+    expect(source).toContain("DELIBERATE_VIOLATOR_SOURCES");
+    expect(source).toContain("test/scripts/phi-scan.test.ts");
+  });
+
+  it("is SCOPED TO THE SWEEP: naming this file in paths mode still reports every hit", () => {
+    // The half that keeps this a widening rather than a trade. An unscoped
+    // exemption would DELETE a detection the base had, and a sibling shipped
+    // exactly that mistake before catching it.
+    const r = runScanner(["test/scripts/phi-scan.test.ts"]);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(1);
+    expect(r.stderr).toContain(SYNTHETIC_SSN);
+    expect(r.stderr).toContain("jane.doe@hospital.org");
+  });
+
+  it("is PER PATH, not a pattern: the same payload in a sibling test file still reds", () => {
+    // An extension or directory rule could not tell a file that carries violator
+    // literals on purpose from one that carries them by accident, which is the
+    // whole distinction this gate exists to draw.
+    const root = makeRepo();
+    mkdirSync(join(root, "test", "scripts"), { recursive: true });
+    writeFileSync(join(root, "test", "scripts", "other.test.ts"), SYNTHETIC_PHI);
+
+    const r = runScanner([], root);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(1);
+    expect(r.stderr).toContain("test/scripts/other.test.ts");
+  });
+
+  it("an exempt file is still READ and still counts as observed", () => {
+    // The exemption is applied after the read, so it cannot be mistaken for a
+    // file the walk never reached: an unreadable one still refuses (exit 2)
+    // rather than passing as exempt.
+    //
+    // EACH BRANCH ASSERTS ITS OWN PREMISE, and `hasAssertions` alone does NOT
+    // close the hole its first draft claimed it did. That draft skipped on
+    // `expect(typeof readable).toBe("boolean")`, which is TRUE OF EVERY VALUE:
+    // under a uid that ignores mode bits (root in a container) the case went
+    // green having asserted nothing at all about the exemption, while
+    // `hasAssertions` was satisfied by the tautology. So the skip branch now
+    // asserts the environment really is the one it is skipping for, and the real
+    // branch asserts the file really did become unreadable. Neither can pass
+    // vacuously. (The same tautology sits in two PRE-EXISTING cases above,
+    // unchanged here: they are not this change's to rewrite.)
+    expect.hasAssertions();
+    const root = makeRepo();
+    mkdirSync(join(root, "test", "scripts"), { recursive: true });
+    const exempt = join(root, "test", "scripts", "phi-scan.test.ts");
+    writeFileSync(exempt, SYNTHETIC_PHI);
+    let r: RunResult;
+    try {
+      spawnSync("chmod", ["000", exempt], { encoding: "utf8", shell: false });
+      let readable = true;
+      try {
+        readFileSync(exempt, "utf8");
+      } catch {
+        readable = false;
+      }
+      if (readable) {
+        // The premise of the SKIP: mode bits really are being ignored here, so
+        // the unreadable branch is unreachable rather than untested by choice.
+        expect(readable).toBe(true);
+        return;
+      }
+      expect(readable).toBe(false);
+      r = runScanner([], root);
+    } finally {
+      spawnSync("chmod", ["644", exempt], { encoding: "utf8", shell: false });
+    }
+    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+    expect(r.stderr).toContain("could not read test/scripts/phi-scan.test.ts");
+  });
+});
+
+describe("phi-scan: the floor is ANCHOR-FREE, which is what the widening rests on", () => {
+  // ENUMERATING A `.ts` SOURCE BUYS NOTHING IF THE DETECTOR ASSUMES THE FILE *IS*
+  // THE DOCUMENT. That is the companion defect this class carries, and it is a
+  // property of an ANCHORED recogniser. This scanner has none: `scanCommonShapes`
+  // is two unanchored passes over the whole text. These cases assert that rather
+  // than leaving it as a claim in a banner, by putting one token in three
+  // placements and requiring all three to red.
+
+  const PLACEMENTS: [string, string, string][] = [
+    ["a standalone document", "doc.txt", `patient ssn ${SYNTHETIC_SSN} on file\n`],
+    [
+      "an inline HL7 literal inside TypeScript",
+      "inline.ts",
+      `const M =\n  "MSH|^~\\\\&|A|B|C|D|20240101||ADT^A01|1|P|2.5\\rPID|1||X^^^H^MR||DOE^JANE||19800101|F|||||||||${SYNTHETIC_SSN}\\r";\n`,
+    ],
+    [
+      "a multi-line template literal",
+      "template.ts",
+      "const M = `\n  line one\n  ssn " + SYNTHETIC_SSN + "\n`;\n",
+    ],
+  ];
+
+  for (const [label, name, body] of PLACEMENTS) {
+    it(`catches the same token in ${label}`, () => {
+      const r = scan(name, body);
+      expect(r.code, `stderr: ${r.stderr}`).toBe(1);
+      expect(r.stderr).toContain(SYNTHETIC_SSN);
+    });
+  }
+
+  it("KNOWN LIMIT, pinned: the floor is SSN + email and the widening did not change that", () => {
+    // The disclosure "enumerating the files buys the SSN/email floor and NOTHING
+    // else" is asserted here rather than only written down. An undashed id, a
+    // name, a date of birth and an address in the very same PID segment go
+    // unreported, because the structured detector is still the unimplemented TODO
+    // in `scanTarget`. If one of these ever starts failing, a real detector
+    // landed: delete the case and the disclosure together.
+    const r = scan(
+      "unreported.ts",
+      'const M =\n  "PID|1||MRN00042^^^H^MR||DOE^JANE||19800101|F|||42 SYNTHETIC ST^^METROPOLIS^NY^10001||555-0100|||||123456789";\n',
+    );
+    expect(r.code, `stderr: ${r.stderr}`).toBe(0);
+    expect(r.stdout).toMatch(/OK, no hits/);
+  });
+});
+
+describe("phi-scan: the escape-decoded view was MEASURED and DECLINED, and stays measured", () => {
+  // A sibling widened its recogniser to a second, ESCAPE-DECODED view of a source
+  // literal, because a `.ts` file can spell a token through `\x2d` and hide it
+  // from a raw text pass. Measured over every file THIS widening newly opens, the
+  // decoded view finds nothing the raw view does not, so porting it here would
+  // have been a guard with no measurement behind it.
+  //
+  // THE MEASUREMENT IS PINNED RATHER THAN ASSERTED ONCE. If a source ever lands
+  // that does hide a token behind an escape, this reds and tells the next worker
+  // to widen. The regexes are deliberately a SECOND COPY of the scanner's floor:
+  // a tripwire that imported them would go quiet in exactly the case where the
+  // floor itself was narrowed.
+
+  const SSN_RE = /\b\d{3}-\d{2}-\d{4}\b/g;
+  const EMAIL_RE = /\b[A-Za-z0-9._%+-]+@([A-Za-z0-9.-]+\.[A-Za-z]{2,})\b/g;
+  const ALLOWED_DOMAINS = new Set(
+    readFileSync(join(REPO_ROOT, "scripts", "phi-allow-list.txt"), "utf8")
+      .split(/\r?\n/)
+      .filter((l) => l.startsWith("EMAILDOMAIN "))
+      .map((l) => l.slice("EMAILDOMAIN ".length).trim().toLowerCase()),
+  );
+
+  const SIMPLE: Record<string, string> = {
+    n: "\n",
+    r: "\r",
+    t: "\t",
+    v: "\v",
+    f: "\f",
+    "0": "\0",
+    "'": "'",
+    '"': '"',
+    "\\": "\\",
+    "`": "`",
+  };
+
+  /** The escape-decoded view of a source literal: `\x2d`, `\u002d`, `\r` and friends. */
+  function decode(text: string): string {
+    return text.replace(
+      /\\(u\{[0-9a-fA-F]{1,6}\}|u[0-9a-fA-F]{4}|x[0-9a-fA-F]{2}|[nrtvf0'"\\`])/g,
+      (whole, esc: string) => {
+        if (esc.startsWith("u") || esc.startsWith("x")) {
+          const hex = esc.startsWith("u{") ? esc.slice(2, -1) : esc.slice(1);
+          const cp = Number.parseInt(hex, 16);
+          return Number.isNaN(cp) ? whole : String.fromCodePoint(cp);
+        }
+        return SIMPLE[esc] ?? whole;
+      },
+    );
+  }
+
+  function floorTokens(text: string): Set<string> {
+    const out = new Set<string>();
+    for (const m of text.matchAll(SSN_RE)) out.add(`ssn:${m[0]}`);
+    for (const m of text.matchAll(EMAIL_RE)) {
+      if (!ALLOWED_DOMAINS.has((m[1] ?? "").toLowerCase())) out.add(`email:${m[0]}`);
+    }
+    return out;
+  }
+
+  /**
+   * The TRACKED, non-`.md` files under the three roots. On a clean tree that is
+   * the same set the walk opens, and it is asserted to be non-empty below, but
+   * the two are NOT identical by construction and the shorter comment that said
+   * "exactly what the widened walk opens" was wrong: the walk enumerates the
+   * WORKING TREE, so it also opens an untracked, non-gitignored file under a
+   * root, which `git ls-files` never reports. The difference is one-directional
+   * (the walk is the superset), so this sweep can under-cover but never
+   * over-claim, and a stray untracked file cannot make it red.
+   *
+   * `-z` because `git ls-files` C-quotes a path holding a space, a quote or a
+   * non-ASCII byte, and a quoted name is a path no file has.
+   */
+  function walkedCorpus(): string[] {
+    return gitOut(REPO_ROOT, ["ls-files", "-z", "--", "src", "test", "scripts"])
+      .split("\0")
+      .filter((p) => p.length > 0 && !p.toLowerCase().endsWith(".md"));
+  }
+
+  it("the tripwire can see a difference (negative control on the comparison itself)", () => {
+    // Without this, a decode() that silently stopped decoding would make the
+    // sweep below pass for the wrong reason, which is the vacuity class this
+    // suite has already sprung twice.
+    const hidden = 'const s = "123\\x2d45\\u002d6789";';
+    expect([...floorTokens(hidden)]).toStrictEqual([]);
+    expect([...floorTokens(decode(hidden))]).toStrictEqual([`ssn:${SYNTHETIC_SSN}`]);
+  });
+
+  it("the corpus it sweeps is the one the walk opens, and it is not empty", () => {
+    const corpus = walkedCorpus();
+    expect(corpus.length).toBeGreaterThan(50);
+    expect(corpus).toContain("test/scripts/phi-scan.test.ts");
+    expect(corpus).toContain("scripts/phi-scan.ts");
+    expect(corpus).toContain("src/index.ts");
+  });
+
+  it("finds no token the raw view misses, across every file the walk opens", () => {
+    const divergent: string[] = [];
+    for (const rel of walkedCorpus()) {
+      const text = readFileSync(join(REPO_ROOT, rel), "utf8");
+      const raw = floorTokens(text);
+      const decoded = floorTokens(decode(text));
+      for (const t of decoded) if (!raw.has(t)) divergent.push(`${rel}: only decoded: ${t}`);
+      for (const t of raw) if (!decoded.has(t)) divergent.push(`${rel}: only raw: ${t}`);
+    }
+    // A failure here is NOT a defect in this change. It means a source landed
+    // that spells a PHI-shaped token through an escape, so the escape-decoded
+    // view now earns its place: widen `scanCommonShapes` (in ADDITION to the raw
+    // pass, never instead of it) and re-derive this measurement.
+    expect(divergent).toStrictEqual([]);
+  });
+});
