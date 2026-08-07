@@ -17,6 +17,41 @@ still do. Each entry was assigned to the release whose tag first contains it, re
 
 ### Fixed
 
+- **`pnpm phi-scan`'s all-mode walk was rooted at `test/__fixtures__` and `src` only, so 89 of this
+  repository's 123 tracked files were scanned by NEITHER of its two routes
+  (PHI-SCAN-WALK-ROOT-SCOPE).** The walk now roots at **`src`, `test` and `scripts`**, which opens 72
+  tracked files instead of 34.
+  - **Measured back to back on the base commit, and re-derived for this repository rather than ported
+    from a sibling.** A dashed SSN and an off-domain address written into `test/planted.test.ts`, in
+    this repository's own inline-message shape (a whole HL7 message as one `.ts` string literal with
+    `\r` escapes between its segments), exited **0** with `OK, no hits` in all mode, while naming the
+    same file in paths mode reported both at **exit 1** over the same bytes. A file written under
+    `scripts/` behaved identically. Both routes now report both.
+  - **All 38 newly opened files were hand-read.** Every message literal is a placeholder and the only
+    SSN/email shapes anywhere are the scanner's own declared synthetic payload, so the gap was one of
+    **enumeration**, not a live exposure: the defect was that the gate could not see those files, so
+    nothing would have caught a real value if one appeared.
+  - **`test` REPLACES `test/__fixtures__` rather than joining it.** Roots must stay disjoint: each is
+    walked independently and the results concatenated, so a nested root would enumerate every file
+    beneath it twice and report each hit twice. The fixture directory is still watched, through the
+    observation rule's other condition; only the root a refusal is filed under changed.
+  - **`scripts/` is a root because the scanner, its allow-list and its override log live there**, so
+    the one directory guaranteed to hold PHI-shaped text was the one nothing enumerated. All nine
+    files there were measured against the detector before the root was declared: no hits.
+  - **A narrowing that came with it:** `test/__fixtures__` is no longer a declared root, so a live or
+    dangling symbolic link at that path is now an enumerated entry and is refused outright, whatever
+    it points at. Only the three top-level roots can still be followed.
+  - **`test/scripts/phi-scan.test.ts` is exempt from the sweep, and is the only exempt path.** It
+    carries violator literals on purpose, as the positive half of the scanner's own tests. The
+    exemption is applied **after the read**, so the file still counts as observed and an unreadable
+    one still refuses; it is **scoped to the sweep**, so naming the file explicitly still reports
+    every hit; and it is **per path, never a pattern**.
+  - **What this does NOT buy, stated because a wider reading would be false:** the detector is still
+    the cross-cutting SSN + email floor, over 38 more files. Structured, field-level detection remains
+    unimplemented, and a test now pins that limit rather than leaving it as prose.
+  - **`--staged` is deliberately unchanged**, because widening it changes what a commit is blocked on.
+    The two routes therefore differ widely, and the scanner's own documentation says by how much.
+
 - **`pnpm phi-scan` printed `OK, no hits` and exited 0 over a corpus it never opened
   (PHI-SCAN-OBSERVED-NOTHING-IS-GLOBAL).** A declared scan root that the walk never observed is now
   a refusal at **exit 2**, in the all-mode sweep CI runs. Each root's walk is reconciled against

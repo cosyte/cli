@@ -216,6 +216,131 @@ an unmerged `U` entry is already pinned as out of scope and unable to reach a co
 reader **was** open: a present-but-unreadable `phi-scan-overrides.md` threw a raw `EACCES` past every
 handler and node exited **1**, this contract's code for "hits found". Now exit 2.
 
+### Widening the walk to this repository's whole authored corpus (2026-08-07)
+
+`PHI-SCAN-WALK-ROOT-SCOPE` in `cli`. The other half of the item above: the observation rule made the
+gate refuse a root it never opened, and this one moved the roots so that they cover the files that
+actually exist.
+
+**The four numbers, re-derived on `ba059a2` rather than ported.** 123 tracked files; **34** opened by
+the all-mode walk (7 `test/__fixtures__` + 27 `src/`); **89** scanned by **neither** route; **7** of
+those carrying an inline HL7 `PID|` literal. The sibling slice measured 122/34/88/6 at `cd221a0`; the
+one-file and one-literal deltas are its own changeset file and its own narrative in
+`documentation/agent-notes.md`, which is a small illustration of the point that this set grows on its
+own. **All 38 files the widening newly opens were hand-read**: every message literal is a placeholder
+(`DOE^JANE`, `X^^^H^MR`, `SENDER`, `ZZSENTINEL*`) and the only SSN/email shapes anywhere are this
+scanner's own declared synthetic payload. **So the 89 were an ENUMERATION gap, not a live PHI
+exposure** - the defect is that the gate could not SEE those files, so nothing would have caught a
+real value if one appeared.
+
+**RED before, GREEN after, measured back to back on `ba059a2`.** A dashed SSN and an off-domain
+address written into `test/planted.test.ts`, in this repo's own inline-message shape (a whole HL7
+message as one `.ts` string literal with `\r` escapes between segments), exited **0** `OK, no hits`
+in all mode, while `phi-scan test/planted.test.ts` reported both at **exit 1** over the same bytes. A
+file written to `scripts/` behaved identically. After the change both routes report both hits.
+**Fourteen of the suite's 68 cases red against `ba059a2`'s scanner.**
+
+**The roots are `src`, `test`, `scripts`, re-derived from this repository's own files.** `test`
+REPLACES `test/__fixtures__` rather than joining it: `buildTargetsForAll` walks each root
+independently and concatenates, so a nested root would enumerate every file beneath it twice and
+report each hit twice. The fixture directory did not stop being watched - an emptied or missing one is
+still refused, through the observation rule's OTHER condition (git tracks in-scope files under `test`
+that the walk did not open), and the refusal still names each one. Only the root the message is filed
+under changed, which is what the four updated assertions in the suite are.
+
+**`scripts` is included, and that is this repository's answer rather than a sibling's.** The
+recogniser's patterns, the allow-list the scanner refuses to run without, and the override log it
+points a developer at all live there, so the one directory guaranteed to hold PHI-shaped text was the
+one nothing enumerated. All nine files were measured against the floor before the root was declared:
+zero hits, so the widening lands green on its own bytes rather than on a new carve-out. **Keep it that
+way**: `scripts/phi-scan.ts` is now under its own scan, so an example SSN written into a comment there
+reds the gate.
+
+**What is deliberately NOT a root, each measured rather than omitted.** `vendor/` (ten `pnpm pack`
+tarballs; a DEFLATE stream decoded as UTF-8 is not text this gate can say anything true about, and the
+em-dash gate's NUL grounding cites them); `docs-content/`, `documentation/` and `.changeset/` (every
+tracked file under them is `.md`, which the walk skips by design, so declaring them would add
+reconciliation surface and open not one byte); `.github/` and the repository root (measured clean, and
+neither is where this package writes messages - and rooting at the repository root is the one sibling
+shape that got caught enumerating a build transient).
+
+**The deliberate-violator exemption, one entry long.** `test/scripts/phi-scan.test.ts` carries the
+payload on purpose, so with `test/` a root the sweep would red on the scanner's own suite forever.
+Three properties, each pinned by a control that reds when it is removed:
+
+- **Applied at the SCAN, not the enumeration.** The file is still walked, still READ, and still counts
+  as observed and reconciled. An unreadable one still refuses at exit 2 rather than passing as exempt.
+- **Scoped to the all-mode sweep.** `phi-scan test/scripts/phi-scan.test.ts` still reports every hit
+  at exit 1. An unscoped exemption would DELETE a detection the base had, which is "instead of" where
+  this work is only ever "in addition to"; a sibling shipped that mistake before catching it.
+  Measured: making it unscoped reds exactly the case that asserts the scoping.
+- **Per PATH, never a pattern.** An extension rule cannot tell a file carrying violator literals on
+  purpose from one carrying them by accident. The same payload in `test/scripts/other.test.ts` reds.
+
+**Allow-listing the values instead was refused, and the reason is the email half.** `EMAILDOMAIN` is
+global, so declaring `hospital.org` would switch the email detector off for the whole corpus while
+this file's own positive case asserts that exact address IS reported. The dashed-SSN check consults no
+allow-list at all, so there is no token-level route for that half either.
+
+**A NARROWING the widening bought, asserted rather than claimed.** `test/__fixtures__` is no longer a
+ROOT, so a live or dangling link AT that path is now an ENUMERATED entry beneath `test` and is refused
+by the not-a-regular-file rule, whatever it points at and whatever git tracks. Only the three
+top-level roots are still followable. The two residual pins were retargeted one level up for exactly
+this reason, and a new case pins the narrowing.
+
+**🛑 WHAT THIS BOUGHT, AND WHAT IT DID NOT.** It bought the SSN/email floor over 38 more files and
+**nothing else**. The structured, field-level detection this scanner needs before it can be called a
+PHI gate is still the unimplemented TODO in `scanTarget`, and opening a file does not implement it. A
+test pins that limit rather than leaving it as prose: an undashed nine-digit id, a name, a DOB and an
+address in the same `PID` segment all go unreported, at exit 0.
+
+**The recogniser was NOT widened, and that is a measurement rather than an omission.** The companion
+defect this class carries is that a recogniser assumes **the file IS the document**, so enumerating a
+`.ts` source whose message is an inline string literal buys nothing. That failure mode needs an
+ANCHORED detector, and this scanner has none: `scanCommonShapes` is two unanchored `matchAll` passes
+over the whole text, so its reach over a `PID|` literal embedded in TypeScript is identical to its
+reach over a standalone `.hl7` fixture. Pinned by an anchor-free probe that puts one token in three
+placements (a standalone document, an inline HL7 literal with `\r` escapes, a multi-line template
+literal) and requires all three to red.
+
+**The one widening a sibling shipped here was measured and DECLINED: the escape-decoded second view**
+(`\x2d` and friends, which hide a token from a raw text pass). Run over every file this widening newly
+opens, the decoded view finds nothing the raw view does not and loses nothing either: this
+repository's sources spell their messages literally and use `\r`/`\n`/`\t` alone. Porting it would
+have been a guard with no measurement behind it. **The measurement is pinned as a TRIPWIRE rather than
+asserted once**: the suite runs both views over the whole newly-opened corpus and REDS if they ever
+disagree, which is the signal that the next worker should widen (in ADDITION to the raw pass, never
+instead of it). A negative control proves the tripwire can see a difference, and the tripwire's
+regexes are deliberately a SECOND COPY of the floor's, because one that imported them would go quiet
+in exactly the case where the floor itself was narrowed.
+
+**`--staged` IS UNCHANGED, DELIBERATELY.** Widening the walk changes what CI sweeps; widening
+`--staged` changes what a COMMIT is BLOCKED on, which is a hook decision. So `test/*.ts`,
+`test/scripts/**` and everything under `scripts/` are swept by the all-mode route and enumerated by
+neither of `--staged`'s predicates. The CI sweep is the cover, exactly as it already was for the
+non-`.ts` half of `src/`. The two routes now disagree by a lot more than they used to, and the module
+header says so rather than leaving it to be inferred.
+
+**The path-SET escape is unchanged and still open.** The reconciliation compares path sets, not the
+bytes git carries at those paths, so a root swapped for a directory mirroring the tracked *names*
+still exits 0 over decoy contents. Comparing blobs is a larger rule and is deliberately not taken
+here; the widening does not make it worse, it only moves which paths the decoy has to mirror.
+
+**Re-measured rather than inherited:** both named `PRE-EXISTING` minors (`loadAllowList`/`readdirSync`
+throwing the "hits found" code; unmerged `U` entries enumerated by neither `AM` nor `AMT`) are still
+**NOT open here**, and their sibling reader is already fixed. `verify.sh cli` now fails **two**
+pre-existing steps rather than one: `pnpm audit --prod --audit-level high` (all advisories transitive
+under `@modelcontextprotocol/sdk`) and the licenses gate, which reports
+`ERR_PNPM_MISSING_PACKAGE_INDEX_FILE` for the vendored `@cosyte/fhir` tarball. **Both reproduce
+byte-identically on a base tree** restored by file copy, `package.json` and `pnpm-lock.yaml` are
+untouched by this change, and **no CI job runs either command**. The licenses one is newly VISIBLE
+rather than newly broken: the umbrella's ladder used to print green on that step without running it.
+
+**Still live and not this slice's:** `test:fuzz` and `pack:docs` are real gates the umbrella's verify
+ladder never names, so they are invisible rather than skipped. And `.github/workflows/ci.yml`'s banner
+says the ruleset requires **four** contexts while it requires **seven** - flagged here, not fixed,
+because it is its own item.
+
 ### The em-dash brand gate
 
 - **Em-dash brand gate armed, and unlike most siblings this repo was NOT clean when it landed.**

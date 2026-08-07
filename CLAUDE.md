@@ -1,10 +1,10 @@
 # @cosyte/cli: Project Guide for Claude
 
 > **The narrative lives in [`documentation/agent-notes.md`](documentation/agent-notes.md). Read it
-> before you touch anything a rule below tells you not to touch.** On 2026-08-04 this file was 51,276
-> bytes and it is always-read by every worker that enters this repo, so the per-incident write-ups,
-> the shipped-phase histories and the long rationales were relocated there **verbatim**, under
-> headings that say where they came from. Nothing was deleted.
+> before you touch anything a rule below tells you not to touch.** This file is always-read by every
+> worker that enters this repo, so the per-incident write-ups, the shipped-phase histories and the
+> long rationales were relocated there **verbatim**; that file's own header records when and why, and
+> nothing was deleted.
 >
 > What stays here is the cursor, the rules, and **every** trap, each compressed to a one-line
 > imperative with a link to the section that proves it. **"I did not read the reason" is not a licence
@@ -33,25 +33,24 @@ subpath still exports a small programmatic `core` API (`detectFormat`, `EXIT`, `
 
 ## Status
 
-**Feature-complete.** Phase 7 (release hardening) shipped and was the roadmap's final phase; no new
-runtime command surface is planned. The CLI wraps **all eight** cosyte formats through one lazy
+**Feature-complete.** The roadmap's final phase shipped; no new runtime command surface is planned.
+The CLI wraps **all eight** cosyte formats through one lazy
 per-format adapter registry (`src/core/parsers.ts`), exposes the same `core` through a terminal bin
 (`cosyte`), an MCP server bin (`cosyte-mcp`) and the `.` / `./mcp` subpath exports, and states support
 **per (format, operation)** via `OP_SUPPORT`: an unsupported cell is a value-free
 `CLI_FORMAT_UNSUPPORTED`, never a fake. Exit-code contract: `0/1/2/65/66/69/70`. Per-phase histories:
 [agent-notes § Shipped phases](documentation/agent-notes.md#shipped-phases).
 
-**Deferred, honestly and never faked:** `dicom` `parse`/`fmt` (binary model), `ccda` `parse` (XML is
-the canonical `fmt` surface), `mllp` `fmt`/`validate`; `redact`/`deid` and `map-codes` MCP tools and
-remote/HTTP MCP, deliberately not yet exposed; `redact`'s real de-identification (gated stub + seam
-landed, waiting on `@cosyte/deid`, and **never a built-in partial scrub**, which would risk a
-false-safety impression); `validate --profile` (reserved, `CLI_NOT_IMPLEMENTED`/`69`, no profiles
-bundled). Detail:
+**Deferred, honestly and never faked:** `dicom` `parse`/`fmt`, `ccda` `parse`, `mllp`
+`fmt`/`validate`; `redact`/`deid` and `map-codes` MCP tools and remote/HTTP MCP; `redact`'s real
+de-identification (gated stub + seam landed, waiting on `@cosyte/deid`, and **never a built-in
+partial scrub**, which would risk a false-safety impression); `validate --profile` (reserved,
+`CLI_NOT_IMPLEMENTED`/`69`). Detail:
 [agent-notes § Deferred](documentation/agent-notes.md#deferred).
 
-**ADRs:** `documentation/decisions/0021` (a `bin` hard-deps first-party siblings), `0022` (one repo,
-two bins over one core), `0023` (wire `transform` + `terminology`; the 2 → 4 dep-cap raise), `0024`
-(the MCP SDK as an isolated runtime-optional dep), `0025` (breadth parsers optional, outside the cap).
+**ADRs:** `documentation/decisions/0021` (a `bin` hard-deps first-party siblings), `0022` (two bins,
+one core), `0023` (wire `transform` + `terminology`; 2 → 4 dep cap), `0024` (MCP SDK isolated and
+runtime-optional), `0025` (breadth parsers optional, outside the cap).
 Summaries: [agent-notes § ADRs](documentation/agent-notes.md#adrs).
 
 ### The published package, and the FHIR hole (live, unresolved)
@@ -89,13 +88,11 @@ Why: [agent-notes § The vendor to npm dependency swap](documentation/agent-note
   deliberately not added** (`npm install -g` would claim the name `cli` on the user's `PATH`): founder
   call, not an oversight.
 - **The public-flip stop is not yours to cross, and both original stops are already behind this
-  package.** It is
-  **public** (`gh repo view cosyte/cli --json visibility`) and it has published, so the original
-  "founder-gated tail (NOT crossed)" note is superseded, not still pending. **Flipping a repo's
+  package.** It is **public** (`gh repo view cosyte/cli --json visibility`) and it has published, so
+  the "founder-gated tail (NOT crossed)" note is superseded, not pending. **Flipping a repo's
   visibility is never waived**, so an agent still does not touch it; the `npm publish` half is
-  covered by a standing founder directive. The vendored `file:` sibling deps that gated a publish (a
-  published package cannot ship a `file:` dep) are already real npm ranges, except `@cosyte/fhir`,
-  which stays a `file:` **devDependency** and never reaches a consumer's install: see the swap note.
+  covered by a standing founder directive. The vendored `file:` deps that gated a publish are already
+  real npm ranges, except `@cosyte/fhir`, a `file:` **devDependency** no consumer install resolves.
 
 ### Hard runtime deps
 
@@ -114,10 +111,10 @@ Why: [agent-notes § The vendor to npm dependency swap](documentation/agent-note
 Why: [agent-notes § The docs sidebar and the IA spine](documentation/agent-notes.md#the-docs-sidebar-and-the-ia-spine).
 
 - **An off-spine top-level label in `docs-content/sidebars.json` stops the WHOLE docs site
-  deploying**, and this package once held it down for four days. Canonical top-level order:
-  `Overview` (the `intro` **doc reference**, not a category), `Installation`, `Quickstart`,
-  `Core Concepts`, `Guides`, `API Reference`, `Troubleshooting`. Categories are **optional**; the rule
-  is that whatever you have is labelled and ordered canonically, so `{"docs":["intro"]}` is compliant.
+  deploying**, and this package once held it down for four days. Canonical top-level order (verbatim
+  in the linked section, starting `Overview` as the `intro` **doc reference**, not a category).
+  Categories are **optional**; the rule is that whatever you have is labelled and ordered
+  canonically, so `{"docs":["intro"]}` is compliant.
 - **🔴 NEVER AUTHOR AN `API Reference` CATEGORY.** The docs site injects it. A hand-authored one is a
   distinct, **harder** error than the off-spine label it would be replacing.
 - **Never claim where that injected category lands.** A refuter falsified "just before
@@ -179,9 +176,18 @@ Why: [agent-notes § The pre-commit PHI gate and git mv](documentation/agent-not
   measured; an **ancestor** of a scan root is in neither route's scope; paths mode follows a named
   link). **Do not "fix" them inside an unrelated slice**: what is left needs a decision about how far
   ABOVE a root to look.
-- **Other residuals, also not closed:** `D` and `U` are unenumerated (`U` costs nothing that can reach
-  a commit: `git commit` refuses an unmerged index, exit 128); under `src/` the staged route covers
-  `.ts` only while the all-mode walk covers every non-`.md` file, and the CI sweep is the cover.
+- **Walk roots are `src`, `test`, `scripts`, re-derived; `test` REPLACED `test/__fixtures__` and roots
+  must stay DISJOINT** (a nested one double-reports). `scripts` is in, so **an example SSN in a
+  comment there reds the gate**. `test/scripts/phi-scan.test.ts` is the **ONE** exempt path: at the
+  **scan** (still read + reconciled), **all-mode only** (paths mode must still report it or a
+  detection is DELETED), **per path**. `EMAILDOMAIN` is global; never allow-list to green a file.
+- **🛑 THE WIDENING BOUGHT THE SSN/EMAIL FLOOR OVER 38 MORE FILES AND NOTHING ELSE** (all hand-read:
+  enumeration gap, not exposure). **The recogniser was NOT widened, on measurement** - this floor is
+  anchor-free, so it never had the "file IS the document" defect, and an escape-decoded view finds
+  nothing new. **A tripwire reds if that changes**; widen **in addition to** the raw pass.
+- **Other residuals:** `D` and `U` are unenumerated (`U` costs nothing that can reach a commit:
+  `git commit` refuses an unmerged index, exit 128); the routes now differ widely: `--staged` is
+  `test/__fixtures__` + `src/*.ts` only, CI sweeps the rest.
 - **Give `test/scripts/phi-scan.test.ts` explicit timeouts.** Each case spawns `tsx` cold: 0.5s idle,
   **3.7s under contention**, against a shared 10s default.
 - **Assert the premise, not only the remedy.** Two vacuity traps already sprang in this suite: a
@@ -198,8 +204,8 @@ Why: [agent-notes § The em-dash brand gate](documentation/agent-notes.md#the-em
 - **▶ READ THIS BEFORE PORTING THE GATE OR SWEEPING ANY REPO: AN EM DASH IS SOMETIMES A VALUE, NOT
   PUNCTUATION.** `docs-content/limitations.md` used a bare `U+2014` as a support-matrix **cell value
   meaning "not supported"**; the sweep rewrote it as punctuation and turned **"support absent" into
-  "support unstated"**, on the one page whose entire job is honest capability disclosure, reading as a
-  rendering artifact rather than a claim. **Grep for a cell or list-marker em dash first**
+  "support unstated"**, on the one page whose whole job is honest capability disclosure.
+  **Grep for a cell or list-marker em dash first**
   (`\|\s*\x{2014}\s*[\|\(]`) and convert each to a **WORD**, by hand, before any bulk transform.
 - **CUT, do not rewrite.** Softening a stated limit into an implied capability while tidying a
   sentence is a worse defect than the thing being removed. Revert a rewrite verbatim rather than
@@ -278,11 +284,10 @@ Full ruleset, the required-context table and the per-check reasoning:
   merge**, which is the failure this repo's whole protection claim exists to prevent. `ci / prepublish`
   arrived that way on 2026-08-05 and was unrequired until measured and added. **Census `ci / *` against
   a real check run whenever `.github` moves**, then require it or write down why not, in `ci.yml`'s
-  banner. Detail:
-  [agent-notes § Branch protection](documentation/agent-notes.md#branch-protection-and-the-limits-of-this-claim).
-- **`no-internal-refs` and `no-emdash` are bare JOB IDS**, not `<workflow> / <job>`, because they are
-  ordinary jobs in this repo's own workflows. **Renaming the job silently detaches the required
-  check.** Rename the job and the ruleset together, or neither.
+  banner.
+- **`no-internal-refs` and `no-emdash` are bare JOB IDS**, not `<workflow> / <job>`: they are ordinary
+  jobs in this repo's own workflows. **Renaming the job silently detaches the required check.** Rename
+  the job and the ruleset together, or neither.
 - **A required job gates all of its steps.** Splitting a step out of `ci / verify` into its own job
   silently un-requires it. There is a banner on `ci.yml` where someone would trip it.
 - **Never add a `paths:` filter to `ci.yml`, `codeql.yml`, `no-internal-refs.yml` or
@@ -337,8 +342,7 @@ return 0`, so no `--profile`, `--ignore-rules` or config setting reaches that ea
 - **Only a TOTAL loss of declarations is the false green; a PARTIAL one `attw` catches itself**, so
   the preflight must report both outcomes and **must not assert the exit 0**. Six packed-but-undeclared
   declarations decide which silence you get, and the obvious two-line version of this is false: a
-  first draft named one file, measured it on a throwaway fixture, wrote the fixture's result down as
-  this tree's, and a refuter falsified it in one run. **Re-measure before you shorten it.**
+  refuter falsified a first draft of it in one run. **Re-measure before you shorten it.**
 - **The post-check reads a string, so what would hide that string is refused**: `--quiet`, `-q`,
   `--format`, `-f`, `--config-path`, and a `.attw.json` setting `quiet` or `format`. **Say "exact argv
   token" of the ARGV refusal, never "wholesale"** (the stronger wording was live and was refuted); the
@@ -386,10 +390,9 @@ Mirrors the three disciplines in the meta-repo's `documentation/conventions.md`.
      **shown**. Two sentences that read well and are **false**: "everything in `src/` ships", and
      "the bundles carry `//` comments verbatim".
    - **Never re-key the gate on the `WORD-N` shape.** This repo is where that trap is widest, because
-     the CLI reaches for all eight formats' vocabularies at once: `HL7-V2`, `FHIR-R4`, `DICOM-SR`,
-     `NCPDP-SCRIPT`, `X12-837P`, `CCDA-R2.1`, `MSH-2`, `NM1-03`, `ST-01`, `439-E4`, `ICD-10-CM` are
-     reference material a consumer came here for. The negative self-tests exist to make that attempt
-     red.
+     the CLI reaches for all eight formats' vocabularies at once, and every designation, segment,
+     element and code-system reference among them (listed in the linked section) is material a
+     consumer came here for. The negative self-tests exist to make that attempt red.
    - **Repair the head**: a sentence with an identifier stripped off the front reads worse than the
      text it replaced.
    - **CUT, do not rewrite.** This package's whole posture is honesty about what it _cannot_ do:
