@@ -749,6 +749,42 @@ describe(
       expect(r.stdout).not.toMatch(/OK/);
     });
 
+    it("names an unmerged path ONCE, not once per stage", () => {
+      // `git ls-files` emits an unmerged path once per stage, so a conflicted
+      // fixture was named three times in one refusal and read as three missing
+      // files. The refusal was right either way; a diagnostic nobody can trust
+      // is how a gate stops being read.
+      const root = makeTrackedRepo();
+      git(root, [...COMMIT, "base"]);
+      const base = gitOut(root, ["rev-parse", "--abbrev-ref", "HEAD"]).trim();
+      git(root, ["checkout", "-q", "-b", "other"]);
+      writeFileSync(join(root, "test", "__fixtures__", "ordinary.txt"), "theirs\n");
+      git(root, ["add", "test/__fixtures__/ordinary.txt"]);
+      git(root, [...COMMIT, "theirs"]);
+      git(root, ["checkout", "-q", base]);
+      writeFileSync(join(root, "test", "__fixtures__", "ordinary.txt"), "ours\n");
+      git(root, ["add", "test/__fixtures__/ordinary.txt"]);
+      git(root, [...COMMIT, "ours"]);
+      const merge = spawnSync("git", [...MERGE, "other"], {
+        cwd: root,
+        encoding: "utf8",
+        shell: false,
+      });
+      // The premise, asserted rather than discarded: a merge that does not
+      // conflict leaves one stage, and every assertion below would hold for the
+      // wrong reason. This suite has already shipped that exact vacuity once.
+      expect(merge.status, `merge: ${merge.stdout}${merge.stderr}`).not.toBe(0);
+      expect(gitOut(root, ["ls-files", "-u", "test/__fixtures__"]).trim().split("\n")).toHaveLength(
+        3,
+      );
+      rmSync(join(root, "test", "__fixtures__", "ordinary.txt"));
+
+      const r = runScanner([], root);
+      expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+      expect(r.stderr).toContain("git tracks 1 in-scope file(s)");
+      expect(r.stderr.match(/test\/__fixtures__\/ordinary\.txt/g)).toHaveLength(1);
+    });
+
     it("leaves --staged alone: it is a diff, with no corpus to reconcile against", () => {
       // Widening `--staged` changes what a COMMIT is blocked on, which is a
       // different decision and is deliberately not taken here.
@@ -951,6 +987,30 @@ describe(
       expect(r.stderr).toContain("test/__fixtures__/real-notes.txt");
       expect(existsSync(join(root, "test", "__fixtures__", "real-notes.txt"))).toBe(true);
       expect(gitOut(root, ["ls-files", "test/__fixtures__/real-notes.txt"]).trim()).toBe("");
+    });
+
+    it("FOLLOWS a root link whose target MIRRORS the tracked names, corpus fully tracked", () => {
+      // The exact shape a refuter used to falsify the shorter disclosure. The
+      // reconciliation compares PATH SETS, not the bytes git carries at those
+      // paths, so a target directory holding the same relative filenames
+      // satisfies both conditions with decoy contents and the gate prints the
+      // headline sentence this whole rule exists to end. "Survives only where
+      // git tracks nothing under it" is FALSE, and this pins that it is false.
+      const root = makeTrackedRepo();
+      const decoy = realpathSync(mkdtempSync(join(tmpdir(), "cli-phi-scan-decoy-")));
+      repos.push(decoy);
+      writeFileSync(join(decoy, "ordinary.txt"), "decoy, not the tracked bytes\n");
+      rmSync(join(root, "test", "__fixtures__"), { recursive: true });
+      symlinkSync(decoy, join(root, "test", "__fixtures__"));
+      // The premise: git really does carry a DIFFERENT blob at that path, so a
+      // pass here is a pass over a corpus that was never opened.
+      expect(gitOut(root, ["show", ":test/__fixtures__/ordinary.txt"])).toContain(
+        "synthetic placeholder",
+      );
+
+      const r = runScanner([], root);
+      expect(r.code, `stderr: ${r.stderr}`).toBe(0);
+      expect(r.stdout).toMatch(/OK, no hits/);
     });
 
     it("does not see an ANCESTOR of a scan root staged as a link", () => {

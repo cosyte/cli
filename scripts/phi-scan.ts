@@ -96,11 +96,16 @@
  *      channel this banner argues is itself a PHI surface. The observation rule
  *      now REFUSES that (exit 2, measured) whenever git tracks an in-scope file
  *      under the root that the link's target does not also carry at the same
- *      relative path: seven files here, so it refuses here. STILL OPEN, AND
- *      STATED RATHER THAN IMPLIED AWAY: a root git tracks NOTHING under, swapped
- *      for a NON-EMPTY directory, satisfies both conditions and is followed
- *      silently. The DANGLING direction is closed outright, whatever is tracked,
- *      because it opens nothing.
+ *      relative path: seven files here, so a link to an UNRELATED directory
+ *      refuses here. STILL OPEN, AND STATED RATHER THAN IMPLIED AWAY, BECAUSE
+ *      THE SHORTER VERSION OF THIS SENTENCE IS FALSE AND WAS MEASURED FALSE: the
+ *      reconciliation compares PATH SETS, not the bytes git carries at those
+ *      paths, so a target directory that mirrors the tracked NAMES satisfies both
+ *      conditions and is followed silently, decoy contents and all - measured at
+ *      exit 0 over this repo's own seven tracked fixture names. A root git tracks
+ *      NOTHING under is the degenerate case of that, not the whole of it. The
+ *      DANGLING direction IS closed outright, whatever is tracked, because it
+ *      opens nothing.
  *   2. AN ANCESTOR of a scan root is in neither route's scope. Fact 3 below puts
  *      `test/__fixtures__` and `src` in scope, but not `test`, so staging `test`
  *      as a link leaves `--staged` at exit 0 (measured) - STILL OPEN, and it is
@@ -589,10 +594,17 @@ function trackedUnder(rel: string): string[] {
       }. Refusing rather than reconciling the walk against an empty list.`,
     );
   }
-  return out
-    .toString("utf8")
-    .split("\0")
-    .filter((p) => p.length > 0);
+  // De-duplicated: `git ls-files` emits an UNMERGED path once per stage, so a
+  // conflicted fixture was named three times in one refusal, reading as three
+  // missing files. The refusal was right; only its count was not.
+  return [
+    ...new Set(
+      out
+        .toString("utf8")
+        .split("\0")
+        .filter((p) => p.length > 0),
+    ),
+  ];
 }
 
 /** What one scan root actually contributed, against what git says is under it. */

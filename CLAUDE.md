@@ -174,9 +174,11 @@ Why: [agent-notes § The pre-commit PHI gate and git mv](documentation/agent-not
 - **Never state the refusal rule unqualified.** It is scoped to an **enumerated** entry; a refuter
   falsified "neither route follows such an entry" using this very file.
 - **Three escapes remain, NARROWED not closed** (a scan root that is itself a live link is still
-  followed and survives only where git tracks nothing under it; an **ancestor** of a scan root is in
-  neither route's scope; paths mode follows a named link). **Do not "fix" them inside an unrelated
-  slice**: what is left needs a decision about how far ABOVE a root to look.
+  followed, and **never say it survives "only where git tracks nothing"**: the reconciliation
+  compares PATH SETS, so a target mirroring the tracked NAMES passes at exit 0, decoy bytes and all,
+  measured; an **ancestor** of a scan root is in neither route's scope; paths mode follows a named
+  link). **Do not "fix" them inside an unrelated slice**: what is left needs a decision about how far
+  ABOVE a root to look.
 - **Other residuals, also not closed:** `D` and `U` are unenumerated (`U` costs nothing that can reach
   a commit: `git commit` refuses an unmerged index, exit 128); under `src/` the staged route covers
   `.ts` only while the all-mode walk covers every non-`.md` file, and the CI sweep is the cover.

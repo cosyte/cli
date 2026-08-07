@@ -49,9 +49,13 @@ still do. Each entry was assigned to the release whose tag first contains it, re
     corpus, and widening it would change what a **commit** is blocked on, which is a separate
     decision. Naming paths explicitly is unchanged.
   - **Narrowed, not closed, and still disclosed in the module header:** a scan root that is itself a
-    live link is still followed, and now survives only where git tracks nothing under it; an
-    **ancestor** of a scan root remains out of the staged route's scope; paths mode still follows a
-    link a caller names.
+    live link is still followed. It is now refused whenever git tracks an in-scope file under the
+    root that the link's target does not also carry **at the same relative path**, so a link to an
+    unrelated directory refuses; the reconciliation compares path **sets** rather than the bytes git
+    carries at those paths, so a target mirroring the tracked names still passes at exit 0, and a
+    root git tracks nothing under is the degenerate case of that rather than the whole of it. An
+    **ancestor** of a scan root remains out of the staged route's scope, and paths mode still follows
+    a link a caller names.
 - **A present-but-unreadable `phi-scan-overrides.md` exited 1, the code reserved for "hits found".**
   `loadOverrideLog` threw a raw filesystem error past every handler while its sibling reader,
   `loadAllowList`, had already been wrapped. It now exits 2 with a diagnostic. A caller branching on
