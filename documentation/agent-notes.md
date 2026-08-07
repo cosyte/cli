@@ -137,6 +137,67 @@ exactly as it stood, including its leading `- ` bullet.
   if git had stopped emitting the record shape the whole change is about. **Assert the premise, not
   only the remedy.**
 
+### Refusing a scan root the walk never observed (2026-08-07)
+
+The measurement first, because the class this belongs to is one where a phrase sweep reads as
+authoritative while measuring nothing, and every number below was re-derived here rather than carried
+from a sibling.
+
+- **122 tracked files. The all-mode walk opens 34** (7 under `test/__fixtures__`, 27 under `src/`).
+  **88 are scanned by NEITHER route**, and **6 of those carry an inline `PID|` literal**: five HL7
+  v2 messages built as `.ts` string literals inside `test/*.test.ts`, plus one `"PID|secret"` fed to
+  a locator function to prove it does not echo. All six were read by hand and are placeholder shapes
+  (`DOE^JANE`, `X^^^H^MR`, `123^^^HOSP`); none is a real identifier. **That 88 is an ENUMERATION gap
+  and it is a different item** (`PHI-SCAN-WALK-ROOT-SCOPE`): this change widened no root, so it
+  neither opened nor needed to open any of them.
+- **The recogniser was NOT widened, and the measurement is why.** This slice adds no newly opened
+  file in the healthy state, so there is no new document shape for a detector to miss. The floor is
+  still SSN plus non-test email, still disclosed as a floor in the module banner, and the structured
+  field-level detector the banner demands is still owed.
+
+**What was open, all six measured on this tree, every one of them printing `OK, no hits` and exiting
+0 beforehand:** the fixture root missing; the fixture root emptied; the fixture root a **dangling**
+symbolic link; the fixture root a **live** symbolic link to a directory outside the repository; one
+tracked fixture removed from the working tree with the rest of the root still opened; and `src` moved
+away. **8 of the suite's tests run red on `cd221a0`** and green after.
+
+**The remedy is reconciliation, not counting.** Each root's walk is compared against
+`git ls-files -z -- <root>`, and two independent conditions refuse: the root contributed nothing, or
+git tracks an in-scope file under the root that the walk did not open.
+
+- **Neither condition subsumes the other, which is why both ship.** An emptied root opens nothing; a
+  root swapped for another directory opens plenty. Refusing only a missing root would leave the
+  emptied half open, because **existence is not observation**.
+- **The dangling link is why a kind check cannot stand in.** `existsSync` FOLLOWS the link and
+  answers false, so `walk()` returns before `readdirSync` and the not-a-regular-file refusal above
+  never fires. Nothing about the entry is ever inspected, so no check on its kind can reach it.
+- **A denominator was deliberately not added.** A count counts the roots and files that DID exist, so
+  a healthy-looking total is precisely what a starved root produces. This scanner prints no file
+  count and one was not introduced.
+- **Exit 2 was derived from this scanner's own contract and not ported.** `1` means "hits found"
+  here; `walk()` already raises an unreadable root as an invocation failure, and a root replaced by a
+  regular file already exits 2 through `readdirSync`'s `ENOTDIR` (re-measured, not assumed). Sibling
+  scanners disagree on this code and carrying one across would have been the defect.
+- **`git ls-files` failing REFUSES rather than answering the empty set**, because an empty answer is
+  indistinguishable from "this root tracks nothing" and would switch the whole rule off in silence.
+- **One-directional on purpose:** a tracked in-scope file the walk missed refuses; an untracked
+  working-tree file the walk found does not. Scanning more than git carries is the safe direction,
+  and refusing it would red the gate on every fixture written but not yet added.
+- **All-mode only.** `--staged` is a diff and not a corpus, and widening it changes what a COMMIT is
+  blocked on, which is a separate decision that two siblings declined deliberately.
+
+**Two of the three disclosed escapes are narrowed, not closed, and the disclosure says so.** A scan
+root that is itself a live link is still followed and now survives only where git tracks nothing
+under it. An **ancestor** of a scan root is still out of the staged route's scope; the all-mode half
+of it is covered incidentally, because replacing `test` leaves `test/__fixtures__` unopenable. Paths
+mode is untouched. **How far ABOVE a root to look is still undecided.**
+
+**Also fixed, and re-derived rather than inherited:** the two `PRE-EXISTING` minors a sibling named
+were measured **NOT open here** (`loadAllowList` and `readdirSync` were already wrapped to exit 2, and
+an unmerged `U` entry is already pinned as out of scope and unable to reach a commit). Their sibling
+reader **was** open: a present-but-unreadable `phi-scan-overrides.md` threw a raw `EACCES` past every
+handler and node exited **1**, this contract's code for "hits found". Now exit 2.
+
 ### The em-dash brand gate
 
 - **Em-dash brand gate armed, and unlike most siblings this repo was NOT clean when it landed.**
