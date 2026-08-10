@@ -9,6 +9,17 @@
 > imperative with a link to the section that proves it. **"I did not read the reason" is not a licence
 > to discount the rule.** Every one of these lines cost a defect to learn.
 
+> **The pair is gated** (`pnpm check:agent-notes`, enforced by `test/scripts/agent-notes.test.ts`, so
+> it rides `ci / verify` and `prepublishOnly`): the narrative file must be tracked, every section must
+> have a body (a container's is its subsections), and every pointer at it **in a file it opened** must
+> resolve. **A NUL-bearing file is skipped: a disclosed miss, not a pass**; the tell is the skipped
+> count. It matches the **QUALIFIED spelling only**; a **bare** backticked anchor in either half
+> **REFUSES the run**: the measurement that scoped the matcher has gone stale. **Never port a
+> sibling's matcher without re-counting both spellings here.** It asserts **this repo's promise, not a
+> universal**, and **refuses (exit 2) rather than reporting green over a corpus it never opened**.
+> **Never clear a red by deleting the pointer or the heading.** Why, and every miss:
+> [agent-notes § The gate](documentation/agent-notes.md#the-two-file-contract-gate).
+
 ## Project
 
 **`@cosyte/cli`**: the **cosyte CLI**: a **`bin` package** (the `cosyte` command), not a parser and
@@ -183,15 +194,13 @@ Why: [agent-notes § The pre-commit PHI gate and git mv](documentation/agent-not
 - **`scripts/` IS SWEPT: name a PHI shape, never SPELL a literal** (a draft banner red the gate on
   itself). The SSN check reads **no** allow-list, so an `ID` in dashed shape reds
   `phi-allow-list.txt`: respell `MRN-`.
-- **🛑 THE WIDENING BOUGHT THE SSN/EMAIL FLOOR OVER 38 MORE FILES AND NOTHING ELSE** (all hand-read:
-  enumeration gap, not exposure). **The recogniser was NOT widened, on measurement** - this floor is
-  anchor-free, so it never had the "file IS the document" defect, and an escape-decoded view finds
-  nothing new. **A tripwire reds if that changes**; widen **in addition to** the raw pass.
-- **Other residuals:** `D` and `U` are unenumerated (`U` costs nothing that can reach a commit:
-  `git commit` refuses an unmerged index, exit 128); the routes now differ widely: `--staged` is
-  `test/__fixtures__` + `src/*.ts` only, CI sweeps the rest.
-- **Give `test/scripts/phi-scan.test.ts` explicit timeouts.** Each case spawns `tsx` cold: 0.5s idle,
-  **3.7s under contention**, against a shared 10s default.
+- **🛑 THE WIDENING BOUGHT THE SSN/EMAIL FLOOR OVER 38 MORE FILES AND NOTHING ELSE** (an
+  enumeration gap, not exposure). **The recogniser was NOT widened, on measurement**, and **a tripwire
+  reds if that changes**: widen **in addition to** the raw pass, never instead of it.
+- **Other residuals:** `D` and `U` are unenumerated (`U` reaches no commit: `git commit` refuses an
+  unmerged index, exit 128); the two routes now differ widely.
+- **Give every `test/scripts/*.test.ts` case an explicit timeout.** Each spawns `tsx` cold: **3.7s
+  under contention**, against a shared 10s default.
 - **Assert the premise, not only the remedy.** Two vacuity traps already sprang in this suite: a
   fixture whose `git merge` refused on an identity-less runner so every later assertion held over an
   empty result, and a loop that asserted only the detection-OFF side.
@@ -226,14 +235,13 @@ Why: [agent-notes § The em-dash brand gate](documentation/agent-notes.md#the-em
   seeding each with a live em dash. A red on those echoes a whole synthetic message into a public CI
   log: deliberate and acceptable.
 - **Fix the script's shared known limits in the shared copies, not here.** A divergent copy is worse
-  than a shared known limit. The script is composed from three siblings' fixes; understand the
-  composition before editing it.
-- **Re-derive every number before writing it down and never quote one from a sibling's copy.** The
-  first draft of these notes stated a wrong count _inside the sentence arguing for measurement rigor_.
+  than a shared known limit; the script is composed from three siblings' fixes.
+- **Re-derive every number before writing it down and never quote one from a sibling's copy.** A draft
+  of these notes stated a wrong count _inside the sentence arguing for measurement rigor_.
 - **What lands on `main` here differs from `mllp`: all three merge methods are enabled**, so the
-  **branch commit messages** are the one text that lands under every method, the PR title lands under
-  two of three, and **the PR body lands under none** (it is scanned anyway, as deliberate
-  over-strictness). **Do not repeat `ncpdp`'s copy** claiming the title and body are what lands.
+  **branch commit messages** are the one text that lands under every method and **the PR body lands
+  under none** (scanned anyway, deliberate over-strictness). **Do not repeat `ncpdp`'s copy** claiming
+  the title and body are what lands.
 - **Not retroactive:** commit subjects already on `main` may carry `U+2014`. History is not rewritten.
 
 ## Tech Stack (the shared `@cosyte/*` standard)
@@ -272,41 +280,33 @@ a summary.
 Full ruleset, the required-context table and the per-check reasoning:
 [agent-notes § Branch protection](documentation/agent-notes.md#branch-protection-and-the-limits-of-this-claim).
 
-- `main` is protected by the repository ruleset **`ci-required-checks`** (id `19907924`). Before it
-  existed every check here was advisory, on the branch that publishes. **Seven** required contexts,
-  each pinned to **`integration_id: 15368`** so a same-named status from another actor cannot satisfy
-  it. **Do not quote that count without re-deriving it** (`gh api repos/cosyte/cli/rulesets/19907924`):
-  it was `6` until `ci / prepublish` was added, and it moves when the called workflow does.
+- `main` is protected by the repository ruleset **`ci-required-checks`** (id `19907924`); before it
+  existed every check here was advisory, on the branch that publishes. Every required context is
+  pinned to **`integration_id: 15368`** so a same-named status from another actor cannot satisfy it.
+  **Never quote the context count without re-deriving it**
+  (`gh api repos/cosyte/cli/rulesets/19907924`): it moves when the called workflow does.
 - **Read a required context off a REAL check run, never off a workflow's `name:` field.** Requiring a
-  context nothing emits does not fail a PR: it leaves it **pending and unmergeable forever**, with no
-  error and no warning.
-- **▶ A `ci / *` CONTEXT CAN APPEAR HERE WITH NO COMMIT IN THIS REPO, AND IT ARRIVES NOT REQUIRED.**
-  `ci.yml` calls `cosyte/.github/.github/workflows/ci.yml@main` unpinned, so a job added upstream
-  starts emitting a context here that the ruleset does not name: **a red X that does not block a
-  merge**, which is the failure this repo's whole protection claim exists to prevent. `ci / prepublish`
-  arrived that way on 2026-08-05 and was unrequired until measured and added. **Census `ci / *` against
-  a real check run whenever `.github` moves**, then require it or write down why not, in `ci.yml`'s
-  banner.
-- **`no-internal-refs` and `no-emdash` are bare JOB IDS**, not `<workflow> / <job>`: they are ordinary
-  jobs in this repo's own workflows. **Renaming the job silently detaches the required check.** Rename
-  the job and the ruleset together, or neither.
-- **A required job gates all of its steps.** Splitting a step out of `ci / verify` into its own job
-  silently un-requires it. There is a banner on `ci.yml` where someone would trip it.
-- **Never add a `paths:` filter to `ci.yml`, `codeql.yml`, `no-internal-refs.yml` or
-  `no-emdash.yml`.** None carries one, which is what stops a PR skipping a required check.
-- **Confirm a ruleset write with the `PUT` itself, never a `GET`.** An Organization-sourced ruleset
-  returns `200` to a `GET` and `404` to an identical-payload `PUT`. `19907924` is
-  `source_type: Repository` and is the only ruleset this repo has.
+  context nothing emits does not fail a PR: it leaves it **pending and unmergeable forever**.
+- **▶ A `ci / *` CONTEXT CAN APPEAR HERE WITH NO COMMIT IN THIS REPO, AND IT ARRIVES NOT REQUIRED**
+  (`ci.yml` calls the reusable workflow unpinned), so an upstream job shows **a red X that does not
+  block a merge**. **Census `ci / *` against a real check run whenever `.github` moves**, then require
+  it or write down why not.
+- **`no-internal-refs` and `no-emdash` are bare JOB IDS**, not `<workflow> / <job>`. **Renaming the job
+  silently detaches the required check**: rename the job and the ruleset together, or neither.
+- **A required job gates all of its steps**, so splitting a step out of `ci / verify` into its own job
+  silently un-requires it. **Never add a `paths:` filter** to `ci.yml`, `codeql.yml`,
+  `no-internal-refs.yml` or `no-emdash.yml`: none carries one, which is what stops a PR skipping a
+  required check.
+- **Confirm a ruleset write with the `PUT` itself, never a `GET`**: an Organization-sourced ruleset
+  answers `200` to a `GET` and `404` to an identical-payload `PUT`.
 - **Never require `scorecard / analysis`, `fuzz`, or `release / release`**: none runs on
-  `pull_request`, so each would strand every PR pending forever. **Never require the Advanced Security
+  `pull_request`, so each strands every PR pending forever. **Never require the Advanced Security
   `CodeQL` check** (app id `57789`): it reports **alert state**, not whether the analysis ran.
 - **▶ Scope of the claim: a ruleset makes a red check BLOCK a merge. It does not make the check
-  correct, and nothing inside this repository can observe its own ruleset.** Delete it and this suite
-  stays green while this section keeps asserting protection. Verify the only way that works:
-  `gh api repos/cosyte/cli/rulesets`.
-- Recorded **unproven** rather than fine: no fork PR has ever run here, so neither the
-  first-time-contributor gate nor whether `codeql / analyze` can report on a fork token has been
-  observed.
+  correct, and nothing inside this repository can observe its own ruleset.** Verify the only way that
+  works: `gh api repos/cosyte/cli/rulesets`. Recorded **unproven** rather than fine: no fork PR has
+  ever run here, so neither the first-time-contributor gate nor whether `codeql / analyze` can report
+  on a fork token has been observed.
 
 ## Engineering Guardrails
 
