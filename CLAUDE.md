@@ -13,11 +13,12 @@
 > it rides `ci / verify` and `prepublishOnly`): the narrative file must be tracked, every section must
 > have a body (a container's is its subsections), and every pointer at it **in a file it opened** must
 > resolve. **A NUL-bearing file is skipped: a disclosed miss, not a pass**; the tell is the skipped
-> count. It matches the **QUALIFIED spelling only**; a **bare** backticked anchor in either half
-> **REFUSES the run**: the measurement that scoped the matcher has gone stale. **Never port a
-> sibling's matcher without re-counting both spellings here.** It asserts **this repo's promise, not a
-> universal**, and **refuses (exit 2) rather than reporting green over a corpus it never opened**.
-> **Never clear a red by deleting the pointer or the heading.** Why, and every miss:
+> count, and **only the BASENAME is compared, so moving the file to another directory keeps this
+> green while every link 404s**. It matches the **QUALIFIED spelling only**; a **bare** backticked
+> anchor anywhere **REFUSES the run**: the measurement that scoped the matcher has gone stale.
+> **Never port a sibling's matcher without re-counting both spellings here.** It asserts **this
+> repo's promise, not a universal**, and **refuses (exit 2) rather than reporting green over a
+> corpus it never opened**. **Never clear a red by deleting the pointer or the heading.** Why:
 > [agent-notes § The gate](documentation/agent-notes.md#the-two-file-contract-gate).
 
 ## Project
@@ -342,16 +343,14 @@ return 0`, so no `--profile`, `--ignore-rules` or config setting reaches that ea
 - **`--profile node16` is load-bearing and is forwarded, never reinterpreted.** Without it
   `@cosyte/cli/mcp` fails `node10` resolution.
 - **Only a TOTAL loss of declarations is the false green; a PARTIAL one `attw` catches itself**, so
-  the preflight must report both outcomes and **must not assert the exit 0**. Six packed-but-undeclared
-  declarations decide which silence you get, and the obvious two-line version of this is false: a
-  refuter falsified a first draft of it in one run. **Re-measure before you shorten it.**
+  the preflight must report both outcomes and **must not assert the exit 0**. The obvious two-line
+  version of this is false: a refuter falsified a draft in one run. **Re-measure before shortening.**
 - **The post-check reads a string, so what would hide that string is refused**: `--quiet`, `-q`,
   `--format`, `-f`, `--config-path`, and a `.attw.json` setting `quiet` or `format`. **Say "exact argv
-  token" of the ARGV refusal, never "wholesale"** (the stronger wording was live and was refuted); the
-  `.attw.json` refusal **is** wholesale, and the two messages differ on purpose.
+  token" of the ARGV refusal, never "wholesale"** (the stronger wording was refuted); the `.attw.json`
+  refusal **is** wholesale, and the two messages differ on purpose.
 - **Two holes are disclosed and deliberately left open**: clustered short forms `-fjson` / `-Pf json`,
-  and a declared path not starting with `.`. Left open on purpose; the reasoning is in the linked
-  section.
+  and a declared path not starting with `.`. The reasoning is in the linked section.
 - `test/scripts/attw-gate.test.ts` pins both nets, the upstream exit 0 itself, a negative control, and
   that a real `attw` failure still fails with `attw`'s own status.
 

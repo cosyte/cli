@@ -19,7 +19,7 @@
  *      and it is what reds if a future edit breaks an anchor on either side of the pair.
  *
  * WHAT IS DELIBERATELY NOT PROVED HERE: that any sibling repo satisfies the same contract.
- * Measured 2026-08-06, seven cosyte repos carry no `documentation/agent-notes.md` at all, so a
+ * A group of cosyte repos carry no `documentation/agent-notes.md` at all, so a
  * universal assertion would be an overclaim and the honest outcome for those repos is a
  * written exemption. The script's banner says so; this file does not restate the argument, it
  * declines to test the universal.
@@ -179,7 +179,7 @@ describe("check-agent-notes: the contract it asserts", { timeout: SLOW_MS }, () 
   });
 
   it("does NOT red a container heading, whose body is its subsections", () => {
-    // `## Group` immediately followed by `### Sub` has no prose of its own, but `#group`
+    // `## Group` immediately followed by `### Sub` has no prose of its own, but the anchor `group`
     // resolves on GitHub and the reader lands on real content, so reporting it is a red
     // against a link that works. This shape is live in this repository's narrative file.
     const dir = repo({
@@ -256,7 +256,7 @@ describe("check-agent-notes: the contract it asserts", { timeout: SLOW_MS }, () 
  */
 describe("check-agent-notes: the bare census", { timeout: SLOW_MS }, () => {
   it("does NOT refuse on a digits-only reference, and reports it on the OK line", () => {
-    // GitHub renders `#36` as a pull-request reference, and this repository's narrative file
+    // GitHub renders a hash followed by digits as a pull-request reference, and the narrative file
     // uses it that way. Refusing on these would red a healthy tree.
     const dir = repo({
       "CLAUDE.md": `# cursor\n\nWhy: ${ptr("the-section")}\n\nSee ${bare("36")} and ${bare("27")}.\n`,
@@ -264,7 +264,7 @@ describe("check-agent-notes: the bare census", { timeout: SLOW_MS }, () => {
     });
     const r = runGate(["--root", dir]);
     expect(r.code).toBe(0);
-    expect(r.stdout).toContain("2 bare-shaped span(s) in the pair");
+    expect(r.stdout).toContain("2 bare-shaped span(s)");
   });
 
   it("REFUSES on a genuine bare pointer, even one whose anchor RESOLVES", () => {
@@ -293,20 +293,48 @@ describe("check-agent-notes: the bare census", { timeout: SLOW_MS }, () => {
     expect(r.stderr).toContain("suspected BARE pointer");
   });
 
-  it("does NOT census a bare-shaped span OUTSIDE the pair, which is why the scope is the pair", () => {
-    // Measured on this tree: `CHANGELOG.md` carries backticked pull-request references,
-    // `tsup.config.ts` carries a quoted shebang, and `scripts/phi-allow-list.txt` carries a
-    // quoted comment marker. Widening the census to the whole corpus turns those into
-    // refusals, so a bare-shaped span elsewhere is deliberately not read as a pointer.
+  it("censuses a bare span in a THIRD file too, not only in the pair", () => {
+    // THE HOLE A PAIR-SCOPED CENSUS LEAVES, AND WHY THE SCOPE IS THE WHOLE CORPUS. A bare
+    // pointer written into any file that is neither half of the pair would be covered by
+    // neither the matcher nor a pair-scoped census, which is exactly the uncovered corner the
+    // census exists to remove. A first draft scoped it to the pair and justified that with
+    // files on this tree that supposedly could not survive a widening; running it tree-wide
+    // proved none of them can refuse, and that the only files that could were the gate's own.
     const dir = repo({
       "CLAUDE.md": `# cursor\n\nWhy: ${ptr("the-section")}\n`,
       "documentation/agent-notes.md": NOTES,
-      "README.md": `A CSS id is written ${bare("main")} and is not a pointer.\n`,
+      "README.md": `See ${bare("some-anchor")}.\n`,
+    });
+    const r = runGate(["--root", dir]);
+    expect(r.code).toBe(2);
+    expect(r.stderr).toContain("suspected BARE pointer");
+    expect(r.stderr).toContain("README.md");
+  });
+
+  it("still treats a digits-only span in a third file as a reference, not a refusal", () => {
+    // The other direction of the widening. `CHANGELOG.md` on this tree carries backticked
+    // pull-request references, and refusing on those would red a healthy repository.
+    const dir = repo({
+      "CLAUDE.md": `# cursor\n\nWhy: ${ptr("the-section")}\n`,
+      "documentation/agent-notes.md": NOTES,
+      "CHANGELOG.md": `Fixed in ${bare("34")} and ${bare("27")}.\n`,
     });
     const r = runGate(["--root", dir]);
     expect(r.code).toBe(0);
-    // The census counted nothing outside the pair, so the reported total stays zero.
-    expect(r.stdout).toContain("0 bare-shaped span(s) in the pair");
+    expect(r.stdout).toContain("2 bare-shaped span(s)");
+  });
+
+  it("does not match a bare-shaped span that is not anchor-shaped, so a shebang is inert", () => {
+    // Measured on this tree: a quoted shebang, a quoted `# synthetic` comment and a lone `#`
+    // are all outside the anchor class, so they never reach the reference/pointer decision.
+    const dir = repo({
+      "CLAUDE.md": `# cursor\n\nWhy: ${ptr("the-section")}\n`,
+      "documentation/agent-notes.md": NOTES,
+      "tsup.config.ts": "// a shebang is written `#!/usr/bin/env node` and a marker `# on`.\n",
+    });
+    const r = runGate(["--root", dir]);
+    expect(r.code).toBe(0);
+    expect(r.stdout).toContain("0 bare-shaped span(s)");
   });
 });
 
@@ -536,7 +564,7 @@ describe(
 
     it("re-suffixes a slug that collides with an already-generated one", () => {
       // github-slugger loops rather than counting: `Same`, `Same`, `Same-1` yields
-      // `same`, `same-1`, `same-1-1`. A counter yields `same-1` twice and reds `#same-1-1`.
+      // `same`, `same-1`, `same-1-1`. A counter yields `same-1` twice and reds the last of those.
       const dir = repo({
         "CLAUDE.md": `# cursor\n\nWhy: ${ptr("same-1-1")}\n`,
         "documentation/agent-notes.md":
@@ -663,7 +691,7 @@ describe(
       });
       const r = runGate(["--root", dir]);
       expect(r.code).toBe(1);
-      // Matched only up to the `%`, so it is reported as `#the`, not as `#the section`.
+      // Matched only up to the `%`, so the reported anchor is `the`, not `the section`.
       expect(r.stderr).toContain("pointer #the does not resolve");
     });
 
@@ -722,6 +750,60 @@ describe(
       expect(r.stderr).toContain("loneCr.txt");
       expect(r.stderr).toContain("#not-a-section does not resolve");
     });
+
+    it("(vi) does NOT mint an anchor from an ATX line inside a code fence", () => {
+      // (vi) was marked [PINNED] while this block held no case for it, which broke this
+      // block's own stated invariant even though the shape was exercised further up the file.
+      const dir = repo({
+        "CLAUDE.md": `# cursor\n\nWhy: ${ptr("fenced")}\n`,
+        "documentation/agent-notes.md": "# notes\n\nP.\n\n## Real\n\n```sh\n## Fenced\n```\n",
+      });
+      const r = runGate(["--root", dir]);
+      expect(r.code).toBe(1);
+      expect(r.stderr).toContain("#fenced does not resolve");
+    });
+
+    it("(vi-b) DOES mint a phantom anchor from a heading inside an HTML comment", () => {
+      // THE MISS EVERY SIBLING COPY DISCLOSES AND THIS ONE FIRST FORGOT TO. `<!--` and `-->`
+      // are not tracked as a block, so a commented-out heading is counted here and renders no
+      // anchor on GitHub: a pointer at it passes green and resolves to nothing. Asserted GREEN
+      // on purpose, because it is a disclosed miss rather than a promise, and asserting it is
+      // what makes closing it later a deliberate act instead of a surprise.
+      const dir = repo({
+        "CLAUDE.md": `# cursor\n\nWhy: ${ptr("commented-out")}\n`,
+        "documentation/agent-notes.md":
+          "# notes\n\nP.\n\n## Real\n\nBody.\n\n<!--\n## Commented out\n-->\n",
+      });
+      const r = runGate(["--root", dir]);
+      expect(r.code).toBe(0);
+    });
+
+    it("(vii) transcribes the slugger rather than importing it, and reds if that drifts", () => {
+      // (vii) was marked [PINNED] with no case in this block. The transcription is exercised
+      // by `SLUG_CASES` inside the gate's own self-test, so the direction it fails in is a
+      // REFUSAL before any tree is read: proved here by the fact that every other case in this
+      // file gets a verdict at all, and directly by a heading whose slug only a faithful
+      // transcription produces (no trim, and an underscore kept).
+      const dir = repo({
+        "CLAUDE.md": `# cursor\n\nWhy: ${ptr("-cli_not_implemented")}\n`,
+        "documentation/agent-notes.md": "# notes\n\nP.\n\n## ▶ CLI_NOT_IMPLEMENTED\n\nBody.\n",
+      });
+      expect(runGate(["--root", dir]).code).toBe(0);
+    });
+
+    it("(xi) compares the narrative file's BASENAME only, so a move to another directory passes", () => {
+      // MEASURED, AND IT IS WHY THE OPENING PROMISE NO LONGER SAYS "a rename". The file moved
+      // out of `documentation/` while every pointer keeps the old path prefix: every rendered
+      // link 404s on GitHub and this gate still exits 0. Asserted green as a disclosed miss.
+      const dir = repo({
+        "CLAUDE.md": `# cursor\n\nWhy: ${ptr("the-section")}\n`,
+        "docs/agent-notes.md": NOTES,
+      });
+      const r = runGate(["--root", dir]);
+      expect(r.code).toBe(0);
+      // The gate reports the path it actually found, which is the only tell a reader gets.
+      expect(r.stdout).toContain("docs/agent-notes.md");
+    });
   },
 );
 
@@ -760,12 +842,13 @@ describe("check-agent-notes: against this repo", { timeout: SLOW_MS }, () => {
     expect(Number(m?.[2])).toBeGreaterThan(0);
   });
 
-  it("reports the bare census on this tree, and every span on it is a digits-only reference", () => {
+  it("reports the bare census over this whole tree, every span a digits-only reference", () => {
     // The census is what keeps the single-form scope honest, so its result is asserted rather
-    // than merely produced. A non-digits bare span would have refused the run above.
+    // than merely produced. A non-digits bare span ANYWHERE on this tree, this file and the
+    // gate's own source included, would have refused the run above.
     const r = runGate([]);
     expect(r.code).toBe(0);
-    expect(r.stdout).toMatch(/\d+ bare-shaped span\(s\) in the pair/);
+    expect(r.stdout).toMatch(/\d+ bare-shaped span\(s\) across every opened file/);
     expect(r.stdout).toContain("none a pointer");
   });
 });

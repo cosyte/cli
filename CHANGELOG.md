@@ -33,10 +33,23 @@ still do. Each entry was assigned to the release whose tag first contains it, re
     prose as a promise; the OK line prints all of them on every run, because it measures rather than
     remembers.
   - **A bare-form census keeps that scope honest.** Matching one spelling is safe only while the other
-    stays absent, so in the pair every backticked `#<anchor>` span is enumerated: a digits-only one is
-    a pull-request reference and is counted and reported, and **any other one refuses the run at exit
-    2** with an instruction to re-derive the matcher. Refusal rather than a finding, because the tree
-    has not necessarily broken but the evidence the scope rested on has.
+    stays absent, so in **every opened file** each backticked `#<anchor>` span is enumerated: a
+    digits-only one is a pull-request reference and is counted and reported, and **any other one
+    refuses the run at exit 2** with an instruction to re-derive the matcher. Refusal rather than a
+    finding, because the tree has not necessarily broken but the evidence the scope rested on has.
+    A first draft scoped the census to the pair and justified that with tree files it claimed a
+    widening would red; **running it tree-wide proved none of them can, and that the only files that
+    could were the gate's own source and test**, which wrote bare spans out literally. That made the
+    narrow scope a self-exemption for the very files where a broken pointer would hide, so the samples
+    are now assembled from parts and the census covers the corpus. It closes the hole a pair-scoped
+    census leaves: a bare pointer in a third file was covered by neither the matcher nor the census.
+  - **Three claims were withdrawn after review rather than shipped.** The opening promise said the
+    gate catches "a rename"; it does not, because both halves match on **basename** and the directory
+    is never compared, so moving the file while pointers keep their prefix exits 0 with every rendered
+    link broken. That is now a narrowed promise and a disclosed miss rather than a bigger guard. A
+    **heading inside an HTML comment** mints a phantom anchor, a miss every sibling copy discloses and
+    this one had omitted; it is now disclosed and pinned. And a written-down count of sibling repos
+    lacking the file was already wrong, so **the number was dropped in favour of the class**.
   - **It refuses rather than reporting green over a corpus it never opened.** There is no declared
     scan root to be wrong about: the corpus is `git ls-files`, reconciled as **sets of paths**, and
     zero pointers, zero tracked files, an unmerged path, a symlink, a non-regular file or two files

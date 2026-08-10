@@ -66,19 +66,33 @@ on the next commit with nobody touching it.
 
 Matching one form is safe exactly as long as the other stays absent, and an assumption nothing
 re-checks is how a matcher silently stops covering its corpus. So the absence is observed on every
-run. In the **pair only**, every backticked span of the shape `#<anchor-chars>` is enumerated. A span
-whose anchor is **all digits** is a pull-request reference, not a pointer: it is counted and reported
-on the OK line rather than dropped in silence. **Any other bare span refuses the run at exit 2.**
+run. In **every opened file**, every backticked span of the shape `#<anchor-chars>` is enumerated. A
+span whose anchor is **all digits** is a pull-request reference, not a pointer: it is counted and
+reported on the OK line rather than dropped in silence. **Any other bare span refuses the run at exit
+2.**
 
 That is a refusal rather than a violation on purpose. The tree has not necessarily broken, but the
 evidence the matcher's scope was derived from has, so "all resolving" would be a claim about a corpus
 the gate no longer covers. **The remedy is to re-derive the matcher, never to delete the span.**
 
-**The census is scoped to the pair, and that is measured rather than tidy.** Outside the pair the
-bare shape is genuinely ambiguous on this tree: `CHANGELOG.md` carries backticked pull-request
-references, `tsup.config.ts` and `docs-content/` carry quoted shebangs and shell comments, and
-`scripts/phi-allow-list.txt` carries a quoted comment marker. Widening the census to the whole corpus
-turns every one of those into a refusal.
+**The route to the whole-corpus scope is worth recording, because the first draft got it wrong and a
+refuter caught it.** That draft scoped the census to the pair and justified it by claiming the bare
+shape is ambiguous elsewhere on this tree, naming `CHANGELOG.md`'s pull-request references, quoted
+shebangs in `tsup.config.ts` and `docs-content/`, and a quoted comment marker in
+`scripts/phi-allow-list.txt`. **That justification was false**, and running the census tree-wide is
+what proved it: not one of those files can refuse. A shebang, a `# synthetic` marker and a lone `#`
+do not match the pattern at all (a space, a `!`, a `/` and an empty run are all outside the anchor
+class), and `CHANGELOG.md`'s spans are digits-only, which the census classifies as references by
+design.
+
+**The only files that could refuse were the gate's own source and its own test**, because both wrote
+bare spans out literally while illustrating the rule. So the narrow scope was not protecting innocent
+content: it was a **self-exemption for the gate's own files**, which is the one place a genuinely
+broken pointer would hide, and this gate's own `CONTRACT_BASENAME` note already forbids exactly that.
+**The fix was the fixture and not the exemption.** Every bare sample in both files is now assembled
+from parts, as the qualified samples always were, and the census reaches every opened file. That also
+closes the real hole a pair-scoped census leaves: **a bare pointer written into a third file would
+have been covered by neither the matcher nor the census.**
 
 ### What was re-derived here rather than inherited
 
@@ -141,6 +155,28 @@ believed:
 
 The last two are the ones that matter most: they are the `terminology` scenario, and a gate that went
 green on either of them would be worthless while looking healthy.
+
+### Three claims this gate made and had to withdraw
+
+All three were written into the first draft, all three were refuted, and each is recorded because the
+wrong version is the easy one to write again.
+
+- **"A rename" was in the opening promise, and the gate does not catch one.** Both halves match on
+  **basename** (which is deliberate: it lets a path-qualified, a `./`-relative and a bare pointer all
+  reach the same target), so the **directory is never compared**. Measured: moving the narrative file
+  to `docs/agent-notes.md` while the pointers keep their old prefix exits **0**, "all resolving",
+  while every rendered link 404s on GitHub. **The promise was narrowed and the miss disclosed; the
+  guard was not grown.** It now reads "stops being tracked at all".
+- **A heading inside an HTML comment mints a phantom anchor**, and the first draft's disclosed-miss
+  list omitted it. `<!--` and `-->` are not tracked as a block, so a commented-out `## Section` is
+  counted here and renders no anchor on GitHub: a pointer at it passes green and resolves to nothing.
+  **Every sibling copy of this gate discloses it; this one forgot, and that omission was the defect.**
+  Now disclosed and pinned.
+- **A count of sibling repos was written down and was already wrong.** The draft said seven repos
+  carry no `agent-notes.md`; it was eight, and the set moves whenever a submodule is added. The rule
+  is **keep the list or drop the number**, so the number was dropped, including from the stderr a
+  human reads. The same file, forty lines higher, already warned that a figure written into a comment
+  goes stale with nobody touching it.
 
 ### What no mechanical check here can see
 

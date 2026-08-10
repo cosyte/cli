@@ -10,11 +10,21 @@
  * followed by an anchor into the narrative file, and if that anchor does not exist the reader
  * gets an imperative with no grounding. Three things can break silently and none had a check:
  *
- *   1. the narrative file stops existing (a rename, a bad merge, a `git rm`);
+ *   1. the narrative file stops being tracked at all (a bad merge, a `git rm`);
  *   2. a section is emptied down to its heading, so a pointer resolves to nothing; and
  *   3. an anchor is edited on one side of the pair and not the other, so a pointer dangles.
  *
  * This gate checks those three, on this tree, and nothing else.
+ *
+ * ▶ SAY "STOPS BEING TRACKED", NEVER "A RENAME". An earlier draft of the list above opened
+ * "the narrative file stops existing (A RENAME, a bad merge, a `git rm`)" and that was an
+ * OVERCLAIM, measured: a tree that moves the file to `docs/agent-notes.md` while `CLAUDE.md`
+ * still points at `documentation/agent-notes.md#...` exits 0, "all resolving", even though
+ * every one of those links now 404s on GitHub. Both halves of the gate match on BASENAME
+ * (`contractPaths` and `pointerPattern`), which is deliberate and is what lets a qualified, a
+ * `./`-relative and a bare-path pointer all reach the same target, but the cost is that the
+ * DIRECTORY is never compared. That is disclosed as miss (xi) rather than closed, because
+ * closing it means a path-agreement check, and the promise is the thing that was wrong here.
  *
  * ---------------------------------------------------------------------------
  * IT IS NAMED FOR WHAT IT CHECKS AND IS DELIBERATELY NOT A UNIVERSAL, AND THAT IS THE MOST
@@ -22,10 +32,11 @@
  *
  * The two-file split was applied across the cosyte tree, so the tempting framing is "every
  * repo has a `CLAUDE.md` and a `documentation/agent-notes.md`, and this gate enforces the
- * contract". MEASURED 2026-08-06, across the umbrella's own checkout: SEVEN repos have NO
- * `documentation/agent-notes.md` at all. So the ecosystem-wide contract is either not
- * universal or is violated in seven places, and a gate written as though it were universal
- * would be asserting something seven repos disprove. That is an OVERCLAIM, and an
+ * contract". IT IS NOT. Re-measured across the umbrella's own checkout, a whole GROUP of
+ * cosyte repos carry NO `documentation/agent-notes.md` at all, `config` and `hl7` among them.
+ * So the ecosystem-wide contract is either not universal or is violated in every one of those
+ * places, and a gate written as though it were universal would be asserting something they
+ * disprove. That is an OVERCLAIM, and an
  * overclaiming guard is worse than a narrow one: it invites a reader to trust a promise the
  * tree does not keep, and the first repo that trips it deletes the gate instead of fixing
  * anything. For those repos the honest outcome is a WRITTEN EXEMPTION, not an invented file.
@@ -55,7 +66,7 @@
  * MEASURED HERE, ON THIS TREE, BEFORE THIS MATCHER WAS WRITTEN: the qualified form is the
  * only live one. Every pointer at the narrative file in this repository is written
  * `documentation/agent-notes.md#<anchor>`, and there is no bare pointer anywhere. The
- * bare-shaped spans that DO exist in the pair are pull-request references (`#` followed by
+ * bare-shaped spans that DO exist anywhere on it are pull-request references (`#` followed by
  * digits, which is what GitHub renders them as) plus spans that are not anchor-shaped at all,
  * such as a quoted shebang and a quoted heading. So a bare MATCHER here would have a
  * denominator of zero, and a per-form refusal keyed on it would refuse on a healthy tree
@@ -73,8 +84,10 @@
  * an assumption nothing re-checks is how a matcher silently stops covering its corpus. So the
  * absence is not assumed, it is OBSERVED on every run:
  *
- *   * In the PAIR ONLY (`CLAUDE.md` and the narrative file), every backticked span of the
- *     shape `#<anchor-chars>` is enumerated.
+ *   * In EVERY OPENED FILE, every backticked span of the shape `#<anchor-chars>` is
+ *     enumerated. Not the pair alone: a bare pointer written into a third file would be
+ *     covered by neither the matcher nor a pair-scoped census, which is precisely the
+ *     uncovered corner this census exists to remove.
  *   * A span whose anchor is ALL DIGITS is a pull-request or issue reference, not a pointer.
  *     It is COUNTED AND REPORTED on the OK line rather than dropped in silence, because a
  *     matcher that quietly declines to look at some of its own hits is the defect this whole
@@ -87,11 +100,23 @@
  *     about a corpus this gate no longer covers. The fix is to re-derive the matcher against
  *     the new spelling, exactly as this one was derived, NOT to delete the span.
  *
- * THE CENSUS IS SCOPED TO THE PAIR, AND THAT IS MEASURED RATHER THAN TIDY. Outside the pair
- * the bare shape is genuinely ambiguous rather than merely noisy on THIS tree: `CHANGELOG.md`
- * carries backticked pull-request references, `tsup.config.ts` and `docs-content/` carry
- * quoted shebangs and shell comments, and `scripts/phi-allow-list.txt` carries a quoted
- * comment marker. Widening the census to the whole corpus turns those into refusals.
+ * THE CENSUS COVERS THE WHOLE CORPUS, AND THE ROUTE TO THAT IS WORTH RECORDING BECAUSE A
+ * FIRST DRAFT GOT IT WRONG. That draft scoped the census to the pair and justified it by
+ * claiming the bare shape is ambiguous elsewhere on this tree, naming `CHANGELOG.md`'s
+ * pull-request references, quoted shebangs in `tsup.config.ts` and `docs-content/`, and a
+ * quoted comment marker in `scripts/phi-allow-list.txt`. THAT JUSTIFICATION WAS FALSE, and
+ * running the census tree-wide is what proved it: not one of those files can refuse. A
+ * shebang, `# synthetic` and a lone `#` do not match `barePattern` at all (a space, a `!`, a
+ * `/` and an empty run are all outside `ANCHOR_CHARS`), and `CHANGELOG.md`'s spans are
+ * digits-only, which the census classifies as references by design.
+ *
+ * The only files that could refuse were THIS ONE AND ITS TEST, because both wrote bare spans
+ * out literally while illustrating the rule. So the narrow scope was not protecting innocent
+ * content; it was a SELF-EXEMPTION FOR THE GATE'S OWN SOURCE, which is the one place a
+ * genuinely broken pointer would hide, and the rule against that is already written below at
+ * `CONTRACT_BASENAME`. The fix was the fixture and not the exemption: every bare sample in
+ * both files is now assembled from parts, exactly as the qualified samples always were, and
+ * the census reaches every opened file.
  *
  * ---------------------------------------------------------------------------
  * EXISTENCE IS NOT OBSERVATION, WHICH IS WHY THE OK LINE RECONCILES.
@@ -157,7 +182,7 @@
  *        fragment is ITSELF a valid anchor and the tail is garbage, which passes green.
  *        Closing that needs a markdown renderer, not a bigger regex.
  *  (ii)  [PINNED] A PERCENT-ENCODED OR HTML-ENTITY ANCHOR IS NOT DECODED. `#a%20b` matches
- *        only up to the `%`, so it is checked as `#a` and reds. No such pointer exists here.
+ *        only up to the `%`, so it is checked as the anchor `a` alone and reds. None exists here.
  *  (iii) [PINNED] A POINTER AT ANY OTHER FILE'S ANCHOR IS OUT OF SCOPE, including
  *        `CLAUDE.md#...`. This gate is about the narrative file. A general markdown link
  *        checker is a different tool with a different failure surface, and writing half of one
@@ -194,7 +219,7 @@
  *  (vii) [PINNED] THE SLUGGER IS A TRANSCRIPTION OF github-slugger, NOT THE MODULE, so that
  *        this gate adds no runtime dependency to a package whose dependency count is capped.
  *        It was verified against github-slugger@2.0.0 by running the real module over THIS
- *        tree's twenty real headings plus the shapes below, not by reading a sibling's table.
+ *        tree's every real heading plus the shapes below, not by reading a sibling's table.
  *        `SLUG_CASES` carries the rows that would diverge from the obvious implementation.
  *        ONE THING THE MODULE CANNOT BE FED DIRECTLY, AND GETTING THIS BACKWARDS IS A FALSE
  *        RED: github-slugger slugs the RENDERED text of a heading, so a heading carrying a
@@ -211,6 +236,20 @@
  *  (ix)  [SCOPE] IT DOES NOT CHECK ANY BYTE BUDGET. `CLAUDE.md`'s ceiling is enforced by the
  *        meta-repo's `.claude/hooks/doc-budget.mjs`, which holds the budget table; a script
  *        inside this package cannot see it and must not keep a second copy of a number.
+ *  (vi-b)[PINNED] AN ATX HEADING INSIDE AN HTML COMMENT IS COUNTED AS A HEADING HERE AND
+ *        RENDERS NO ANCHOR ON GITHUB. `<!--` and `-->` are not tracked as a block, so a
+ *        commented-out `## Section` mints a phantom anchor and a pointer at it passes green
+ *        while resolving to nothing. This is the SAME false-green direction as (vi) and is the
+ *        one the fence tracker does close, which is exactly why leaving it undisclosed was the
+ *        defect: it is disclosed rather than guarded in EVERY copy of this gate across the
+ *        cosyte repos, and this file's first draft was the copy that forgot to say so.
+ *        Reproduced end to end before it was written down.
+ *  (xi)  [PINNED] THE NARRATIVE FILE'S DIRECTORY IS NEVER COMPARED, ONLY ITS BASENAME. Moving
+ *        it to another directory while the pointers keep their old path prefix exits 0 with
+ *        every rendered link broken. See the note under the opening list for the measurement
+ *        and for why the basename match is deliberate. THE PROMISE WAS NARROWED RATHER THAN
+ *        THE GUARD GROWN, and the miss is asserted green so that closing it later is a
+ *        deliberate act.
  *  (x)   [SCOPE] IT DOES NOT NOTICE A TRAP THAT REACHED THE ARCHIVE WITH NO IMPERATIVE
  *        FOLLOWING IT INTO `CLAUDE.md`. Heading, anchor and body checks all verify prose
  *        MOVED. The exposed class is a trap phrased as a deliberate omission, which carries no
@@ -341,7 +380,7 @@ function slugify(text: string): string {
  * input and the difference is a false red: headings `Same`, `Same`, `Same-1` yield `same`,
  * `same-1`, `same-1-1` upstream, because the third heading's OWN slug collides with the second
  * heading's GENERATED one and the suffix is applied again. A counter yields `same-1` twice, so
- * a pointer at `#same-1-1` reds against a link GitHub resolves. Measured against
+ * a pointer at the anchor `same-1-1` reds against a link GitHub resolves. Measured against
  * github-slugger@2.0.0 and pinned by a self-test.
  */
 function makeSlugger(): (text: string) => string {
@@ -374,7 +413,8 @@ function pointerPattern(): RegExp {
 /**
  * The bare shape: an inline code span holding nothing but `#` and an anchor run. This is NOT a
  * matcher for a form this gate checks. It is the CENSUS that keeps "the bare form is absent
- * here" a measurement instead of an assumption, and it runs in the pair only. See the header.
+ * here" a measurement instead of an assumption, and it runs over every opened file. See the
+ * header for why it is not scoped to the pair, and for the false justification that was.
  */
 function barePattern(): RegExp {
   return new RegExp(`\`#(${ANCHOR_CHARS}+)\``, "gu");
@@ -390,7 +430,7 @@ const DIGITS_ONLY = /^\p{Nd}+$/u;
 const FENCE_RE = /^ {0,3}(`{3,}|~{3,})/;
 /**
  * ATX. Up to three leading spaces (CommonMark), one to six hashes, and then EITHER whitespace
- * or end of line: `#hashtag` is not a heading. Trailing closing hashes are stripped.
+ * or end of line: a hash run with no space after it is not a heading. Trailing hashes are stripped.
  *
  * A NAIVE `/^#{1,6} /` HAS TWO MEASURED BYPASSES, both handled here and both asserted in the
  * test file: a single leading space, and a setext underline. A missed heading is a missing
@@ -506,7 +546,7 @@ function extractHeadings(lines: readonly string[]): Heading[] {
  *
  * A CONTAINER IS NOT AN EMPTIED SECTION, AND CONFLATING THEM IS A FALSE RED. A heading
  * immediately followed by a DEEPER one (`## Group` then `### Sub` with no prose between) is a
- * container whose body IS its subsections. A pointer at `#group` resolves on GitHub and the
+ * container whose body IS its subsections. A pointer at the anchor `group` resolves on GitHub and the
  * reader lands on real content, so reporting it is a red against a link that works. That shape
  * is live in this repository's narrative file, where a top-level heading is followed straight
  * away by its first subsection.
@@ -712,7 +752,14 @@ function selfTest(): void {
 
   // THE CENSUS MUST SEPARATE A REFERENCE FROM A SUSPECTED POINTER, or it either refuses on
   // every pull-request number in the narrative file or never fires at all.
-  const bare = [...["`#36` and `#a-real-anchor`"].join("\n").matchAll(barePattern())].map(
+  //
+  // ASSEMBLED FROM PARTS, EXACTLY AS THE QUALIFIED SAMPLE ABOVE IS, AND FOR THE SAME REASON.
+  // The census now runs over the WHOLE corpus, which includes this file, so a literally
+  // written bare span here would be a suspected bare pointer in this repository's own source
+  // and would refuse every run. Writing the samples out was what forced the earlier, narrower
+  // scope; assembling them is what let the scope widen.
+  const span = (anchor: string): string => `\`${"#"}${anchor}\``;
+  const bare = [...`${span("36")} and ${span("a-real-anchor")}`.matchAll(barePattern())].map(
     (m) => m[1] ?? "",
   );
   if (bare.length !== 2 || !DIGITS_ONLY.test(bare[0] ?? "") || DIGITS_ONLY.test(bare[1] ?? "")) {
@@ -1029,9 +1076,11 @@ function main(argv: readonly string[]): number {
     const text = buf.toString("utf8");
     const lines = text.split("\n");
 
-    // THE BARE CENSUS, IN THE PAIR ONLY. It runs before the early return below, because a bare
-    // span is not accompanied by the qualified basename and would otherwise never be seen.
-    if (path === CURSOR_PATH || path === contractPath) {
+    // THE BARE CENSUS, OVER EVERY OPENED FILE. It runs before the early return below, because a
+    // bare span is not accompanied by the qualified basename and would otherwise never be seen.
+    // It is deliberately NOT scoped to the pair: a bare pointer in a third file would then be
+    // covered by neither the matcher nor the census. See the header for the measurement.
+    {
       for (let i = 0; i < lines.length; i += 1) {
         const line = lines[i] ?? "";
         const re = barePattern();
@@ -1123,7 +1172,7 @@ function main(argv: readonly string[]): number {
     }
     process.stderr.write(
       `  This gate asserts THIS repo's contract only. It says nothing about any sibling: ` +
-        `measured 2026-08-06, seven cosyte repos carry no ${CONTRACT_BASENAME} at all, and ` +
+        `several cosyte repos carry no ${CONTRACT_BASENAME} at all, and ` +
         `for those the honest outcome is a written exemption rather than an invented file.\n`,
     );
     return 1;
@@ -1136,7 +1185,8 @@ function main(argv: readonly string[]): number {
       `${String(containerCount)} of them container(s) whose body is their subsections and the ` +
       `rest with a body of their own; ${String(pointerCount)} qualified pointer(s) from ` +
       `${String(pointerFiles.size)} file(s), all resolving; ${String(bareReferences)} ` +
-      `bare-shaped span(s) in the pair, every one a digits-only reference and none a pointer; ` +
+      `bare-shaped span(s) across every opened file, each a digits-only reference and none a ` +
+      `pointer; ` +
       `${String(tracked.length)} tracked path(s) reconciled = ${String(opened)} opened + ` +
       `${String(skippedBinary)} skipped as binary, plus ${String(gitlinks.length)} gitlink(s) ` +
       `with no bytes here)\n`,
