@@ -179,9 +179,21 @@ wrong version is the easy one to write again.
     that list stops at (ix) as well, so the shared ancestor never carried the entry and "this one
     forgot" is backwards. The umbrella's `documentation/conventions.md` asserts the universal ("in
     every copy including `ccda`'s") and the repos do not bear it out. **That is the umbrella's to
-    reconcile, and four sibling repos are owed this disclosure.** Repeating an unmeasured universal is
-    exactly the overclaim this gate's banner refuses, so it cost a second refuter pass to notice that
-    a fix for an overclaim had shipped a new one.
+    reconcile.** Repeating an unmeasured universal is exactly the overclaim this gate's banner
+    refuses, so it cost a second refuter pass to notice that a fix for an overclaim had shipped a new
+    one.
+  - **And a third pass to notice that the fix for THAT one did it again, which is why this bullet is
+    three levels deep.** The corrected text went on to say "four sibling repos are owed this
+    disclosure", counting the four that do not disclose it. **Wrong, and unmeasured in the same way:
+    only three are owed it.** `mllp`, `ccda` and `transform` derive an anchor by SLUGGING a heading,
+    so a commented-out heading mints a phantom anchor there and the disclosure applies. **`docs` does
+    not slug at all**: it resolves pointers against explicit `<a id="..."></a>` anchors, so the
+    failure mode cannot arise there and writing the disclosure into it would name a failure that
+    repo cannot have. That is the trap `mllp`'s own miss (vi) states in one line: _a disclosure that
+    names the wrong failure mode sends the next reader hunting something that cannot happen._ **The
+    lesson is not "count more carefully". It is that a claim about another repository is not
+    checkable from inside this one, so either measure it against that repository's source or do not
+    make it.**
 - **A count of sibling repos was written down and was already wrong.** The draft said seven repos
   carry no `agent-notes.md`; it was eight, and the set moves whenever a submodule is added. The rule
   is **keep the list or drop the number**, so the number was dropped, including from the stderr a

@@ -50,12 +50,16 @@ still do. Each entry was assigned to the release whose tag first contains it, re
     **heading inside an HTML comment** mints a phantom anchor, which the list had omitted; it is now
     disclosed and pinned. And a written-down count of sibling repos lacking the file was already
     wrong, so **the number was dropped in favour of the class**.
-  - **A fourth claim was withdrawn on the next review pass, and it arrived inside the fix for the
-    third.** That fix asserted the HTML-comment miss is disclosed in "every sibling copy"; the
-    phrasing came from a review rather than from the tree, and it is false. Measured: three sibling
-    gates disclose it and four do not, including the one this gate's disclosed-miss block is
-    transcribed from, whose list stops at the same entry. Repeating an unmeasured universal is the
-    overclaim the gate's own banner refuses.
+  - **Two further claims were withdrawn on later review passes, each arriving inside the fix for the
+    one before it.** The first fix asserted the HTML-comment miss is disclosed in "every sibling
+    copy"; that phrasing came from a review rather than from the tree, and it is false. `ncpdp`,
+    `terminology` and `astm` disclose it; `mllp`, `ccda`, `transform` and `docs` do not, and `mllp`
+    is the copy this gate's disclosed-miss block is transcribed from, so the shared ancestor never
+    carried the entry. The second fix then said the four that lack it are all owed it. Also false:
+    `mllp`, `ccda` and `transform` derive anchors by **slugging headings** and are owed it, while
+    `docs` resolves explicit `<a id>` anchors and cannot have the miss at all. **A claim about
+    another repository is not checkable from inside this one**, so it is measured against that
+    repository's source or not made.
   - **It refuses rather than reporting green over a corpus it never opened.** There is no declared
     scan root to be wrong about: the corpus is `git ls-files`, reconciled as **sets of paths**, and
     zero pointers, zero tracked files, an unmerged path, a symlink, a non-regular file or two files

@@ -262,13 +262,17 @@
  *        THE GUARD GROWN, and the miss is asserted green so that closing it later is a
  *        deliberate act.
  *  (xii) [PINNED] THE TREE-WIDE CENSUS REFUSES ON AN ANCHOR-SHAPED BACKTICKED SPAN THAT WAS
- *        NEVER A POINTER, AND THAT IS THE PRICE OF WIDENING IT. A three-digit hex colour, or a
- *        CSS id, written inside an inline code span with a leading hash refuses the run at exit
- *        2 in any tracked file, and the refusal text says to re-derive the matcher, which is
- *        the wrong advice for a colour because there is no new spelling. (Those two examples
- *        are DESCRIBED rather than written out, for the same reason every sample in this file
- *        is assembled from parts: writing one would refuse this gate on its own source, which
- *        is precisely what a draft of this entry did.) DISCLOSED RATHER THAN NARROWED,
+ *        NEVER A POINTER, AND THAT IS THE PRICE OF WIDENING IT. A hex colour or a CSS id
+ *        written inside an inline code span with a leading hash refuses the run at exit 2 in
+ *        any tracked file, and the refusal text says to re-derive the matcher, which is the
+ *        wrong advice for a colour because there is no new spelling. BUT ONLY WHEN IT CARRIES A
+ *        LETTER, and a draft of this entry claimed otherwise: a hex colour whose digits are all
+ *        decimal is classified by `DIGITS_ONLY` as a pull-request reference and exits 0. So the
+ *        cost is real but SMALLER than the obvious statement of it, and the entry overstating
+ *        its own cost is the safe direction to be wrong in. (Both examples are DESCRIBED rather
+ *        than written out, for the same reason every sample in this file is assembled from
+ *        parts: writing one refuses this gate on its own source, which is precisely what that
+ *        same draft did.) DISCLOSED RATHER THAN NARROWED,
  *        deliberately, and the DIRECTION is what makes that defensible: it refuses rather than
  *        reporting a false green. The pair-scoped census this replaced avoided this cost only
  *        by carrying a much worse one, since a bare pointer in any third file was then seen by
