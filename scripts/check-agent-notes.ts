@@ -265,11 +265,14 @@
  *        NEVER A POINTER, AND THAT IS THE PRICE OF WIDENING IT. A hex colour or a CSS id
  *        written inside an inline code span with a leading hash refuses the run at exit 2 in
  *        any tracked file, and the refusal text says to re-derive the matcher, which is the
- *        wrong advice for a colour because there is no new spelling. BUT ONLY WHEN IT CARRIES A
- *        LETTER, and a draft of this entry claimed otherwise: a hex colour whose digits are all
- *        decimal is classified by `DIGITS_ONLY` as a pull-request reference and exits 0. So the
- *        cost is real but SMALLER than the obvious statement of it, and the entry overstating
- *        its own cost is the safe direction to be wrong in. (Both examples are DESCRIBED rather
+ *        wrong advice for a colour because there is no new spelling. BUT ONLY WHEN THE ANCHOR IS
+ *        NOT ALL DECIMAL DIGITS, and two drafts of this entry got that boundary wrong in
+ *        opposite directions. The rule is exactly `DIGITS_ONLY`: an all-decimal anchor is
+ *        classified as a pull-request reference and exits 0, so a hex colour of decimal digits
+ *        alone does NOT refuse, while one carrying a letter does. Do not restate that as "only
+ *        when it carries a letter" either: an id of digits with an underscore or a hyphen
+ *        carries no letter and still refuses. Every wrong version of this boundary is still
+ *        fail-closed, so none of them was a false green. (Both examples are DESCRIBED rather
  *        than written out, for the same reason every sample in this file is assembled from
  *        parts: writing one refuses this gate on its own source, which is precisely what that
  *        same draft did.) DISCLOSED RATHER THAN NARROWED,

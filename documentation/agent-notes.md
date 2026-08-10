@@ -182,8 +182,8 @@ wrong version is the easy one to write again.
     reconcile.** Repeating an unmeasured universal is exactly the overclaim this gate's banner
     refuses, so it cost a second refuter pass to notice that a fix for an overclaim had shipped a new
     one.
-  - **And a third pass to notice that the fix for THAT one did it again, which is why this bullet is
-    three levels deep.** The corrected text went on to say "four sibling repos are owed this
+  - **And a third pass to notice that the fix for THAT one did it again.** The corrected text went on
+    to say "four sibling repos are owed this
     disclosure", counting the four that do not disclose it. **Wrong, and unmeasured in the same way:
     only three are owed it.** `mllp`, `ccda` and `transform` derive an anchor by SLUGGING a heading,
     so a commented-out heading mints a phantom anchor there and the disclosure applies. **`docs` does
