@@ -21,6 +21,200 @@ narrative; keep the cursor, the rule, and every trap."_
 
 ---
 
+## The two-file contract gate
+
+The split above made a link load-bearing. A rule in `CLAUDE.md` now reads "never do X. Why:" followed
+by an anchor into this file, so if that anchor stops resolving the reader is left with an imperative
+and no grounding, which is the "prose no test can check" shape this repository's own text warns
+about. Three things could break it silently and none of them had a check: the narrative file stops
+existing, a section is emptied down to its heading, or an anchor is edited on one side of the pair
+and not the other. `scripts/check-agent-notes.ts` checks those three, on this tree, and nothing else.
+
+It lives in the **test suite** (`test/scripts/agent-notes.test.ts`) rather than in a fourth workflow.
+That is deliberate: it therefore rides the required `ci / verify` contexts and blocks a merge, and it
+rides `prepublishOnly`, which in this package is a real pre-publish gate rather than an advisory one.
+A gate that catches a defect and then cannot block the merge that reintroduces it is documentation.
+
+### Why the matcher is the part that never ports
+
+**Counting first was the whole job, and skipping it has produced a false green twice in this
+ecosystem.** Two spellings of a pointer are live across the cosyte repos, and which one dominates is
+a property of the tree rather than of the convention:
+
+- **QUALIFIED**, `agent-notes.md#<anchor>`, optionally prefixed with a path; and
+- **BARE**, an inline code span holding a `#` and an anchor and nothing else.
+
+A qualified-only matcher dropped into `ncpdp` would have printed `all resolving` while covering 3 of
+that tree's 38 pointers, because its dominant spelling is the bare one (35 against 3). In
+`terminology` the split measured 42 bare against ZERO qualified, so the same matcher would have found
+nothing at all and still exited 0. **A gate that clears a corpus it never opened is the single most
+repeated defect in this class.**
+
+**Measured on this tree before the matcher was written: the qualified form is the only live one.**
+Every pointer at this file is written `documentation/agent-notes.md#<anchor>`, all of them in
+`CLAUDE.md`, and there is no bare pointer anywhere. The bare-shaped spans that do exist in the pair
+are pull-request references (`#` followed by digits, which is what GitHub renders them as) plus spans
+that are not anchor-shaped at all, such as a quoted shebang and a quoted heading. So a bare matcher
+here would have a denominator of zero, and the ecosystem rule that **a zero from either form refuses**
+would then refuse on a healthy tree forever. That is why this gate matches the qualified form only.
+
+**No count from that paragraph is load-bearing, deliberately.** The OK line prints every figure on
+every run, because it measures rather than remembers, and a figure written into a document goes stale
+on the next commit with nobody touching it.
+
+### The bare census, which keeps the single-form scope a measurement
+
+Matching one form is safe exactly as long as the other stays absent, and an assumption nothing
+re-checks is how a matcher silently stops covering its corpus. So the absence is observed on every
+run. In **every opened file**, every backticked span of the shape `#<anchor-chars>` is enumerated. A
+span whose anchor is **all digits** is a pull-request reference, not a pointer: it is counted and
+reported on the OK line rather than dropped in silence. **Any other bare span refuses the run at exit
+2.**
+
+That is a refusal rather than a violation on purpose. The tree has not necessarily broken, but the
+evidence the matcher's scope was derived from has, so "all resolving" would be a claim about a corpus
+the gate no longer covers. **The remedy is to re-derive the matcher, never to delete the span.**
+
+**The route to the whole-corpus scope is worth recording, because the first draft got it wrong and a
+refuter caught it.** That draft scoped the census to the pair and justified it by claiming the bare
+shape is ambiguous elsewhere on this tree, naming `CHANGELOG.md`'s pull-request references, quoted
+shebangs in `tsup.config.ts` and `docs-content/`, and a quoted comment marker in
+`scripts/phi-allow-list.txt`. **That justification was false**, and running the census tree-wide is
+what proved it: not one of those files can refuse. A shebang, a `# synthetic` marker and a lone `#`
+do not match the pattern at all (a space, a `!`, a `/` and an empty run are all outside the anchor
+class), and `CHANGELOG.md`'s spans are digits-only, which the census classifies as references by
+design.
+
+**The only files that could refuse were the gate's own source and its own test**, because both wrote
+bare spans out literally while illustrating the rule. So the narrow scope was not protecting innocent
+content: it was a **self-exemption for the gate's own files**, which is the one place a genuinely
+broken pointer would hide, and this gate's own `CONTRACT_BASENAME` note already forbids exactly that.
+**The fix was the fixture and not the exemption.** Every bare sample in both files is now assembled
+from parts, as the qualified samples always were, and the census reaches every opened file. That also
+closes the real hole a pair-scoped census leaves: **a bare pointer written into a third file would
+have been covered by neither the matcher nor the census.**
+
+### What was re-derived here rather than inherited
+
+A sibling's exit-code table does not port, and neither does its corpus handling. Each of these was
+decided against this repository:
+
+- **The exit codes come from `scripts/phi-scan.ts`**, this repository's own scanner: `0` clean, `1` a
+  finding a human acts on, `2` a refusal or a bad invocation. That split was itself paid for here,
+  when an unreadable allow-list, override log and scan root each threw past every handler and exited
+  `1`, which reads as a finding and is worse than a crash.
+- **An UNMERGED path refuses.** `phi-scan` leaves the unmerged status unenumerated in its **staged**
+  route and records why: `git commit` refuses an unmerged index at exit 128, so nothing unmerged can
+  reach a commit through that gate. **That reasoning does not transfer**, because this gate has no
+  staged route; it runs from the test suite and from CI over whatever tree it is handed, and a
+  half-merged one is exactly where a working-tree copy is conflict markers.
+- **The NUL skip is required here and is not removable by tidying.** This tree tracks real NUL-bearing
+  files: the vendored `@cosyte/*` tarballs, which are compressed streams, and a synthetic DICOM
+  fixture. None can be read as markdown and none can be edited to clear a red, and a gate whose red
+  has no fix is a gate someone disables. It is a **disclosed miss, not a pass**, and the tell is the
+  skipped count on the OK line.
+- **A correction, kept visible because it was easy to write and was wrong.** A draft of the script's
+  disclosure claimed `scripts/check-no-emdash.sh` partitions on what git calls binary while this gate
+  partitions on a NUL byte, so the two sets differ. **That is false**, and reading that gate's own OK
+  line ("excluded by the NUL rule") is what caught it: **both gates key on an actual NUL byte and
+  exclude the same set.** The set that genuinely differs is **git's, which is wider**:
+  `test/__fixtures__/adt-a01.hl7` and `test/__fixtures__/minimal.astm` are `i/-text` to git (an HL7 v2
+  or ASTM terminator is a lone `CR`) yet hold no NUL, so **both gates open them**. That gap is why
+  neither gate may be "simplified" to `grep -I` or to `git ls-files --eol`: either would drop a
+  readable text file from the sweep with no tell.
+
+### Existence is not observation, so the OK line reconciles
+
+The likeliest failure of a gate like this is not a wrong answer, it is a right-looking answer over a
+corpus it never opened, and **this repository has already shipped exactly that**: `phi-scan` carried a
+declared scan root the walk never observed and printed `OK, no hits` at exit 0 over it.
+
+**The property that prevents it here is structural rather than arithmetic: there is no declared root
+to be wrong about.** The corpus is whatever `git ls-files` returns, every path in it is opened or
+refused, and the only silent skip is the NUL one, which is counted and named. The printed arithmetic
+is the weaker half and is not the remedy: it reconciles **sets of paths** rather than a pair of
+counters, because a counter incremented once per iteration can only sum to the number of iterations,
+so comparing that sum to the corpus size is a tautology dressed as a check.
+
+**Zero qualified pointers refuses**, because in this repository that cannot be a clean tree:
+`CLAUDE.md` opens by linking this file and cites it by anchor throughout.
+
+### The positive controls, because a gate is believed only after it has been watched to fail
+
+Every one of these was run against a clone of the **real** tree, not a fixture, before the gate was
+believed:
+
+| what was broken                                     | result                                 |
+| --------------------------------------------------- | -------------------------------------- |
+| one real anchor in `CLAUDE.md` misspelled            | exit 1, naming the file and line        |
+| a real section emptied down to its heading           | exit 1, naming the section and its slug |
+| this file deleted                                    | exit 1, the pair plus every pointer     |
+| a genuine bare pointer added (one that RESOLVES)     | exit 2, "re-derive the matcher"         |
+| the matcher neutered so it matches nothing           | exit 2, self-test refusal               |
+| every qualified pointer rewritten so none is matched | exit 2, "ZERO qualified pointers"       |
+
+The last two are the ones that matter most: they are the `terminology` scenario, and a gate that went
+green on either of them would be worthless while looking healthy.
+
+### Three claims this gate made and had to withdraw
+
+All three were written into the first draft, all three were refuted, and each is recorded because the
+wrong version is the easy one to write again.
+
+- **"A rename" was in the opening promise, and the gate does not catch one.** Both halves match on
+  **basename** (which is deliberate: it lets a path-qualified, a `./`-relative and a bare pointer all
+  reach the same target), so the **directory is never compared**. Measured: moving the narrative file
+  to `docs/agent-notes.md` while the pointers keep their old prefix exits **0**, "all resolving",
+  while every rendered link 404s on GitHub. **The promise was narrowed and the miss disclosed; the
+  guard was not grown.** It now reads "stops being tracked at all".
+- **A heading inside an HTML comment mints a phantom anchor**, and the first draft's disclosed-miss
+  list omitted it. `<!--` and `-->` are not tracked as a block, so a commented-out `## Section` is
+  counted here and renders no anchor on GitHub: a pointer at it passes green and resolves to nothing.
+  Now disclosed and pinned.
+  - **The correction inside the correction, which is the one worth reading.** The first fix for this
+    said "**every** sibling copy discloses it; this one forgot". That was taken from a review's
+    phrasing rather than from the tree, and it is **false**. Measured across this checkout: `ncpdp`,
+    `terminology` and `astm` disclose it; **`mllp`, `ccda`, `transform` and `docs` do not, anywhere**.
+    `mllp` decides it, because this gate's disclosed-miss block is transcribed from `mllp`'s shape and
+    that list stops at (ix) as well, so the shared ancestor never carried the entry and "this one
+    forgot" is backwards. The umbrella's `documentation/conventions.md` asserts the universal ("in
+    every copy including `ccda`'s") and the repos do not bear it out. **That is the umbrella's to
+    reconcile.** Repeating an unmeasured universal is exactly the overclaim this gate's banner
+    refuses, so it cost a second refuter pass to notice that a fix for an overclaim had shipped a new
+    one.
+  - **And a third pass to notice that the fix for THAT one did it again.** The corrected text went on
+    to say "four sibling repos are owed this
+    disclosure", counting the four that do not disclose it. **Wrong, and unmeasured in the same way:
+    only three are owed it.** `mllp`, `ccda` and `transform` derive an anchor by SLUGGING a heading,
+    so a commented-out heading mints a phantom anchor there and the disclosure applies. **`docs` does
+    not slug at all**: it resolves pointers against explicit `<a id="..."></a>` anchors, so the
+    failure mode cannot arise there and writing the disclosure into it would name a failure that
+    repo cannot have. That is the trap `mllp`'s own miss (vi) states in one line: _a disclosure that
+    names the wrong failure mode sends the next reader hunting something that cannot happen._ **The
+    lesson is not "count more carefully". It is that a claim about another repository is not
+    checkable from inside this one, so either measure it against that repository's source or do not
+    make it.**
+- **A count of sibling repos was written down and was already wrong.** The draft said seven repos
+  carry no `agent-notes.md`; it was eight, and the set moves whenever a submodule is added. The rule
+  is **keep the list or drop the number**, so the number was dropped, including from the stderr a
+  human reads. The same file, forty lines higher, already warned that a figure written into a comment
+  goes stale with nobody touching it.
+
+### What no mechanical check here can see
+
+The heading, anchor and body checks all verify that prose **moved**. **None of them notices a trap
+that reached this file with no imperative following it into `CLAUDE.md`**, and the exposed class is
+the trap phrased as a deliberate omission ("is deliberately left alone", "is never the default"),
+which carries no identifier to grep for. Enumerate those by hand. The same limit applies to claims
+about other documents: an anchor resolving proves the target exists, never that it says what the
+sentence promises. A section with a body is not a section with the **right** body.
+
+This file is also outside every `format` glob in `package.json` (which reaches `src/`, `test/`,
+`scripts/` and the top level only), so Prettier does not renormalise the list indentation the
+pointers depend on. **Do not add `documentation/` to a formatter glob.**
+
+---
+
 ## Status
 
 The per-incident sections below were the bulk of `CLAUDE.md`'s `## Status` list. Each is reproduced

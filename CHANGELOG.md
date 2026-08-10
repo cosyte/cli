@@ -15,6 +15,78 @@ still do. Each entry was assigned to the release whose tag first contains it, re
 
 ## [Unreleased]
 
+### Added
+
+- **The two-file agent-guidance contract is now gated (`pnpm check:agent-notes`).** `CLAUDE.md` was
+  split from `documentation/agent-notes.md` on 2026-08-04, which made every anchor between them
+  load-bearing, and nothing checked them. `scripts/check-agent-notes.ts` now verifies that the
+  narrative file is tracked, that no section is emptied down to its heading (a container whose body is
+  its subsections is exempt and counted), and that every pointer at it resolves. It runs from
+  `test/scripts/agent-notes.test.ts`, so it rides the required `ci / verify` contexts and
+  `prepublishOnly` rather than adding a fourth workflow.
+  - **The matcher was derived by counting this tree, not by porting a sibling's.** Two pointer
+    spellings are live across these repositories, and porting without re-counting has produced a false
+    green twice: a qualified-only matcher would have covered 3 of `ncpdp`'s 38 pointers, and would
+    have matched nothing at all in `terminology` (42 bare, zero qualified) while still exiting 0.
+    **Measured here: every pointer is the qualified `documentation/agent-notes.md#<anchor>` form and no
+    bare pointer exists**, so the gate matches that form only. No count is written into the gate's
+    prose as a promise; the OK line prints all of them on every run, because it measures rather than
+    remembers.
+  - **A bare-form census keeps that scope honest.** Matching one spelling is safe only while the other
+    stays absent, so in **every opened file** each backticked `#<anchor>` span is enumerated: a
+    digits-only one is a pull-request reference and is counted and reported, and **any other one
+    refuses the run at exit 2** with an instruction to re-derive the matcher. Refusal rather than a
+    finding, because the tree has not necessarily broken but the evidence the scope rested on has.
+    A first draft scoped the census to the pair and justified that with tree files it claimed a
+    widening would red; **running it tree-wide proved none of them can, and that the only files that
+    could were the gate's own source and test**, which wrote bare spans out literally. That made the
+    narrow scope a self-exemption for the very files where a broken pointer would hide, so the samples
+    are now assembled from parts and the census covers the corpus. It closes the hole a pair-scoped
+    census leaves: a bare pointer in a third file was covered by neither the matcher nor the census.
+  - **Three claims were withdrawn after review rather than shipped.** The opening promise said the
+    gate catches "a rename"; it does not, because both halves match on **basename** and the directory
+    is never compared, so moving the file while pointers keep their prefix exits 0 with every rendered
+    link broken. That is now a narrowed promise and a disclosed miss rather than a bigger guard. A
+    **heading inside an HTML comment** mints a phantom anchor, which the list had omitted; it is now
+    disclosed and pinned. And a written-down count of sibling repos lacking the file was already
+    wrong, so **the number was dropped in favour of the class**.
+  - **Two further claims were withdrawn on later review passes, each arriving inside the fix for the
+    one before it.** The first fix asserted the HTML-comment miss is disclosed in "every sibling
+    copy"; that phrasing came from a review rather than from the tree, and it is false. `ncpdp`,
+    `terminology` and `astm` disclose it; `mllp`, `ccda`, `transform` and `docs` do not, and `mllp`
+    is the copy this gate's disclosed-miss block is transcribed from, so the shared ancestor never
+    carried the entry. The second fix then said the four that lack it are all owed it. Also false:
+    `mllp`, `ccda` and `transform` derive anchors by **slugging headings** and are owed it, while
+    `docs` resolves explicit `<a id>` anchors and cannot have the miss at all. **A claim about
+    another repository is not checkable from inside this one**, so it is measured against that
+    repository's source or not made.
+  - **It refuses rather than reporting green over a corpus it never opened.** There is no declared
+    scan root to be wrong about: the corpus is `git ls-files`, reconciled as **sets of paths**, and
+    zero pointers, zero tracked files, an unmerged path, a symlink, a non-regular file or two files
+    carrying the contract basename each refuse at exit 2. This repository has already shipped the
+    opposite defect once, in `phi-scan`, which printed `OK, no hits` over a root it never walked.
+  - **Every claim was watched to fail on a clone of the real tree** before the gate was believed: a
+    misspelled real anchor, an emptied real section, the narrative file deleted, a bare pointer that
+    resolves, a neutered matcher, and a tree with every pointer rewritten out of range. The last two
+    are the `terminology` scenario, and both refuse instead of going green.
+  - **Exit codes and corpus handling were re-derived from this repository, not inherited.** `0`, `1`
+    for a finding and `2` for a refusal come from `scripts/phi-scan.ts`. An unmerged path **refuses**
+    here even though `phi-scan` leaves that status unenumerated, because its reasoning (`git commit`
+    refuses an unmerged index) covers a staged route this gate does not have.
+  - **The NUL skip is a disclosed miss, not a pass**, and is required rather than tidy: the tree
+    tracks vendored `@cosyte/*` tarballs and a synthetic DICOM fixture, none readable as markdown or
+    editable to clear a red. The tell is the skipped count on the OK line. A draft claimed this
+    partition differs from `check-no-emdash.sh`'s; **that was false and was corrected by reading that
+    gate's own OK line.** Both key on an actual NUL byte; the wider set is git's own binary
+    classification, which is why neither gate may be reduced to `grep -I`.
+
+### Changed
+
+- **`CLAUDE.md` narrative was relocated into `documentation/agent-notes.md` to make room for the gate's
+  rules.** The branch-protection, PHI-scanner-residual and em-dash blocks were compressed to their
+  imperatives; every trap keeps a one-line rule and a pointer, and the reasoning each one compresses
+  was already in the narrative file. No trap was deleted and no ceiling was raised.
+
 ### Fixed
 
 - **`pnpm phi-scan`'s all-mode walk was rooted at `test/__fixtures__` and `src` only, so 89 of this
