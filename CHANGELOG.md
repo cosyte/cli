@@ -47,9 +47,15 @@ still do. Each entry was assigned to the release whose tag first contains it, re
     gate catches "a rename"; it does not, because both halves match on **basename** and the directory
     is never compared, so moving the file while pointers keep their prefix exits 0 with every rendered
     link broken. That is now a narrowed promise and a disclosed miss rather than a bigger guard. A
-    **heading inside an HTML comment** mints a phantom anchor, a miss every sibling copy discloses and
-    this one had omitted; it is now disclosed and pinned. And a written-down count of sibling repos
-    lacking the file was already wrong, so **the number was dropped in favour of the class**.
+    **heading inside an HTML comment** mints a phantom anchor, which the list had omitted; it is now
+    disclosed and pinned. And a written-down count of sibling repos lacking the file was already
+    wrong, so **the number was dropped in favour of the class**.
+  - **A fourth claim was withdrawn on the next review pass, and it arrived inside the fix for the
+    third.** That fix asserted the HTML-comment miss is disclosed in "every sibling copy"; the
+    phrasing came from a review rather than from the tree, and it is false. Measured: three sibling
+    gates disclose it and four do not, including the one this gate's disclosed-miss block is
+    transcribed from, whose list stops at the same entry. Repeating an unmeasured universal is the
+    overclaim the gate's own banner refuses.
   - **It refuses rather than reporting green over a corpus it never opened.** There is no declared
     scan root to be wrong about: the corpus is `git ls-files`, reconciled as **sets of paths**, and
     zero pointers, zero tracked files, an unmerged path, a symlink, a non-regular file or two files

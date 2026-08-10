@@ -216,6 +216,21 @@
  *        block, but that is not reachable as a phantom anchor: `ATX_RE` bounds indentation at
  *        three spaces, so a four-space-indented `#` line is not a heading here either, which
  *        is what CommonMark does anyway. Both halves are asserted.
+ *  (vi-b)[PINNED] AN ATX HEADING INSIDE AN HTML COMMENT IS COUNTED AS A HEADING HERE AND
+ *        RENDERS NO ANCHOR ON GITHUB. `<!--` and `-->` are not tracked as a block, so a
+ *        commented-out `## Section` mints a phantom anchor and a pointer at it passes green
+ *        while resolving to nothing. This is the SAME false-green direction as (vi) and is the
+ *        one the fence tracker does close, which is why leaving it undisclosed was worth fixing.
+ *        Reproduced end to end before it was written down.
+ *        ▶ DO NOT WRITE "EVERY SIBLING COPY DISCLOSES THIS". A draft of this entry did, taking
+ *        the phrasing from a review rather than from the tree, and it is FALSE. Measured across
+ *        this checkout: `ncpdp`, `terminology` and `astm` disclose it; `mllp`, `ccda`,
+ *        `transform` and `docs` do not, anywhere. `mllp` is the decisive one, because the
+ *        disclosed-miss block in this file is transcribed from its shape and ITS list stops at
+ *        (ix) too, so the shared ancestor never carried this entry. The umbrella's
+ *        `documentation/conventions.md` asserts the universal ("in every copy including
+ *        `ccda`'s"), and the repos do not bear it out; that is the umbrella's to reconcile, and
+ *        adopting the claim here would just be the overclaim this banner exists to refuse.
  *  (vii) [PINNED] THE SLUGGER IS A TRANSCRIPTION OF github-slugger, NOT THE MODULE, so that
  *        this gate adds no runtime dependency to a package whose dependency count is capped.
  *        It was verified against github-slugger@2.0.0 by running the real module over THIS
@@ -236,24 +251,30 @@
  *  (ix)  [SCOPE] IT DOES NOT CHECK ANY BYTE BUDGET. `CLAUDE.md`'s ceiling is enforced by the
  *        meta-repo's `.claude/hooks/doc-budget.mjs`, which holds the budget table; a script
  *        inside this package cannot see it and must not keep a second copy of a number.
- *  (vi-b)[PINNED] AN ATX HEADING INSIDE AN HTML COMMENT IS COUNTED AS A HEADING HERE AND
- *        RENDERS NO ANCHOR ON GITHUB. `<!--` and `-->` are not tracked as a block, so a
- *        commented-out `## Section` mints a phantom anchor and a pointer at it passes green
- *        while resolving to nothing. This is the SAME false-green direction as (vi) and is the
- *        one the fence tracker does close, which is exactly why leaving it undisclosed was the
- *        defect: it is disclosed rather than guarded in EVERY copy of this gate across the
- *        cosyte repos, and this file's first draft was the copy that forgot to say so.
- *        Reproduced end to end before it was written down.
+ *  (x)   [SCOPE] IT DOES NOT NOTICE A TRAP THAT REACHED THE ARCHIVE WITH NO IMPERATIVE
+ *        FOLLOWING IT INTO `CLAUDE.md`. Heading, anchor and body checks all verify prose
+ *        MOVED. The exposed class is a trap phrased as a deliberate omission, which carries no
+ *        identifier to grep for. Enumerate those by hand.
  *  (xi)  [PINNED] THE NARRATIVE FILE'S DIRECTORY IS NEVER COMPARED, ONLY ITS BASENAME. Moving
  *        it to another directory while the pointers keep their old path prefix exits 0 with
  *        every rendered link broken. See the note under the opening list for the measurement
  *        and for why the basename match is deliberate. THE PROMISE WAS NARROWED RATHER THAN
  *        THE GUARD GROWN, and the miss is asserted green so that closing it later is a
  *        deliberate act.
- *  (x)   [SCOPE] IT DOES NOT NOTICE A TRAP THAT REACHED THE ARCHIVE WITH NO IMPERATIVE
- *        FOLLOWING IT INTO `CLAUDE.md`. Heading, anchor and body checks all verify prose
- *        MOVED. The exposed class is a trap phrased as a deliberate omission, which carries no
- *        identifier to grep for. Enumerate those by hand.
+ *  (xii) [PINNED] THE TREE-WIDE CENSUS REFUSES ON AN ANCHOR-SHAPED BACKTICKED SPAN THAT WAS
+ *        NEVER A POINTER, AND THAT IS THE PRICE OF WIDENING IT. A three-digit hex colour, or a
+ *        CSS id, written inside an inline code span with a leading hash refuses the run at exit
+ *        2 in any tracked file, and the refusal text says to re-derive the matcher, which is
+ *        the wrong advice for a colour because there is no new spelling. (Those two examples
+ *        are DESCRIBED rather than written out, for the same reason every sample in this file
+ *        is assembled from parts: writing one would refuse this gate on its own source, which
+ *        is precisely what a draft of this entry did.) DISCLOSED RATHER THAN NARROWED,
+ *        deliberately, and the DIRECTION is what makes that defensible: it refuses rather than
+ *        reporting a false green. The pair-scoped census this replaced avoided this cost only
+ *        by carrying a much worse one, since a bare pointer in any third file was then seen by
+ *        neither the matcher nor the census. If such a span ever lands legitimately, the answer
+ *        is a per-path carve-out argued on its own merits, NOT a retreat to the pair, and NOT
+ *        deleting the span if it turns out to be a real pointer.
  *
  * Run it locally with `pnpm check:agent-notes`. `pnpm test` runs it against this tree too
  * (`test/scripts/agent-notes.test.ts`), which is what puts it on the meta-repo's

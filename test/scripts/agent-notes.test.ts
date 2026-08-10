@@ -791,6 +791,24 @@ describe(
       expect(runGate(["--root", dir]).code).toBe(0);
     });
 
+    it("(xii) refuses on an anchor-shaped span that was never a pointer, the price of widening", () => {
+      // THE COST OF THE TREE-WIDE CENSUS, DISCLOSED RATHER THAN NARROWED. A hex colour or a CSS
+      // id written as a backticked anchor-shaped span refuses, and the refusal's advice to
+      // re-derive the matcher is wrong for a colour. Asserted so the cost is a known, deliberate
+      // trade rather than a surprise: the direction is conservative (refuse, never false green),
+      // and the pair-scoped census it replaced avoided this only by leaving every third file
+      // uncovered by both the matcher and the census.
+      const dir = repo({
+        "CLAUDE.md": `# cursor\n\nWhy: ${ptr("the-section")}\n`,
+        "documentation/agent-notes.md": NOTES,
+        "docs-content/theme.md": `The brand ink is ${bare("fff")}.\n`,
+      });
+      const r = runGate(["--root", dir]);
+      expect(r.code).toBe(2);
+      expect(r.stderr).toContain("suspected BARE pointer");
+      expect(r.stderr).toContain("docs-content/theme.md");
+    });
+
     it("(xi) compares the narrative file's BASENAME only, so a move to another directory passes", () => {
       // MEASURED, AND IT IS WHY THE OPENING PROMISE NO LONGER SAYS "a rename". The file moved
       // out of `documentation/` while every pointer keeps the old path prefix: every rendered

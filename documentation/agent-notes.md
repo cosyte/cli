@@ -170,8 +170,18 @@ wrong version is the easy one to write again.
 - **A heading inside an HTML comment mints a phantom anchor**, and the first draft's disclosed-miss
   list omitted it. `<!--` and `-->` are not tracked as a block, so a commented-out `## Section` is
   counted here and renders no anchor on GitHub: a pointer at it passes green and resolves to nothing.
-  **Every sibling copy of this gate discloses it; this one forgot, and that omission was the defect.**
   Now disclosed and pinned.
+  - **The correction inside the correction, which is the one worth reading.** The first fix for this
+    said "**every** sibling copy discloses it; this one forgot". That was taken from a review's
+    phrasing rather than from the tree, and it is **false**. Measured across this checkout: `ncpdp`,
+    `terminology` and `astm` disclose it; **`mllp`, `ccda`, `transform` and `docs` do not, anywhere**.
+    `mllp` decides it, because this gate's disclosed-miss block is transcribed from `mllp`'s shape and
+    that list stops at (ix) as well, so the shared ancestor never carried the entry and "this one
+    forgot" is backwards. The umbrella's `documentation/conventions.md` asserts the universal ("in
+    every copy including `ccda`'s") and the repos do not bear it out. **That is the umbrella's to
+    reconcile, and four sibling repos are owed this disclosure.** Repeating an unmeasured universal is
+    exactly the overclaim this gate's banner refuses, so it cost a second refuter pass to notice that
+    a fix for an overclaim had shipped a new one.
 - **A count of sibling repos was written down and was already wrong.** The draft said seven repos
   carry no `agent-notes.md`; it was eight, and the set moves whenever a submodule is added. The rule
   is **keep the list or drop the number**, so the number was dropped, including from the stderr a
