@@ -50,7 +50,8 @@
  *   RATHER THAN EXCUSING IT. There is no single standard to parse: this is the
  *   command-line surface over eight of them, so its corpus is TypeScript
  *   sources carrying inline message literals plus a handful of small fixtures,
- *   today one each of HL7 v2, X12, ASTM, NCPDP SCRIPT XML, FHIR JSON and DICOM.
+ *   today seven of them spanning HL7 v2, X12, ASTM, NCPDP SCRIPT XML, DICOM and
+ *   FHIR JSON, the last of which has two.
  *   A structured detector here is therefore per-FIXTURE-FORMAT, not per-repo,
  *   and the worked, spec-aware examples are the sibling parsers' own scanners.
  *
@@ -142,13 +143,17 @@ const EXIT_CODES = { clean: 0, hits: 1, refuse: 2 } as const;
  *     ALL: `docs-content/sidebars.json` and `.changeset/config.json` are not,
  *     so declaring them would open two files rather than none. They stay out
  *     because two JSON manifests are not where this package writes messages.
- *   - `.github/`: measured clean under the floor.
+ *   - `.github/`: its 8 tracked files were re-measured against the floor here
+ *     rather than quoted from an earlier note, and report no hits.
  *   - the repository root: NOT clean, and that is the honest reason rather than
- *     a tidier one. `pnpm phi-scan package.json` exits 1, because the `author`
- *     field carries the brand's own contact address at a domain the allow-list
- *     does not declare. Rooting at the repository root would red the gate today
- *     on a value that is correct. (The address is not spelled here, for the
- *     reason the next paragraph gives; the case is pinned in
+ *     a tidier one. Measured by running this scanner with `SCAN_ROOTS` set to
+ *     `["."]`: exit 1, redding on `package.json`, whose `author` field carries
+ *     the brand's own contact address at a domain the allow-list does not
+ *     declare, and on a `vendor/` tarball, whose DEFLATE bytes decode to an
+ *     email shape. So rooting at the repository root would red the gate today
+ *     on a value that is correct and on bytes this gate can say nothing true
+ *     about. (Neither value is spelled here, for the reason the next paragraph
+ *     gives; the `package.json` case is pinned in
  *     `test/scripts/phi-scan.test.ts`.)
  *
  * 🛑 `scripts` IS A ROOT, SO THIS FILE IS UNDER ITS OWN SCAN. An example SSN or

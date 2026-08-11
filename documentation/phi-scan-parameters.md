@@ -36,9 +36,11 @@ deliberately NOT roots and each was re-measured rather than quoted: `vendor/` (t
 tarballs, whose DEFLATE bytes this gate can say nothing true about), `docs-content/` +
 `documentation/` + `.changeset/` (declaring all three would open exactly two non-Markdown files,
 `docs-content/sidebars.json` and `.changeset/config.json`, and neither is where messages are
-written), `.github/` (measured clean under the floor), and the repository root, which is NOT clean:
-`pnpm phi-scan package.json` exits 1 today because the `author` field carries the brand's own
-contact address at a domain the allow-list does not declare.
+written), `.github/` (its 8 tracked files report no hits under the floor), and the repository root,
+which is NOT clean. That last one was measured by running this branch's scanner with the roots set
+to `["."]`: exit 1, redding on `package.json`, whose `author` field carries the brand's own contact
+address at a domain the allow-list does not declare, and on a `vendor/` tarball, whose DEFLATE bytes
+decode to an email shape.
 
 The roots used to be declared as `{ abs, rel }` pairs. **That pair was never a parameter.** `abs`
 existed to feed `readdirSync` and `rel` to feed `git ls-files` and the refusal text, both of which
@@ -172,8 +174,10 @@ shipped configuration passes it.
 
 Recorded because this is the first non-parser repository to take this gate.
 
-- **There is no one wire format.** The corpus is TypeScript carrying inline message literals plus six
-  small fixtures, one each of HL7 v2, X12, ASTM, NCPDP SCRIPT XML, FHIR JSON and DICOM. A detector
+- **There is no one wire format.** The corpus is TypeScript carrying inline message literals plus
+  seven small fixtures, spanning HL7 v2, X12, ASTM, NCPDP SCRIPT XML, DICOM and FHIR JSON, and here
+  they are: `834.edi`, `adt-a01.hl7`, `gender.conceptmap.json`, `minimal.astm`, `newrx.xml`,
+  `patient.fhir.json`, `sample.dcm`. Two are FHIR JSON, so the formats do not partition them. A detector
   here dispatches on the fixture's format before it parses anything, so "the per-standard field
   detectors" is per-FIXTURE-FORMAT here. Nothing in the engine's surface obstructs that: `detect`
   receives text and bytes and raises through `ctx.hit`, and the format choice is the caller's.
