@@ -34,6 +34,9 @@ importers:
       '@cosyte/prettier-config':
         specifier: ^0.0.2
         version: 0.0.2
+      '@cosyte/script-utils':
+        specifier: ^0.0.2
+        version: 0.0.2
       '@cosyte/test-utils':
         specifier: ^0.0.1
         version: 0.0.1(fast-check@3.23.2)
@@ -248,6 +251,10 @@ packages:
 
   '@cosyte/prettier-config@0.0.2':
     resolution: {integrity: sha512-nmplXQKNq5DZ+Su/tCUF6m9UJ9MOArhw5NG0X9yqi6B5zvxmVXtKMAX1N2bKkqpKhZqyQOR9ALGYVpTx022R/g==}
+
+  '@cosyte/script-utils@0.0.2':
+    resolution: {integrity: sha512-X7FKPbV6x16mJj+h1OSg4V1J6RiAVX2oHsOrpUymjrMIvQdqzqxwKzXYyoelz5VNwMtUPKgg1MAzrYpcy5nPHg==}
+    engines: {node: '>=22.14'}
 
   '@cosyte/terminology@0.0.9':
     resolution: {integrity: sha512-tztqLojYIsNY1HxY2CgsiCK+XX9ajzwfUecR+sY6dt0kfFGJNrGSisI7BrYcQSYZ4fjpsL+w44gkIfZmTnR2WA==}
@@ -2462,6 +2469,8 @@ snapshots:
     optional: true
 
   '@cosyte/prettier-config@0.0.2': {}
+
+  '@cosyte/script-utils@0.0.2': {}
 
   '@cosyte/terminology@0.0.9': {}
 

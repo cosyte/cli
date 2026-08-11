@@ -108,6 +108,7 @@
     "@cosyte/eslint-config": "^0.0.4",
     "@cosyte/fhir": "file:vendor/cosyte-fhir-0.0.0.tgz",
     "@cosyte/prettier-config": "^0.0.2",
+    "@cosyte/script-utils": "^0.0.2",
     "@cosyte/test-utils": "^0.0.1",
     "@cosyte/tsconfig": "^0.0.2",
     "@cosyte/tsup-config": "^0.0.1",
