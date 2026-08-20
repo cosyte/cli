@@ -44,11 +44,26 @@ Parse a healthcare message to typed JSON on stdout (the data channel). Autodetec
 record per frame with per-record isolation (a failed record becomes a value-free `{ record, error }`
 line and the stream continues; any failure → exit `65`).
 
+Multi-record output is **written record by record, as each record is parsed**, so the first line
+reaches stdout long before the last byte of input has been read and a large batch can be piped
+straight into another process.
+
 ```bash
 cosyte parse adt.hl7
 cat adt.hl7 | cosyte parse -
 cosyte parse --ndjson bulk.ndjson | jq .
 ```
+
+#### Input size limit
+
+`parse` reads at most **67108864 bytes (64 MiB)** of input per invocation. A larger input is refused
+with a value-free `CLI_INPUT_TOO_LARGE` diagnostic naming that limit and the **data-error** exit code
+(`65`), never the internal-error code (`70`): a large input is not a bug in the tool. Split the input
+and re-run. The same number is printed by `cosyte --help`.
+
+Because records are emitted as they are parsed, a refusal can arrive **after** some records have
+already been written to stdout. The exit code, not the output, is the signal that the run did not
+complete: a partial record stream always carries a non-zero exit, never `0`.
 
 ### `cosyte validate <file\|-> [--profile <name>]`
 
@@ -104,7 +119,7 @@ tools over the same core. See [MCP server](./mcp).
 | `0`  | success / `validate` found the input **valid**                                          |
 | `1`  | operation-level failure: `validate` found the input **invalid** (a real CI signal)     |
 | `2`  | usage error: unknown command, bad flag, missing argument                               |
-| `65` | data error: input could not be parsed / format not detected / (format, op) unsupported |
+| `65` | data error: input could not be parsed / format not detected / (format, op) unsupported / input larger than the size limit |
 | `66` | no input: the file does not exist or is unreadable                                     |
 | `69` | unavailable: a capability is not yet built (e.g. `redact`, `--profile`)                |
 | `70` | internal error: an unexpected exception (a bug)                                        |

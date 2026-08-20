@@ -146,7 +146,15 @@ astm | ncpdp | ccda | dicom | mllp`.
 **MLLP** stream, one record per frame, or any input under **`--ndjson`**, one record per non-empty
 line) streams as **NDJSON**, one `{ record, format, model, warnings }` line each, with per-record
 isolation: a record that fails to parse becomes a value-free `{ record, error }` line and the stream
-continues; the overall exit is a data error (`65`) if any record failed.
+continues; the overall exit is a data error (`65`) if any record failed. Each line is written **as
+its record is parsed**, before the rest of the input has been read, so a batch pipes straight into
+the next process.
+
+**Input size.** `parse` reads at most **67108864 bytes (64 MiB)** per invocation, the number
+`cosyte --help` prints. A larger input is a value-free `CLI_INPUT_TOO_LARGE` refusal naming that
+limit, with the data-error exit code (`65`) and never the internal-error code: split the input and
+re-run. Since records are emitted as they are parsed, a refusal can land after some records have
+already reached stdout; the exit code, not the output, says the run did not complete.
 
 Support is honest **per (format, operation)**: `x12`/`astm`/`ncpdp` support all of parse/inspect/fmt/
 validate; `ccda` supports inspect/fmt/validate (parse deferred); `dicom` supports inspect/validate
@@ -232,15 +240,15 @@ valid JSON or not a loadable ConceptMap is a `CLI_MAP_INVALID` data error (`65`)
 
 Every command is safe to branch on in CI. The exit code carries the outcome (`sysexits.h`):
 
-| Code | Meaning                                                    |
-| ---- | ---------------------------------------------------------- |
-| `0`  | success / **valid** (`validate`)                           |
-| `1`  | **invalid**: `validate` found a parseable-but-bad message  |
-| `2`  | usage error (unknown flag, missing argument)               |
-| `65` | data error (unparseable input, or format undetected)       |
-| `66` | no input (missing/unreadable file)                         |
-| `69` | unavailable (a capability is not yet built, e.g. `redact`) |
-| `70` | internal error (a bug)                                     |
+| Code | Meaning                                                                         |
+| ---- | ------------------------------------------------------------------------------- |
+| `0`  | success / **valid** (`validate`)                                                |
+| `1`  | **invalid**: `validate` found a parseable-but-bad message                       |
+| `2`  | usage error (unknown flag, missing argument)                                    |
+| `65` | data error (unparseable input, format undetected, or input past the size limit) |
+| `66` | no input (missing/unreadable file)                                              |
+| `69` | unavailable (a capability is not yet built, e.g. `redact`)                      |
+| `70` | internal error (a bug)                                                          |
 
 The load-bearing rule: the CLI **never prints a reassuring line and exits `0`** on input it could not
 handle, or on an invalid message.

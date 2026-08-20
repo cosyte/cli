@@ -10,12 +10,32 @@
  */
 
 /* v8 ignore start -- process wiring: argv/stdin/stdout/exit glue, exercised by the packaged bin smoke, not unit-covered */
-import { readFileBytes, readStreamBytes, type RunDeps } from "../core/io.js";
+import {
+  fileChunks,
+  readFileBytes,
+  readStreamBytes,
+  streamChunks,
+  type RunDeps,
+} from "../core/io.js";
 import { run } from "../core/run.js";
+
+// A consumer that closes the pipe (`cosyte parse big.ndjson | head -3`) makes the next write fail.
+// Node reports that as an 'error' event on the stream, which is fatal if nothing is listening, so
+// the sink below is marked closed instead and the command resolves it as a write failure.
+let stdoutOpen = true;
+process.stdout.on("error", () => {
+  stdoutOpen = false;
+});
 
 const deps: RunDeps = {
   readFile: (path) => readFileBytes(path),
   readStdin: () => readStreamBytes(process.stdin),
+  openFile: (path) => fileChunks(path),
+  openStdin: () => streamChunks(process.stdin),
+  writeStdout: (chunk) => {
+    if (!stdoutOpen) throw new Error("stdout closed");
+    process.stdout.write(chunk);
+  },
 };
 
 // The `cosyte mcp` subcommand starts the stdio MCP server (also reachable as the `cosyte-mcp` bin).
