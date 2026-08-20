@@ -751,11 +751,7 @@ export async function deframeMllp(
   // Reject an unterminated trailing frame BEFORE de-framing: a VT after the last FS is an open frame
   // the streaming reader would buffer and silently drop. (MLLP payloads never contain 0x0B/0x1C.)
   if (bytes.lastIndexOf(0x0b) > bytes.lastIndexOf(0x1c)) {
-    throw new CliError(
-      CLI_CODES.CLI_PARSE_FAILED,
-      EXIT.DATAERR,
-      "truncated MLLP stream: an unterminated frame at the end of input (no closing FS/CR)",
-    );
+    throw truncatedMllpError();
   }
   const { FrameReader } = await loadOptional("mllp", () => import("@cosyte/mllp"));
   const payloads: Buffer[] = [];
@@ -766,6 +762,28 @@ export async function deframeMllp(
   });
   reader.push(Buffer.from(bytes));
   return { payloads, warningCount };
+}
+
+/**
+ * The value-free data error for a **truncated MLLP stream**: a frame opened and never closed, which
+ * the streaming reader buffers and delivers to no callback. Built here so the whole-buffer de-framer
+ * above and the chunk-by-chunk one in `core/records.ts` refuse the same input with the same code and
+ * the same words.
+ *
+ * @returns A `CLI_PARSE_FAILED` (exit `65`) {@link CliError}.
+ * @example
+ * ```ts
+ * import { truncatedMllpError } from "@cosyte/cli";
+ *
+ * truncatedMllpError().exit; // => 65
+ * ```
+ */
+export function truncatedMllpError(): CliError {
+  return new CliError(
+    CLI_CODES.CLI_PARSE_FAILED,
+    EXIT.DATAERR,
+    "truncated MLLP stream: an unterminated frame at the end of input (no closing FS/CR)",
+  );
 }
 
 /* ── shared internals ────────────────────────────────────────────────────────────────────────── */

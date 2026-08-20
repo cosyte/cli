@@ -56,8 +56,23 @@ interface Signature {
   readonly match: (prefix: string, bytes: Uint8Array) => boolean;
 }
 
+/**
+ * How many leading bytes detection reads. Small: every signature lives in the first line (the
+ * deepest is DICOM's magic at byte 128). Exported because a **streaming** caller has to know how much
+ * of the input to hold back before it can detect the format, and reading a different amount than
+ * detection uses would make the two disagree.
+ *
+ * @example
+ * ```ts
+ * import { DETECT_PREFIX_BYTES } from "@cosyte/cli";
+ *
+ * DETECT_PREFIX_BYTES; // => 512
+ * ```
+ */
+export const DETECT_PREFIX_BYTES = 512;
+
 /** How many leading bytes to decode for text sniffing. Small: signatures live in the first line. */
-const SNIFF_BYTES = 512;
+const SNIFF_BYTES = DETECT_PREFIX_BYTES;
 
 /** Strip a leading UTF-8 BOM and any leading ASCII whitespace for a tolerant sniff. Deliberately does
  * **not** strip the MLLP `0x0B` VT frame byte (`\v`): that byte is the mllp signature, so consuming it

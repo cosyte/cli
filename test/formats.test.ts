@@ -288,11 +288,17 @@ describe("streaming, per-record isolation + quiet on multi-record", () => {
   it("a truncated trailing MLLP frame is a data error (65), never a silent-dropped message", async () => {
     // One complete frame, then a VT that opens a second message with no closing FS/CR: the streaming
     // de-framer would buffer and silently drop it. It must be a value-free data error, not exit 0.
+    //
+    // Records are emitted as they are parsed, so the frame that DID complete has already reached the
+    // data channel by the time the truncation is detected at end of stream. That partial stream is
+    // never presented as complete: the exit code carries the failure, and only the exit code can.
     const truncated = new Uint8Array([...frame(HL7_MSG), 0x0b, ...enc.encode("MSH|^~\\&|C|D\r")]);
     const r = await run(["parse", "s.mllp"], bytesDeps(truncated));
     expect(r.exit).toBe(EXIT.DATAERR);
+    expect(r.exit).not.toBe(EXIT.OK);
     expect(r.stderr).toContain("CLI_PARSE_FAILED");
-    expect(r.stdout).toBe("");
+    expect(r.stdout.trim().split("\n")).toHaveLength(1); // the one complete frame, and no more
+    expect(r.stderr).not.toContain("MSH");
   });
 
   it("inspect rejects a truncated MLLP stream too (never a fake frame count + exit 0)", async () => {

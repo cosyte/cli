@@ -24,10 +24,22 @@ export {
   detectionError,
   asCosyteFormat,
   DETECTABLE_FORMATS,
+  DETECT_PREFIX_BYTES,
   KNOWN_FORMATS,
   type CosyteFormat,
   type DetectResult,
 } from "./core/format.js";
+
+export { MAX_INPUT_BYTES, describeByteLimit, inputTooLargeError } from "./core/limits.js";
+
+export {
+  collectChunks,
+  mllpFrames,
+  ndjsonRecords,
+  oneChunk,
+  withinLimit,
+  type ByteChunks,
+} from "./core/records.js";
 
 export {
   OP_SUPPORT,
@@ -38,6 +50,7 @@ export {
   fmtFormat,
   validateFormat,
   deframeMllp,
+  truncatedMllpError,
   loadOptional,
   loadOptionalPackage,
   valueFreeLocator,
@@ -58,13 +71,26 @@ export {
   type CliCode,
 } from "./core/diagnostics.js";
 
-export { resolveInput, type ResolvedInput, type InputResolution } from "./core/input.js";
+export {
+  resolveInput,
+  resolveInputStream,
+  type ResolvedInput,
+  type InputResolution,
+  type ResolvedInputStream,
+  type InputStreamResolution,
+} from "./core/input.js";
 
 export { extractStableCode, parseFailureResult } from "./core/wrap.js";
 
 export { formatHl7Position, type Finding } from "./core/findings.js";
 
-export { readFileBytes, readStreamBytes, type RunDeps } from "./core/io.js";
+export {
+  readFileBytes,
+  readStreamBytes,
+  fileChunks,
+  streamChunks,
+  type RunDeps,
+} from "./core/io.js";
 
 export {
   VALUE_FREE,
@@ -80,7 +106,7 @@ export { deidStatus, DEID_UNAVAILABLE_REASON, type DeidAvailability } from "./co
 
 export type { RunResult } from "./core/result.js";
 
-export { run } from "./core/run.js";
+export { run, helpText } from "./core/run.js";
 
 export { parseCommand } from "./commands/parse.js";
 

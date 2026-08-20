@@ -19,12 +19,29 @@ import { validateCommand } from "../commands/validate.js";
 import { CLI_CODES, CliError, toCliError } from "./diagnostics.js";
 import { EXIT } from "./exit-codes.js";
 import type { RunDeps } from "./io.js";
+import { describeByteLimit, MAX_INPUT_BYTES } from "./limits.js";
 import { extractPhiPosture } from "./phi.js";
 import type { RunResult } from "./result.js";
 import { VERSION } from "./version.js";
 
-/** The value-free `--help` text. Names commands, flags, and exit codes, never any input. */
-const HELP = `cosyte: a PHI-safe developer CLI over the @cosyte/* healthcare parsers
+/**
+ * Build the value-free `--help` text. Names commands, flags, the input-size limit, and exit codes,
+ * never any input.
+ *
+ * The limit is **rendered from the constant the code enforces**, not typed in: the help output and
+ * the published command reference state one number because there is only one number to state.
+ *
+ * @param limitBytes - The input-size limit to state. Defaults to {@link MAX_INPUT_BYTES}.
+ * @returns The full help text.
+ * @example
+ * ```ts
+ * import { helpText } from "@cosyte/cli";
+ *
+ * helpText(1024).includes("1024 bytes"); // => true
+ * ```
+ */
+export function helpText(limitBytes: number = MAX_INPUT_BYTES): string {
+  return `cosyte: a PHI-safe developer CLI over the @cosyte/* healthcare parsers
 
 Usage:
   cosyte <command> [options]
@@ -63,8 +80,15 @@ map-codes options (the positional is a BYO FHIR ConceptMap; a code is not PHI):
   --version <v>     The source code system version (optional)
   --display <d>     The source display (optional)
 
+Input size:
+  parse reads at most ${describeByteLimit(limitBytes)} of input per invocation. A larger input is
+  refused with CLI_INPUT_TOO_LARGE and the data-error exit code (65), never the internal-error
+  code; split the input and re-run. Multi-record output (--ndjson, MLLP) is written record by
+  record as it is parsed, so a refusal can arrive after some records have already been emitted:
+  the exit code, not the output, is the signal that the run did not complete.
+
 Exit codes:
-  0   success / valid    65  data error (unparseable / undetected format)
+  0   success / valid    65  data error (unparseable / undetected format / input too large)
   1   invalid (validate) 66  no input (missing/unreadable file)
   2   usage error        69  unavailable (a capability is not yet built, e.g. redact)
                          70  internal error
@@ -73,6 +97,10 @@ PHI posture: the parsed model goes to stdout (the data channel you chose); every
 stderr is value-free (codes and positions only, never a field value) unless you pass the loud,
 opt-in --unsafe-show-values (which permits a bounded input excerpt in a failure diagnostic).
 `;
+}
+
+/** The rendered help text for this build: the one place the default limit is stated. */
+const HELP = helpText();
 
 /** True if `argv` requests help (`-h`/`--help` anywhere). */
 function wantsHelp(argv: readonly string[]): boolean {

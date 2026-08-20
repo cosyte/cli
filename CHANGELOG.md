@@ -80,7 +80,36 @@ still do. Each entry was assigned to the release whose tag first contains it, re
     gate's own OK line.** Both key on an actual NUL byte; the wider set is git's own binary
     classification, which is why neither gate may be reduced to `grep -I`.
 
+- **`parse` has a documented input-size limit: 67108864 bytes (64 MiB) per invocation, refused as a
+  data error.** Node has two hard allocation ceilings (`buffer.constants.MAX_LENGTH` and
+  `buffer.constants.MAX_STRING_LENGTH`), and a legitimately large input that crossed one of them threw
+  past every handler and was reported as `CLI_INTERNAL` / exit `70`, which says "this is a bug in the
+  tool" about an input that is merely big. The CLI now declares its own limit far below both, checks it
+  against the **running byte count as the input arrives**, and refuses with a value-free
+  `CLI_INPUT_TOO_LARGE` naming the limit and exit `65`. The number is rendered from one constant into
+  `cosyte --help` and the command reference, and a test reds if the two ever disagree.
+  - The refusal fires before anything allocates memory proportional to the oversized input, which is
+    what makes it a refusal rather than a slower way to reach the same crash. The regression suite
+    proves it with sources that would run past `MAX_STRING_LENGTH` if anything drained them.
+  - The MLLP frame reader's own smaller default ceiling is raised to the CLI's limit on this path, so
+    the documented number is the binding one rather than an undocumented number underneath it.
+
 ### Changed
+
+- **Multi-record `parse` output (`--ndjson` and MLLP) is now emitted record by record, as each record
+  is parsed**, instead of being accumulated and written once at the end. The first line reaches stdout
+  before the rest of the input has been read, so a bulk batch pipes into the next process instead of
+  waiting on the whole file. Per-record isolation and the exit-code contract are unchanged: a record
+  that fails to parse is still a value-free `{ record, error }` line, the stream still continues, and
+  any failed record still resolves the invocation to exit `65`.
+  - **A fatal condition part way through keeps the lines already written and still exits non-zero.**
+    A truncated MLLP stream is the visible case: the frames that completed have already been emitted
+    when the unterminated one is detected at end of stream, so `stdout` is no longer empty for that
+    input. It was never a success and still is not: the exit code carries the failure, and a partial
+    record stream is never reported as a complete one.
+  - **A downstream consumer that closes the pipe part way through is now a value-free
+    `CLI_OUTPUT_WRITE_FAILED`** rather than an unhandled write error. One write per record is a
+    failure surface a single write did not have.
 
 - **`CLAUDE.md` narrative was relocated into `documentation/agent-notes.md` to make room for the gate's
   rules.** The branch-protection, PHI-scanner-residual and em-dash blocks were compressed to their
