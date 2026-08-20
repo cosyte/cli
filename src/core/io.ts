@@ -17,7 +17,7 @@
  * @packageDocumentation
  */
 
-import { open, readFile, stat } from "node:fs/promises";
+import { open } from "node:fs/promises";
 import type { Readable } from "node:stream";
 
 import { CLI_CODES, CliError } from "./diagnostics.js";
@@ -54,13 +54,24 @@ export interface RunDeps {
   readonly writeStdout?: (chunk: string) => void;
 }
 
+/** The value-free failure for a file that is missing, a directory, or otherwise unreadable. */
+function noInputError(path: string): CliError {
+  return new CliError(
+    CLI_CODES.CLI_NO_INPUT,
+    EXIT.NOINPUT,
+    `cannot read input file: ${path} (does it exist and is it readable?)`,
+  );
+}
+
 /**
  * Read a file into bytes, mapping any read failure to a **value-free** `CLI_NO_INPUT` /
  * {@link EXIT.NOINPUT} error. The path is structural context (the user supplied it), so it may appear
  * in the message; the file *contents* never do.
  *
  * A file whose size already exceeds `limit` is refused **before it is read**, with the value-free
- * over-limit data error, so an oversized file is never allocated in the first place.
+ * over-limit data error, so an oversized file is never allocated in the first place. The size is read
+ * from the **open descriptor** rather than from the path, so what is measured and what is read are the
+ * same file even if the path is replaced in between.
  *
  * @param path - The file path to read.
  * @param limit - The maximum number of bytes to accept. Defaults to {@link MAX_INPUT_BYTES}.
@@ -78,22 +89,22 @@ export async function readFileBytes(
   path: string,
   limit: number = MAX_INPUT_BYTES,
 ): Promise<Uint8Array> {
+  let handle;
   try {
-    const info = await stat(path);
-    if (info.isFile() && info.size > limit) throw inputTooLargeError(limit);
-  } catch (e) {
-    // A CliError here is the over-limit refusal and is final; anything else means the path could not
-    // be stat-ed, which the read below reports as the value-free CLI_NO_INPUT.
-    if (e instanceof CliError) throw e;
+    handle = await open(path, "r");
+  } catch {
+    throw noInputError(path);
   }
   try {
-    return await readFile(path);
-  } catch {
-    throw new CliError(
-      CLI_CODES.CLI_NO_INPUT,
-      EXIT.NOINPUT,
-      `cannot read input file: ${path} (does it exist and is it readable?)`,
-    );
+    const info = await handle.stat();
+    if (info.isFile() && info.size > limit) throw inputTooLargeError(limit);
+    return await handle.readFile();
+  } catch (e) {
+    // The over-limit refusal is final; anything else is an unreadable input, reported value-free.
+    if (e instanceof CliError) throw e;
+    throw noInputError(path);
+  } finally {
+    await handle.close();
   }
 }
 
@@ -172,25 +183,18 @@ export async function* streamChunks(stream: Readable): AsyncGenerator<Uint8Array
  * ```
  */
 export async function* fileChunks(path: string): AsyncGenerator<Uint8Array> {
-  const noInput = (): CliError =>
-    new CliError(
-      CLI_CODES.CLI_NO_INPUT,
-      EXIT.NOINPUT,
-      `cannot read input file: ${path} (does it exist and is it readable?)`,
-    );
-
   let handle;
   try {
     handle = await open(path, "r");
   } catch {
-    throw noInput();
+    throw noInputError(path);
   }
   try {
     const stream = handle.createReadStream();
     try {
       for await (const chunk of stream as AsyncIterable<Buffer>) yield chunk;
     } catch {
-      throw noInput();
+      throw noInputError(path);
     }
   } finally {
     await handle.close();
