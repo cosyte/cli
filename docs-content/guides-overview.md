@@ -17,7 +17,8 @@ question.
 > with NDJSON streaming for MLLP frames and `--ndjson`), `validate` (verdict in the exit code), `inspect`
 > (a value-free structural summary), `fmt` (canonical re-serialization), `convert` (HL7 v2 → FHIR R4 via
 > `@cosyte/transform`), `map-codes` (ConceptMap `$translate` via `@cosyte/terminology`), `redact`/`deid`
-> (an honest gated stub, exit `69`, until the CLI wires `@cosyte/deid`), and `completion` (a shell completion
+> (de-identification delegated whole to `@cosyte/deid`, covering `ccda`, `fhir`, `hl7`, `x12` and
+> refusing every other format rather than approximating it), and `completion` (a shell completion
 > script). Support is honest **per (format, operation)**: a parser that does not faithfully support a
 > command (DICOM `parse`/`fmt`, C-CDA `parse`, MLLP `fmt`/`validate`) is a value-free
 > `CLI_FORMAT_UNSUPPORTED`, never a fake. PHI discipline runs throughout: value-free by default, the

@@ -102,7 +102,22 @@ export {
   type PhiPosture,
 } from "./core/phi.js";
 
-export { deidStatus, DEID_UNAVAILABLE_REASON, type DeidAvailability } from "./core/deid.js";
+export {
+  deidStatus,
+  deidCoverage,
+  deidCoveredFormats,
+  isDeidCovered,
+  DEID_BLOCKED,
+  DEID_COVERAGE,
+  DEID_PACKAGE,
+  DEID_UNAVAILABLE_REASON,
+  type DeidAvailability,
+  type DeidCoverage,
+  type DeidCoveredFormat,
+  type DeidDelegate,
+  type DeidManifestRecord,
+  type RedactOutcome,
+} from "./core/deid.js";
 
 export type { RunResult } from "./core/result.js";
 

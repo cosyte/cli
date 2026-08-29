@@ -52,9 +52,17 @@ describe("run: top-level dispatch", () => {
     expect(r.stdout).toContain('"fhir"');
   });
 
-  it("routes `redact` and its `deid` alias to the redact command (exit 69)", async () => {
-    expect((await run(["redact", "x.hl7"], noDeps)).exit).toBe(EXIT.UNAVAILABLE);
-    expect((await run(["deid", "x.hl7"], noDeps)).exit).toBe(EXIT.UNAVAILABLE);
+  it("routes `redact` and its `deid` alias to the redact command", async () => {
+    const hl7 = new TextEncoder().encode("MSH|^~\\&|A|B|C|D|20240101||ADT^A01|1|P|2.5\r");
+    const deps = {
+      readFile: () => Promise.resolve(hl7),
+      readStdin: () => Promise.resolve(new Uint8Array()),
+    };
+    for (const name of ["redact", "deid"]) {
+      const r = await run([name, "x.hl7"], deps);
+      expect(r.exit).toBe(EXIT.OK);
+      expect(r.stderr).toContain("@cosyte/deid"); // the delegated de-identifier's own report
+    }
   });
 
   it("routes `validate` to the validate command", async () => {

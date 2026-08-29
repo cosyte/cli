@@ -64,11 +64,26 @@ echo it for you.
 
 ## `CLI_NOT_IMPLEMENTED` (exit 69)
 
-The command's ground-layer library is not yet wired, so the command is **unavailable**, never a fake
-success. Today this is `redact`/`deid`: de-identification belongs to `@cosyte/deid`, which the CLI does
-not wire yet, and the CLI will not ship a partial scrub that looks de-identified while leaving PHI
-behind. The command never reads your input. It becomes available once that integration lands and is
-vetted.
+The capability the command needs is not wired for this input, so the command is **unavailable**, never
+a fake success. From `redact`/`deid` it means `@cosyte/deid` ships no de-identification adapter for the
+format you gave it: `astm`, `mllp` and `ncpdp`. The covered formats are `ccda`, `fhir`, `hl7`, `x12`.
+The CLI will not fall back to a partial scrub that looks de-identified while leaving PHI behind, so
+nothing is emitted. `validate --profile` reports the same code, for the same reason.
+
+## `CLI_DEID_INCOMPLETE` (exit 1)
+
+`redact`/`deid` ran, and `@cosyte/deid` reported at least one locus it could **not** handle (its
+fail-closed `blocked` disposition). The run is therefore not a de-identified copy and is not offered as
+one: **no output is emitted**, and the stderr manifest names each blocked path and its stable code so
+you can see exactly where the gap is. This is an operation-level failure, like an invalid `validate`
+verdict: the tool worked, the input could not be fully handled. It is never exit `70`, which means a
+bug.
+
+## `CLI_PARSER_UNAVAILABLE` from `redact` (exit 69)
+
+`@cosyte/deid` is an **optional dependency**: an install without it degrades rather than failing. The
+command decides this **before reading your input**, so a copy that cannot de-identify never touches the
+bytes it cannot strip. Install `@cosyte/deid` (and the parser for your format) to enable the command.
 
 ## `CLI_USAGE` (exit 2)
 
@@ -107,6 +122,13 @@ a successful parse still keeps values on stdout alone.
   target.
 - `validate --profile` is reserved but gated: the CLI bundles no profiles yet, so it reports an honest
   `CLI_NOT_IMPLEMENTED` (exit `69`) rather than fake a profile verdict.
-- `redact`/`deid` exists but is an honest `CLI_NOT_IMPLEMENTED` (exit `69`) gated on `@cosyte/deid`.
+- `redact`/`deid` de-identifies `ccda`, `fhir`, `hl7`, `x12` by delegating to `@cosyte/deid`, and
+  refuses everything else rather than approximating it: `astm`/`mllp`/`ncpdp` are
+  `CLI_NOT_IMPLEMENTED` (`69`), `dicom` is `CLI_FORMAT_UNSUPPORTED` (`65`, its de-identified form is
+  binary and this stdout is text), and a locus the library could not handle is `CLI_DEID_INCOMPLETE`
+  (`1`) with no output. Its stderr manifest is the library's own; the CLI asserts no standard.
+- `redact` does **not** honour `--unsafe-show-values`. An excerpt of the input you asked to have
+  stripped is exactly the leak that command exists to prevent, so its diagnostics stay value-free
+  under every flag.
 
 The **API Reference** always reflects exactly what this release ships.

@@ -23,6 +23,26 @@ describe("TOOL_DEFS", () => {
       expect(t.description.length).toBeGreaterThan(0);
     }
   });
+
+  it("does NOT advertise redact/deid: wiring it terminal-side does not put it on the agent surface", () => {
+    // The de-identification command is deliberately terminal-only. An agent that could call it would
+    // be handed a document the CLI asserts nothing about, over a channel with no human in it.
+    const names = TOOL_DEFS.map((t) => t.name);
+    expect(names).not.toContain("redact");
+    expect(names).not.toContain("deid");
+    for (const t of TOOL_DEFS) {
+      expect(t.description).not.toMatch(/redact|de-identif/i);
+    }
+  });
+
+  it("`redact` is an unknown tool name, answered value-free", async () => {
+    for (const name of ["redact", "deid"]) {
+      const r = await dispatchTool(name, { content: HL7_ADT });
+      expect(r.isError).toBe(true);
+      expect(r.content[0]?.text).toContain(`unknown tool '${name}'`);
+      expect(r.structuredContent.ok).toBe(false);
+    }
+  });
 });
 
 describe("dispatchTool: success paths (shared core, value-free)", () => {
