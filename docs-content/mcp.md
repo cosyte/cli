@@ -54,6 +54,50 @@ cosyte mcp        # start the server on stdio (also: cosyte-mcp)
 Every tool takes a `content` string (the raw message); `parse`/`validate`/`inspect` accept an optional
 `format` override.
 
+## The result contract
+
+**Every tool publishes an `outputSchema`**, so a client validates a result against a declared contract
+instead of pattern-matching a text blob to work out what it is holding. `tools/list` carries that
+schema next to each tool's input schema and title; every reply from that tool conforms to it.
+
+The structured result has the same three outcome properties for every tool, plus that tool's own
+payload:
+
+| Property | Type      | What it says                                                                      |
+| -------- | --------- | --------------------------------------------------------------------------------- |
+| `ok`     | boolean   | Whether the call produced data. A negative verdict about the message is still `true`. |
+| `status` | string    | `success`, `verdict`, or `failed`: the one property to branch on.                  |
+| `exit`   | integer   | The exit code from the documented [exit-code contract](./reference-commands#exit-codes). |
+| `code`   | string    | On a failed call, the stable diagnostic code. Absent when data was produced.       |
+| `data`   | object    | The tool's own payload. Absent on a failed call, which produced none.              |
+
+`status` is the distinction a text blob could never make reliably:
+
+- **`success`** the operation completed cleanly.
+- **`verdict`** the tool ran and reports a negative finding _about the message_: a resource that
+  parsed but is not conformant, or a conversion with an error-severity issue. The payload is present
+  and the call is not an error.
+- **`failed`** the call produced no data: a usage mistake, unparseable input, an unavailable parser,
+  or an internal error. `code` says which, `data` is absent.
+
+`data` is the payload the terminal command puts on stdout: `parse` gives `format` + `model` +
+`warnings` (or `records`, one entry per record, for a multi-record input), `validate` gives `format` +
+`valid` + `findings`, `inspect` gives the value-free structural summary, and `convert` gives `format` +
+`bundle` + `findings`.
+
+```json
+{
+  "ok": true,
+  "status": "verdict",
+  "exit": 1,
+  "data": { "format": "fhir", "valid": false, "findings": [{ "code": "value-not-in-set", "severity": "error", "location": "Patient.gender" }] }
+}
+```
+
+**The text content block carries the serialized JSON of that same structured result**, so a client that
+reads only text sees exactly the value a schema-aware client validates. There is one value, serialized
+once: the two channels cannot disagree.
+
 ## PHI posture on the agent surface
 
 The value-free discipline is **hardened** for agents: there is **no `--unsafe-show-values` door** over

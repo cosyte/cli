@@ -17,6 +17,29 @@ still do. Each entry was assigned to the release whose tag first contains it, re
 
 ### Added
 
+- **Every MCP tool now publishes an `outputSchema`, and every tool result conforms to it.** An agent
+  calling a cosyte tool used to receive `structuredContent: { exit, ok }` with no schema to check it
+  against, so deciding whether a result held data or a diagnostic meant pattern-matching a text blob.
+  Each of the four tools now advertises an output schema and a `title` on `tools/list`, and every
+  dispatch path (success, negative verdict, hard failure, usage error, internal error) returns
+  structured content conforming to the schema its own tool declared.
+  - **The result carries `ok`, `status`, `exit`, `code` and `data`.** `status` is `success`,
+    `verdict` or `failed`, and it is the property that separates a negative verdict about the message
+    (the tool ran, the payload is present, the call is not an error) from a call that produced
+    nothing: the distinction no text blob could make reliably. `code` is the stable diagnostic code on
+    a failed call. `data` is the tool's own payload: the parsed model and warnings (or a record stream
+    for a multi-record input), the validation verdict and findings, the value-free structural summary,
+    or the converted `Bundle`.
+  - **On a failed call the structured result is value-free by construction**, not by review: every
+    property is drawn from a fixed set (the outcome vocabulary, the exit-code contract, the diagnostic
+    code registry), so no part of the caller's input can appear in it. One consequence is deliberate:
+    an unknown tool name is no longer echoed back, because a tool name is caller-supplied text like
+    any other argument.
+  - Tool names, tool count, `tools/list` ordering, input schemas, the exit-code contract, and the rule
+    that a parsed-but-invalid `validate` is a successful call are all unchanged, and no dependency was
+    added. The suite validates each emitted result against its own tool's declared schema with a
+    dependency-free checker that refuses any schema keyword it does not implement.
+
 - **`redact` / `deid` produces a real de-identified copy, delegated whole to `@cosyte/deid`.** The
   command that shipped as an honest `CLI_NOT_IMPLEMENTED` is wired. For `ccda`, `fhir`, `hl7` and
   `x12` stdout carries the de-identified document (serialized exactly as `cosyte fmt` serializes that
@@ -127,6 +150,11 @@ still do. Each entry was assigned to the release whose tag first contains it, re
 
 ### Changed
 
+- **The MCP text content block is now the serialized JSON of the structured result**, replacing the
+  command's raw stdout (on a success) or its stderr diagnostic (on a failure). A client that reads
+  only text now sees exactly the value a schema-aware client validates: there is one value, serialized
+  once, so the two channels cannot disagree. A client that read the text block expecting the bare
+  command output will find the same payload one level down, under `data`.
 - **Multi-record `parse` output (`--ndjson` and MLLP) is now emitted record by record, as each record
   is parsed**, instead of being accumulated and written once at the end. The first line reaches stdout
   before the rest of the input has been read, so a bulk batch pipes into the next process instead of

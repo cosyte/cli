@@ -30,6 +30,10 @@ export const SERVER_INFO = { name: "cosyte", version: VERSION } as const;
  * the caller connects it to stdio (in production) or to an in-memory transport (in tests), so the
  * handler wiring is drivable without a subprocess.
  *
+ * Both handlers are **explicit about what reaches the wire**: `tools/list` copies each tool's title,
+ * description, input schema and **output schema**, and `tools/call` passes the whole structured result
+ * through, so what a client validates is exactly what the tool declared and produced.
+ *
  * @returns A configured, unconnected {@link Server}.
  * @example
  * ```ts
@@ -45,6 +49,7 @@ export function createMcpServer(): Server {
   server.setRequestHandler(ListToolsRequestSchema, () => ({
     tools: TOOL_DEFS.map((t) => ({
       name: t.name,
+      title: t.title,
       description: t.description,
       inputSchema: {
         type: t.inputSchema.type,
@@ -53,6 +58,14 @@ export function createMcpServer(): Server {
         ...(t.inputSchema.additionalProperties !== undefined
           ? { additionalProperties: t.inputSchema.additionalProperties }
           : {}),
+      },
+      // Every advertised tool publishes its result schema; a client validates a reply against it
+      // instead of pattern-matching the text block. Declared, so it is copied unconditionally.
+      outputSchema: {
+        type: t.outputSchema.type,
+        properties: { ...t.outputSchema.properties },
+        required: [...t.outputSchema.required],
+        additionalProperties: t.outputSchema.additionalProperties,
       },
     })),
   }));
@@ -63,7 +76,9 @@ export function createMcpServer(): Server {
     return {
       content: result.content.map((c) => ({ type: c.type, text: c.text })),
       isError: result.isError,
-      structuredContent: { exit: result.structuredContent.exit, ok: result.structuredContent.ok },
+      // The whole structured value reaches the wire. A field-by-field copy here would silently
+      // truncate the payload the called tool's own schema promises.
+      structuredContent: { ...result.structuredContent },
     };
   });
 

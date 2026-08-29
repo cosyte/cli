@@ -13,7 +13,10 @@ export {
   TOOL_DEFS,
   type McpToolDef,
   type McpToolInputSchema,
+  type McpToolOutputSchema,
   type McpToolResult,
   type McpToolMeta,
+  type McpStructuredResult,
+  type McpToolStatus,
   type McpTextContent,
 } from "./tools.js";
