@@ -55,11 +55,11 @@ Every command is safe to branch on in CI. The exit code carries the outcome:
 | Code | Meaning                                                     |
 |------|------------------------------------------------------------|
 | `0`  | success / valid (`validate`)                               |
-| `1`  | invalid: `validate` found a parseable-but-bad message     |
+| `1`  | invalid: `validate` found a parseable-but-bad message, or `redact` could not de-identify every locus |
 | `2`  | usage error (unknown flag, missing argument)               |
 | `65` | data error (unparseable input, or format undetected)       |
 | `66` | no input (missing/unreadable file)                         |
-| `69` | unavailable (a capability is not yet built, e.g. `redact`) |
+| `69` | unavailable (a capability is not wired for this input, e.g. `redact` on `astm`) |
 | `70` | internal error (a bug)                                     |
 
 ```ts runnable

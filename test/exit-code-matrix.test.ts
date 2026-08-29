@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
 import { describe, expect, it } from "vitest";
 
 import { CLI_CODES, CliError } from "../src/core/diagnostics.js";
@@ -120,11 +123,11 @@ const MATRIX: readonly Case[] = [
     },
     exit: EXIT.NOINPUT,
   },
-  // 69: unavailable (a capability gated on a not-yet-built ground layer).
+  // 69: unavailable (a capability the ground layer does not cover here).
   {
-    name: "redact before @cosyte/deid ships",
-    argv: ["redact", "m.hl7"],
-    deps: deps(enc(HL7)),
+    name: "redact a format @cosyte/deid has no adapter for",
+    argv: ["redact", "r.astm", "--format", "astm"],
+    deps: deps(enc("H|\\^&\r")),
     exit: EXIT.UNAVAILABLE,
   },
   {
@@ -162,6 +165,116 @@ describe("exit-code golden matrix: the documented contract is locked", () => {
       if (c.exit === EXIT.OK) continue;
       const r = await run([...c.argv], c.deps);
       expect(r.exit).not.toBe(EXIT.OK);
+    }
+  });
+});
+
+/**
+ * `redact`'s own row of the matrix. It is the command with the most ways to fail, and every one of
+ * them has to land on a documented code: never `0` over input it could not strip, and never `70`,
+ * which the contract reserves for a bug. The de-identification library's own exception message is
+ * discarded on every path, exactly as a parser's is.
+ */
+describe("exit-code matrix: redact", () => {
+  const FIXTURES = join(import.meta.dirname, "__fixtures__");
+  const FIX = (name: string): Uint8Array => readFileSync(join(FIXTURES, name));
+
+  const REDACT: readonly Case[] = [
+    {
+      name: "a clean pass over a covered format",
+      argv: ["redact", "m.hl7"],
+      deps: deps(FIX("adt-a01.hl7")),
+      exit: EXIT.OK,
+    },
+    {
+      name: "an input the de-identifier could not fully handle",
+      argv: ["redact", "b.edi"],
+      deps: deps(FIX("834-blocked.edi")),
+      exit: EXIT.INVALID,
+    },
+    {
+      name: "an unknown flag",
+      argv: ["redact", "m.hl7", "--nope"],
+      deps: deps(FIX("adt-a01.hl7")),
+      exit: EXIT.USAGE,
+    },
+    {
+      name: "bytes that do not parse as the resolved format (hl7)",
+      argv: ["redact", "x.hl7", "--format", "hl7"],
+      deps: deps(enc("{ not an hl7 message at all")),
+      exit: EXIT.DATAERR,
+    },
+    {
+      name: "bytes that do not parse as the resolved format (fhir)",
+      argv: ["redact", "x.json", "--format", "fhir"],
+      deps: deps(enc("{ not json")),
+      exit: EXIT.DATAERR,
+    },
+    {
+      name: "bytes that do not parse as the resolved format (x12)",
+      argv: ["redact", "x.edi", "--format", "x12"],
+      deps: deps(enc("nothing like an interchange")),
+      exit: EXIT.DATAERR,
+    },
+    {
+      name: "bytes that do not parse as the resolved format (ccda)",
+      argv: ["redact", "x.xml", "--format", "ccda"],
+      deps: deps(enc("<not-a-clinical-document")),
+      exit: EXIT.DATAERR,
+    },
+    {
+      name: "a format this CLI cannot serialize (dicom)",
+      argv: ["redact", "s.dcm"],
+      deps: deps(FIX("sample.dcm")),
+      exit: EXIT.DATAERR,
+    },
+    {
+      name: "empty input",
+      argv: ["redact", "-"],
+      deps: deps(new Uint8Array()),
+      exit: EXIT.DATAERR,
+    },
+    {
+      name: "a nonexistent path",
+      argv: ["redact", "gone.hl7"],
+      deps: {
+        readFile: () =>
+          Promise.reject(
+            new CliError(CLI_CODES.CLI_NO_INPUT, EXIT.NOINPUT, "cannot read input file: gone.hl7"),
+          ),
+        readStdin: () => Promise.resolve(new Uint8Array()),
+      },
+      exit: EXIT.NOINPUT,
+    },
+    {
+      name: "a format the de-identifier has no adapter for",
+      argv: ["redact", "rx.xml"],
+      deps: deps(FIX("newrx.xml")),
+      exit: EXIT.UNAVAILABLE,
+    },
+  ];
+
+  for (const c of REDACT) {
+    it(`${c.name} → exit ${String(c.exit)}`, async () => {
+      const r = await run([...c.argv], c.deps);
+      expect(r.exit).toBe(c.exit);
+    });
+  }
+
+  it("never reaches the internal-error code, and never emits an exception message", async () => {
+    for (const c of REDACT) {
+      const r = await run([...c.argv], c.deps);
+      expect(r.exit, c.name).not.toBe(EXIT.SOFTWARE);
+      expect(r.stderr, c.name).not.toMatch(/\s+at\s+\S+:\d+/); // no stack frame
+      expect(r.stderr, c.name).not.toContain("CLI_INTERNAL");
+    }
+  });
+
+  it("emits nothing on the data channel on every non-zero outcome", async () => {
+    for (const c of REDACT) {
+      if (c.exit === EXIT.OK) continue;
+      const r = await run([...c.argv], c.deps);
+      expect(r.stdout, c.name).toBe("");
     }
   });
 });

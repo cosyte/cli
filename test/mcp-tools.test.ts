@@ -90,6 +90,31 @@ describe("TOOL_DEFS", () => {
     const payloads = TOOL_DEFS.map((t) => JSON.stringify(t.outputSchema.properties["data"]));
     expect(new Set(payloads).size).toBe(TOOL_DEFS.length);
   });
+
+  it("does NOT advertise redact/deid: wiring it terminal-side does not put it on the agent surface", () => {
+    // The de-identification command is deliberately terminal-only. An agent that could call it would
+    // be handed a document the CLI asserts nothing about, over a channel with no human in it.
+    const names = TOOL_DEFS.map((t) => t.name);
+    expect(names).not.toContain("redact");
+    expect(names).not.toContain("deid");
+    for (const t of TOOL_DEFS) {
+      expect(t.description).not.toMatch(/redact|de-identif/i);
+    }
+  });
+
+  it("`redact` is an unknown tool name, answered value-free", async () => {
+    for (const name of ["redact", "deid"]) {
+      const r = await dispatchTool(name, { content: HL7_ADT });
+      expect(r.isError).toBe(true);
+      expect(r.structuredContent.ok).toBe(false);
+      expect(r.structuredContent.status).toBe("failed");
+      expect(r.structuredContent.code).toBe(CLI_CODES.CLI_USAGE);
+      // Value-free now reaches the tool name too: the result says the call failed and why, without
+      // repeating any of what the caller sent.
+      expect(JSON.stringify(r)).not.toContain(name);
+      for (const t of TOOL_DEFS) assertPublishedContract(t.name, r, `${name} vs ${t.name}`);
+    }
+  });
 });
 
 describe("schema conformance checker (the dependency-free validator itself)", () => {

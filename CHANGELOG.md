@@ -40,6 +40,37 @@ still do. Each entry was assigned to the release whose tag first contains it, re
     added. The suite validates each emitted result against its own tool's declared schema with a
     dependency-free checker that refuses any schema keyword it does not implement.
 
+- **`redact` / `deid` produces a real de-identified copy, delegated whole to `@cosyte/deid`.** The
+  command that shipped as an honest `CLI_NOT_IMPLEMENTED` is wired. For `ccda`, `fhir`, `hl7` and
+  `x12` stdout carries the de-identified document (serialized exactly as `cosyte fmt` serializes that
+  format) and stderr carries the library's own value-free manifest, one line per locus with its
+  category, transform, structural path, count, disposition and stable code, plus the library's own
+  published output label and version. The CLI adds no policy, no locus map, no transform and no
+  fallback scrub, and asserts no de-identification standard of its own.
+  - **Every other outcome emits nothing at all**, because a partial pass offered as a de-identified
+    copy is the hazard the command exists to prevent. `astm`, `mllp` and `ncpdp` have no adapter in
+    that library: `CLI_NOT_IMPLEMENTED` (`69`). `dicom` is covered there, but its de-identified form
+    is a Part 10 byte stream this text stdout cannot carry: `CLI_FORMAT_UNSUPPORTED` (`65`), the
+    CLI's own limit, deliberately not blamed on the library. Any locus the library reports it could
+    not handle is the new `CLI_DEID_INCOMPLETE` diagnostic and exit `1`, with the blocked paths and
+    their codes named on stderr.
+  - **`@cosyte/deid` is an `optionalDependency`.** An install without it degrades to a value-free
+    `CLI_PARSER_UNAVAILABLE` (`69`), decided **before the input is read**, so a copy that cannot
+    de-identify never touches the bytes it cannot strip. No other command loads it: the boundary is
+    gated statically and observed at runtime in `test/deid-isolation.test.ts`.
+  - **Identifier surrogates are keyed with a per-invocation ephemeral key.** The library's default
+    policy pseudonymizes MRN / account / beneficiary numbers, and a keyed transform with no key is a
+    fatal there, never an unkeyed fallback. The CLI holds no key material and adds no key surface, so
+    it keys each run with a fresh random value: surrogates are consistent within one output and
+    deliberately not stable across runs. Stated on stderr and in the docs rather than discovered.
+  - **`redact` does not honour `--unsafe-show-values`.** The opt-in excerpt exists for debugging a
+    rejected parse; on this command an excerpt of the un-stripped input is precisely the leak it
+    exists to prevent, so its diagnostics stay value-free under every flag. The PHI-leak sentinel
+    matrix now carries a redact row per mode (covered, refused, blocked, library absent, `--format`
+    given and omitted, file and stdin).
+  - No published exit value moved and no existing `CLI_*` code was renamed. `redact` is still
+    deliberately absent from the MCP tool surface.
+
 - **The two-file agent-guidance contract is now gated (`pnpm check:agent-notes`).** `CLAUDE.md` was
   split from `documentation/agent-notes.md` on 2026-08-04, which made every anchor between them
   load-bearing, and nothing checked them. `scripts/check-agent-notes.ts` now verifies that the

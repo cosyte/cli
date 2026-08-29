@@ -16,6 +16,7 @@ import { mapCodesCommand } from "../commands/map-codes.js";
 import { parseCommand } from "../commands/parse.js";
 import { redactCommand } from "../commands/redact.js";
 import { validateCommand } from "../commands/validate.js";
+import { deidCoveredFormats } from "./deid.js";
 import { CLI_CODES, CliError, toCliError } from "./diagnostics.js";
 import { EXIT } from "./exit-codes.js";
 import type { RunDeps } from "./io.js";
@@ -53,7 +54,7 @@ Commands:
   fmt <file|->        Canonically re-serialize via the parser's spec-clean serializer
   convert <file|->    Convert HL7 v2 → FHIR R4 via @cosyte/transform (use --to fhir)
   map-codes <cmap|->  Translate a code through a BYO FHIR ConceptMap via @cosyte/terminology
-  redact <file|->     De-identify a message (alias: deid): gated on @cosyte/deid, not yet wired
+  redact <file|->     De-identify a message via @cosyte/deid (alias: deid): ${deidCoveredFormats().join(" ")}
   mcp                 Start the stdio MCP server (agent front door; also the cosyte-mcp bin)
   completion <shell>  Print a shell completion script (bash | zsh | fish)
 
@@ -74,6 +75,17 @@ Common options (parse / validate / inspect / fmt):
 convert options:
   --to fhir         The conversion target (required; only HL7 v2 → FHIR R4 today)
 
+redact / deid (de-identification is delegated to @cosyte/deid; the CLI adds no policy of its own):
+  Covered formats: ${deidCoveredFormats().join(", ")}. Every other format is refused rather than
+  approximated: astm, mllp and ncpdp have no adapter (69), and dicom is covered by the library but
+  its de-identified form is a binary stream this text stdout cannot carry (65). If the library
+  reports it could not handle an element, the run exits 1 and emits no output at all: a partial
+  scrub presented as de-identified is the one outcome this command exists to prevent.
+  stdout carries the de-identified document; stderr carries the library's own value-free manifest
+  (category, transform, locus, count, disposition code) plus its published label and version.
+  Identifier surrogates are keyed with a per-invocation ephemeral key: consistent within one
+  output, not stable across runs.
+
 map-codes options (the positional is a BYO FHIR ConceptMap; a code is not PHI):
   --code <code>     The source code to translate (required)
   --system <uri>    The source code system (optional; selects the ConceptMap group)
@@ -90,7 +102,9 @@ Input size:
 Exit codes:
   0   success / valid    65  data error (unparseable / undetected format / input too large)
   1   invalid (validate) 66  no input (missing/unreadable file)
-  2   usage error        69  unavailable (a capability is not yet built, e.g. redact)
+      or de-identification incomplete (redact)
+  2   usage error        69  unavailable (a capability is not wired here, e.g. redact on a
+                             format @cosyte/deid has no adapter for)
                          70  internal error
 
 PHI posture: the parsed model goes to stdout (the data channel you chose); every diagnostic on
@@ -150,7 +164,7 @@ export async function run(argv: string[], deps: RunDeps): Promise<RunResult> {
         return await mapCodesCommand(rest, deps);
       case "redact":
       case "deid":
-        return redactCommand(rest);
+        return await redactCommand(rest, deps);
       case "completion":
         return completionCommand(rest);
       default:

@@ -3,6 +3,8 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import { redactCommand } from "../src/commands/redact.js";
+import { loadDeidDelegate } from "../src/core/deid.js";
 import { run } from "../src/core/run.js";
 import type { RunDeps } from "../src/core/io.js";
 import { dispatchTool, type McpToolResult } from "../src/mcp/tools.js";
@@ -102,13 +104,6 @@ describe("PHI leak matrix: stderr is value-free across every mode", () => {
     }
   });
 
-  it("`redact` is value-free even when pointed at a PHI-laden file (and never reads it)", async () => {
-    const r = await run(["redact", "m.hl7"], fileDeps(HL7));
-    assertNoSentinelOnStderr(r.stderr);
-    expect(r.stderr).toContain("CLI_NOT_IMPLEMENTED");
-    expect(r.stdout).toBe("");
-  });
-
   it("`map-codes` pointed at a PHI-laden (non-ConceptMap) file fails value-free on BOTH channels", async () => {
     // map-codes reads a ConceptMap (reference data). A PHI-laden HL7 file is not one. It must reject
     // with a stable code and never echo the file's bytes on either channel.
@@ -199,6 +194,80 @@ describe("PHI leak matrix: the agent surface's structured result", () => {
       assertNoSentinelOnStderr(JSON.stringify(r));
     });
   }
+});
+
+describe("PHI leak matrix: redact is value-free on stderr in EVERY mode", () => {
+  // `redact` renders the de-identifier's own manifest onto stderr, which makes it the one command
+  // whose diagnostic channel is built from the library's report of what it touched. That report is
+  // value-free by the library's contract (its locus is a path); this matrix is what holds it to
+  // that, across every mode the command has: a covered format, a refused format, a run the library
+  // could not complete, the library absent, `--format` given and omitted, file and stdin.
+  const X12_CLEAN = readFileSync(join(FIXTURES, "834-enrollee.edi"));
+  const X12_BLOCKED = readFileSync(join(FIXTURES, "834-blocked.edi"));
+  const CCDA = readFileSync(join(FIXTURES, "ccd.xml"));
+  const ASTM = readFileSync(join(FIXTURES, "patient.astm"));
+  const DICOM = readFileSync(join(FIXTURES, "sample.dcm"));
+
+  const cases: { name: string; argv: string[]; bytes: Uint8Array }[] = [
+    { name: "hl7 covered, file", argv: ["redact", "m.hl7"], bytes: HL7 },
+    { name: "hl7 covered, stdin", argv: ["redact", "-"], bytes: HL7 },
+    { name: "hl7 covered, --format", argv: ["redact", "m", "--format", "hl7"], bytes: HL7 },
+    { name: "fhir covered", argv: ["redact", "p.json"], bytes: FHIR },
+    { name: "x12 covered", argv: ["redact", "e.edi"], bytes: X12_CLEAN },
+    { name: "ccda covered", argv: ["redact", "c.xml"], bytes: CCDA },
+    { name: "deid alias", argv: ["deid", "m.hl7"], bytes: HL7 },
+    { name: "blocked run", argv: ["redact", "b.edi"], bytes: X12_BLOCKED },
+    { name: "astm refused", argv: ["redact", "r.astm"], bytes: ASTM },
+    { name: "dicom refused", argv: ["redact", "s.dcm"], bytes: DICOM },
+    { name: "unparseable under --format", argv: ["redact", "x", "--format", "hl7"], bytes: FHIR },
+    { name: "unsafe-show-values", argv: ["redact", "m.hl7", "--unsafe-show-values"], bytes: HL7 },
+  ];
+
+  for (const c of cases) {
+    it(`${c.name}: no sentinel on stderr`, async () => {
+      const r = await run(c.argv, fileDeps(c.bytes));
+      assertNoSentinelOnStderr(r.stderr);
+    });
+  }
+
+  it("a covered run keeps every sentinel off BOTH channels: that is the whole command", async () => {
+    for (const bytes of [HL7, FHIR, X12_CLEAN, CCDA]) {
+      const r = await run(["redact", "in"], fileDeps(bytes));
+      expect(r.exit).toBe(0);
+      assertNoSentinelOnStderr(r.stderr);
+      assertNoSentinelOnStderr(r.stdout); // redact's stdout is the STRIPPED document
+      expect(r.stdout.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("the blocked run really did block, and still named no value", async () => {
+    const delegate = await loadDeidDelegate();
+    const { manifest } = await delegate.redact("x12", X12_BLOCKED);
+    expect(manifest.filter((e) => e.disposition === "blocked").length).toBeGreaterThan(0);
+
+    const r = await run(["redact", "b.edi"], fileDeps(X12_BLOCKED));
+    expect(r.exit).toBe(1);
+    expect(r.stdout).toBe("");
+    assertNoSentinelOnStderr(r.stderr);
+  });
+
+  it("with the library absent, nothing is read and no sentinel can reach either channel", async () => {
+    const absent = (): ReturnType<typeof loadDeidDelegate> =>
+      loadDeidDelegate(() => Promise.reject(Object.assign(new Error("Cannot find package"), {})));
+    const r = await redactCommand(["m.hl7"], fileDeps(HL7), absent);
+    expect(r.stdout).toBe("");
+    assertNoSentinelOnStderr(r.stderr);
+  });
+
+  it("`--unsafe-show-values` does not open a door on redact, unlike on parse", async () => {
+    // The opt-in excerpt exists for a parse failure a developer is debugging. On redact an excerpt
+    // of the un-stripped input is precisely the leak the command exists to prevent, so this command
+    // never honours it: proved against an input the hl7 parser rejects.
+    const r = await run(["redact", "x", "--format", "hl7", "--unsafe-show-values"], fileDeps(FHIR));
+    expect(r.exit).not.toBe(0);
+    assertNoSentinelOnStderr(r.stderr);
+    expect(r.stderr).not.toContain("unsafe-show-values");
+  });
 });
 
 describe("PHI leak matrix: fmt keeps stderr value-free (stdout IS the data channel)", () => {

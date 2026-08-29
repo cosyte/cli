@@ -806,9 +806,12 @@ feature-complete: Phase 7 was the final phase.
   cells remain deferred honestly (never faked): `dicom`
   `parse`/`fmt` (binary model), `ccda` `parse` (XML is the canonical `fmt` surface), `mllp` `fmt`/`validate`.
   The MCP tool set covers `parse`/`validate`/`inspect`/`convert`; `redact`/`map-codes` tools and
-  remote/HTTP MCP are later. `redact`'s real de-identification is deferred to when `@cosyte/deid` ships
-  (P2 landed the gated stub + seam). `validate --profile` is reserved but gated (`CLI_NOT_IMPLEMENTED`/`69`)
-  until the CLI can load a profile, no profiles are bundled.
+  remote/HTTP MCP are later. **`redact`'s real de-identification has landed** (delegated to
+  `@cosyte/deid`, an `optionalDependency`), covering `ccda`/`fhir`/`hl7`/`x12`; the three formats that
+  library has no adapter for (`astm`/`mllp`/`ncpdp`) and `dicom` (covered there, but its de-identified
+  form is binary and this stdout is text) stay honest refusals, and the policy/profile/key flag
+  surfaces are deliberately not built. `validate --profile` is reserved but gated
+  (`CLI_NOT_IMPLEMENTED`/`69`) until the CLI can load a profile, no profiles are bundled.
 
 ### ADRs
 

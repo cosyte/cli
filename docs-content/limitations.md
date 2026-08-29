@@ -54,9 +54,14 @@ These are **non-goals**, not missing features: named so nothing over-trusts the 
 - **No capability its ground layer lacks, and never a faked one.** Where a wrapped library is not yet
   built, the command is **unavailable** (a distinct, value-free exit `69`), never stubbed to a fake
   success:
-  - **`redact` / `deid`** is gated on `@cosyte/deid` (not yet wired): an honest
-    `CLI_NOT_IMPLEMENTED`. The CLI ships **no** built-in partial scrub that could give a false sense of
-    safety.
+  - **`redact` / `deid`** delegates every de-identification decision to `@cosyte/deid` and covers the
+    formats that library covers and this CLI can serialize: `ccda`, `fhir`, `hl7`, `x12`. `astm`,
+    `mllp` and `ncpdp` have no adapter there (`CLI_NOT_IMPLEMENTED`, exit `69`); `dicom` is covered
+    there but its de-identified form is a binary stream this text stdout cannot carry
+    (`CLI_FORMAT_UNSUPPORTED`, exit `65`). If the library reports a locus it could not handle, the run
+    exits `1` with **no output at all**. The CLI ships **no** built-in partial scrub that could give a
+    false sense of safety, and asserts no de-identification standard of its own: it reports the
+    library's own published label and version.
   - **`validate --profile`** is reserved but gated (`CLI_NOT_IMPLEMENTED`) until the CLI can load a
     profile; **no profiles are bundled**.
   - **`convert`** covers **HL7 v2 → FHIR R4** only (via `@cosyte/transform`); **`map-codes`** requires

@@ -33,9 +33,10 @@ routing layer.
 ## The exit-code contract
 
 Exit codes are a **designed surface** CI depends on, grounded in the Unix `sysexits.h` conventions:
-`0` success, `2` usage error, `65` data error (unparseable / undetected), `66` no input, `70` internal
-error. The load-bearing rule: the CLI **never prints a reassuring line and exits `0`** on input it
-could not handle.
+`0` success, `1` an operation-level failure (an invalid `validate` verdict, a `redact` the
+de-identifier could not complete), `2` usage error, `65` data error (unparseable / undetected), `66`
+no input, `69` a capability not wired for this input, `70` internal error. The load-bearing rule: the
+CLI **never prints a reassuring line and exits `0`** on input it could not handle.
 
 ## The PHI posture
 
@@ -61,11 +62,20 @@ funnelled through a single chokepoint so the "a value appears on stderr **iff** 
 property is provable in one place. A successful parse never puts values on stderr regardless of the
 flag.
 
-### `redact` / `deid`: honest, not faked
+### `redact` / `deid`: delegated, never approximated
 
-The one command whose job is to strip PHI is **deliberately gated**. De-identification belongs to
-`@cosyte/deid`, which the CLI does not wire yet; the wrapped parsers expose no de-id API. Rather than ship a partial
-Safe-Harbor scrub that would leave PHI behind while *looking* de-identified (a false-safety
-impression), `redact`/`deid` is a typed `CLI_NOT_IMPLEMENTED` (exit `69`) that never reads the input
-and never emits a partial scrub. It becomes real when that integration lands. This is the same
-discipline the wrapper boundary rests on: the CLI never invents a capability its ground layer lacks.
+The one command whose job is to strip identifiers **owns no policy**. De-identification belongs to
+`@cosyte/deid`: the CLI locates nothing, transforms nothing, and never falls back to a partial
+Safe-Harbor scrub, which would leave PHI behind while _looking_ de-identified (a false-safety
+impression). It delegates for the formats that library covers and this CLI can serialize, which are
+`ccda`, `fhir`, `hl7`, `x12`, and refuses everything else with a typed, value-free code: `astm`,
+`mllp` and `ncpdp` have no adapter there (`CLI_NOT_IMPLEMENTED`, `69`), and `dicom` is covered but its
+de-identified form is a binary stream this text stdout cannot carry (`CLI_FORMAT_UNSUPPORTED`, `65`,
+the CLI's own limit rather than the library's).
+
+The fail-closed half is the point: if the library reports **any** locus it could not handle, the run
+exits `1` and emits **nothing**, because a partial pass offered as a de-identified copy is the exact
+hazard this command exists to avoid. What reaches stderr is the library's own value-free manifest and
+its own published label and version; the CLI asserts no de-identification standard of its own. Same
+discipline as the wrapper boundary everywhere else: the CLI never invents a capability its ground
+layer lacks, and never claims one it cannot back.
