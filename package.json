@@ -130,7 +130,7 @@
   },
   "optionalDependencies": {
     "@cosyte/astm": "^0.0.11",
-    "@cosyte/ccda": "^0.0.8",
+    "@cosyte/ccda": "^0.0.15",
     "@cosyte/deid": "^0.0.9",
     "@cosyte/dicom": "^0.0.8",
     "@cosyte/mllp": "^0.0.8",
