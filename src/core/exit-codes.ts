@@ -1,6 +1,8 @@
 /**
  * The `cosyte` CLI **exit-code contract**: a designed, documented surface that CI pipelines and
- * shell scripts branch on. Grounded in the Unix `sysexits.h` conventions.
+ * shell scripts branch on. `0` is the conventional success status; the codes from `65` up are the
+ * values the Unix `sysexits.h` header assigns to the constants named beside them; `1` and `2` are
+ * this CLI's own, because that header defines no constant for either.
  *
  * The load-bearing rule: **the CLI never prints a reassuring line and exits `0` on input it could not
  * handle.** An undetectable format, an unreadable file, or a parser that throws each map to a
@@ -9,8 +11,8 @@
  * | Code | Name       | Meaning                                                              |
  * |------|------------|----------------------------------------------------------------------|
  * | `0`  | `OK`       | success: the operation completed; `validate` found the input **valid** |
- * | `1`  | `INVALID`  | operation-level failure: `validate` found the input **invalid**, or `redact` could not de-identify every locus (a real, expected CI signal: the tool worked, the operation did not complete) |
- * | `2`  | `USAGE`    | usage error: unknown command, bad flag, missing argument (EX_USAGE) |
+ * | `1`  | `INVALID`  | operation-level failure: `validate` found the input **invalid**, or `redact` could not de-identify every locus (this CLI's own value; a real, expected CI signal: the tool worked, the operation did not complete) |
+ * | `2`  | `USAGE`    | usage error: unknown command, bad flag, missing argument (this CLI's own value) |
  * | `65` | `DATAERR`  | data error: input could not be parsed / format not detected (EX_DATAERR) |
  * | `66` | `NOINPUT`  | no input: the file does not exist or is unreadable (EX_NOINPUT)     |
  * | `69` | `UNAVAILABLE` | a required capability is not wired for this input: e.g. `redact` on a format `@cosyte/deid` has no adapter for (EX_UNAVAILABLE) |
@@ -42,7 +44,8 @@ export const EXIT = {
    * or `redact` could not de-identify every locus: a real, expected CI signal that the tool worked
    * and the operation did not complete. Never emitted for unparseable input (that is `DATAERR`). */
   INVALID: 1,
-  /** Usage error: unknown command, bad flag, missing argument (`EX_USAGE`). */
+  /** Usage error: unknown command, bad flag, missing argument. A value specific to this CLI, not a
+   * `sysexits.h` constant. */
   USAGE: 2,
   /** Data error: input could not be parsed or its format could not be detected (`EX_DATAERR`). */
   DATAERR: 65,

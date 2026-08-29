@@ -177,6 +177,24 @@ still do. Each entry was assigned to the release whose tag first contains it, re
 
 ### Fixed
 
+- **The exit-code contract labelled exit `2` as `EX_USAGE`, and `sysexits.h` assigns `EX_USAGE` the
+  value `64` (EXIT-CODE-SYSEXITS-LABEL).** The label sat in two places in `src/core/exit-codes.ts`,
+  the module's contract table and the `USAGE` member's JSDoc, so it compiled into `dist/*.d.ts` and
+  rendered on a consumer's hover. `README.md` and the concepts page grounded their whole table in
+  that header while listing `1` and `2`, which it does not define at all. A developer aligning their
+  own tooling to `sysexits.h` therefore learned a false fact about it from our documentation.
+  - **Exit `2` now carries no sysexits constant, and `1` and `2` are both stated as this CLI's own
+    values.** The four labels that were already correct (`EX_DATAERR` 65, `EX_NOINPUT` 66,
+    `EX_UNAVAILABLE` 69, `EX_SOFTWARE` 70) are untouched.
+  - **No published number moved, and no member of the exported `EXIT` map was added, removed or
+    renamed.** This is a documentation correction and nothing else: `2` is still `2`, every command
+    still exits with the status it exited with before, and the golden exit-code matrix is unchanged.
+    A consumer who hard-coded `EX_USAGE = 2` against this CLI keeps working.
+  - **`test/exit-code-docs.test.ts` reds if a sysexits constant is ever again attached to a number
+    that header does not assign it**, across every source file, the README and every published docs
+    page, naming the offending surface, line and code. It carries the header's own table, reports a
+    constant that table does not define rather than passing it through, and is proved against the
+    exact text that shipped before this correction.
 - **`pnpm phi-scan`'s all-mode walk was rooted at `test/__fixtures__` and `src` only, so 89 of this
   repository's 123 tracked files were scanned by NEITHER of its two routes
   (PHI-SCAN-WALK-ROOT-SCOPE).** The walk now roots at **`src`, `test` and `scripts`**, which opens 72

@@ -239,7 +239,10 @@ valid JSON or not a loadable ConceptMap is a `CLI_MAP_INVALID` data error (`65`)
 
 ## The exit-code contract
 
-Every command is safe to branch on in CI. The exit code carries the outcome (`sysexits.h`):
+Every command is safe to branch on in CI. The exit code carries the outcome. `0` is the conventional
+success status and the codes from `65` up are the values the Unix `sysexits.h` header assigns to the
+conditions they name; `1` and `2` are this CLI's own values, because that header defines no constant
+for either:
 
 | Code | Meaning                                                                                                             |
 | ---- | ------------------------------------------------------------------------------------------------------------------- |

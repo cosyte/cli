@@ -32,11 +32,13 @@ routing layer.
 
 ## The exit-code contract
 
-Exit codes are a **designed surface** CI depends on, grounded in the Unix `sysexits.h` conventions:
-`0` success, `1` an operation-level failure (an invalid `validate` verdict, a `redact` the
-de-identifier could not complete), `2` usage error, `65` data error (unparseable / undetected), `66`
-no input, `69` a capability not wired for this input, `70` internal error. The load-bearing rule: the
-CLI **never prints a reassuring line and exits `0`** on input it could not handle.
+Exit codes are a **designed surface** CI depends on: `0` success, `1` an operation-level failure (an
+invalid `validate` verdict, a `redact` the de-identifier could not complete), `2` usage error, `65`
+data error (unparseable / undetected), `66` no input, `69` a capability not wired for this input,
+`70` internal error. The codes from `65` up are the values the Unix `sysexits.h` header assigns to
+the conditions they name; `1` and `2` are this CLI's own values, because that header defines no
+constant for either. The load-bearing rule: the CLI **never prints a reassuring line and exits `0`**
+on input it could not handle.
 
 ## The PHI posture
 
