@@ -100,8 +100,33 @@ is not PHI.
 
 ### `cosyte redact <file\|->` (alias: `deid`)
 
-De-identify a message. **Gated on `@cosyte/deid` (not yet wired)**: an honest
-`CLI_NOT_IMPLEMENTED` (exit `69`). The input is not read. The CLI ships no built-in partial scrub.
+De-identify a message. **The whole de-identification policy is `@cosyte/deid`'s**; the CLI adds no
+locus map, no transform and no fallback scrub, so it either delegates or refuses. The covered formats
+are `ccda`, `fhir`, `hl7`, `x12`.
+
+stdout is the de-identified document, serialized exactly as `cosyte fmt` serializes that format.
+stderr carries the library's own **value-free manifest**, one line per locus it acted on (category,
+transform, the structural path, the count, the disposition and its stable code), plus the library's
+own published output label and version. The CLI claims **no de-identification standard of its own**.
+
+Anything short of a clean, fully-handled pass emits **nothing** on stdout:
+
+| Outcome                                                          | Diagnostic               | Exit |
+| ---------------------------------------------------------------- | ------------------------ | ---- |
+| Every locus handled                                              | the manifest             | `0`  |
+| The library reports a locus it could not handle                  | `CLI_DEID_INCOMPLETE`    | `1`  |
+| `astm`, `mllp`, `ncpdp`: the library ships no adapter for them   | `CLI_NOT_IMPLEMENTED`    | `69` |
+| `dicom`: covered by the library, but its de-identified form is a binary stream this text stdout cannot carry | `CLI_FORMAT_UNSUPPORTED` | `65` |
+| `@cosyte/deid` is not installed (it is an optional dependency)   | `CLI_PARSER_UNAVAILABLE` | `69` |
+
+An absent library is decided **before the input is read**. Identifier surrogates (MRN, account and
+member numbers) are keyed with a **per-invocation ephemeral key**: consistent within one output, and
+deliberately not stable across runs, so two runs cannot be linked by their surrogates.
+
+```bash
+cosyte redact adt.hl7 > clean.hl7        # stdout is the document, stderr is the manifest
+cosyte redact adt.hl7 2>/dev/null        # the manifest suppressed; the exit code still carries the verdict
+```
 
 ### `cosyte completion <bash\|zsh\|fish>`
 
@@ -117,11 +142,11 @@ tools over the same core. See [MCP server](./mcp).
 | Code | Meaning                                                                                 |
 | ---- | --------------------------------------------------------------------------------------- |
 | `0`  | success / `validate` found the input **valid**                                          |
-| `1`  | operation-level failure: `validate` found the input **invalid** (a real CI signal)     |
+| `1`  | operation-level failure: `validate` found the input **invalid**, or `redact` could not de-identify every locus (a real CI signal) |
 | `2`  | usage error: unknown command, bad flag, missing argument                               |
 | `65` | data error: input could not be parsed / format not detected / (format, op) unsupported / input larger than the size limit |
 | `66` | no input: the file does not exist or is unreadable                                     |
-| `69` | unavailable: a capability is not yet built (e.g. `redact`, `--profile`)                |
+| `69` | unavailable: a capability is not wired here (e.g. `redact` on a format `@cosyte/deid` has no adapter for, `--profile`) |
 | `70` | internal error: an unexpected exception (a bug)                                        |
 
 The contract is a **stability surface**: renaming a code or a stable `CLI_*` diagnostic is a breaking

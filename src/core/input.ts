@@ -58,7 +58,10 @@ export type InputResolution =
  * @param formatOverride - The raw `--format` value, or `undefined` to autodetect by content.
  * @param deps - Injected input readers ({@link RunDeps}).
  * @param op - The wrapping operation the caller will run; the resolved format is confirmed to support
- *   it (else a value-free `CLI_FORMAT_UNSUPPORTED` naming the supporting formats).
+ *   it (else a value-free `CLI_FORMAT_UNSUPPORTED` naming the supporting formats). Pass `null` when
+ *   the caller answers for capability itself: `redact` delegates to `@cosyte/deid`, whose per-format
+ *   coverage is a different matrix with its own two distinct refusals, so applying the parser
+ *   registry's matrix first would answer with the wrong code.
  * @returns `{ ok: true, input }` when the bytes read and the format resolved to a parser supporting
  *   `op`; else `{ ok: false, result }` with a value-free usage/no-input/data-error {@link RunResult}.
  * @throws Propagates a **non-`CliError`** read failure unchanged, so the dispatcher maps it to
@@ -79,7 +82,7 @@ export async function resolveInput(
   source: string | undefined,
   formatOverride: string | undefined,
   deps: RunDeps,
-  op: Op,
+  op: Op | null,
 ): Promise<InputResolution> {
   if (source === undefined) {
     return fail(
@@ -249,11 +252,14 @@ async function* rejoin(
  * (validated), else conservative content autodetection, then a check that the format supports the
  * requested operation. Shared by the buffered and streaming resolvers so the exit-code contract for a
  * bad `--format`, an undetectable input and an unwired (format, op) is applied in exactly one place.
+ * A `null` op skips only that last check: the caller has its own capability matrix (see
+ * {@link resolveInput}), and the read, the empty-input refusal and the `--format` validation are
+ * unchanged.
  */
 function resolveFormat(
   prefix: Uint8Array,
   formatOverride: string | undefined,
-  op: Op,
+  op: Op | null,
 ): CosyteFormat | CliError {
   let format: CosyteFormat;
   if (formatOverride !== undefined) {
@@ -273,7 +279,7 @@ function resolveFormat(
     format = detected.format;
   }
 
-  if (!supportsOp(format, op)) {
+  if (op !== null && !supportsOp(format, op)) {
     return new CliError(
       CLI_CODES.CLI_FORMAT_UNSUPPORTED,
       EXIT.DATAERR,

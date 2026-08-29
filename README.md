@@ -77,8 +77,9 @@ invoke `dist/bin/cosyte.mjs`), where the FHIR library is supplied locally.
 >   free issues on stderr, and a non-zero exit on an error-severity conversion issue.
 > - **`map-codes`**: translate a code through a BYO FHIR ConceptMap via `@cosyte/terminology`; the
 >   target coding(s) on stdout, or a value-free unmapped signal + exit `1`.
-> - **`redact` / `deid`**: gated to an honest `CLI_NOT_IMPLEMENTED` (exit `69`) until the CLI wires
->   `@cosyte/deid`; it never reads the input and never emits a partial scrub dressed up as de-identified.
+> - **`redact` / `deid`**: a de-identified copy on stdout for `ccda`, `fhir`, `hl7`, `x12`, delegated
+>   whole to `@cosyte/deid`, with that library's value-free manifest on stderr; every other format is a
+>   typed refusal and it never emits a partial scrub dressed up as de-identified.
 > - **`completion <bash|zsh|fish>`**: print a static shell completion script.
 >
 > **Support is honest per (format, operation)**: not every parser faithfully supports every command, so
@@ -240,15 +241,15 @@ valid JSON or not a loadable ConceptMap is a `CLI_MAP_INVALID` data error (`65`)
 
 Every command is safe to branch on in CI. The exit code carries the outcome (`sysexits.h`):
 
-| Code | Meaning                                                                         |
-| ---- | ------------------------------------------------------------------------------- |
-| `0`  | success / **valid** (`validate`)                                                |
-| `1`  | **invalid**: `validate` found a parseable-but-bad message                       |
-| `2`  | usage error (unknown flag, missing argument)                                    |
-| `65` | data error (unparseable input, format undetected, or input past the size limit) |
-| `66` | no input (missing/unreadable file)                                              |
-| `69` | unavailable (a capability is not yet built, e.g. `redact`)                      |
-| `70` | internal error (a bug)                                                          |
+| Code | Meaning                                                                                                             |
+| ---- | ------------------------------------------------------------------------------------------------------------------- |
+| `0`  | success / **valid** (`validate`)                                                                                    |
+| `1`  | **invalid**: `validate` found a parseable-but-bad message, or `redact` could not de-identify every locus            |
+| `2`  | usage error (unknown flag, missing argument)                                                                        |
+| `65` | data error (unparseable input, format undetected, or input past the size limit)                                     |
+| `66` | no input (missing/unreadable file)                                                                                  |
+| `69` | unavailable (a capability is not wired for this input, e.g. `redact` on a format `@cosyte/deid` has no adapter for) |
+| `70` | internal error (a bug)                                                                                              |
 
 The load-bearing rule: the CLI **never prints a reassuring line and exits `0`** on input it could not
 handle, or on an invalid message.
@@ -276,15 +277,32 @@ cosyte parse broken.hl7 --format hl7 --unsafe-show-values  # appends a bounded i
 
 ## `cosyte redact` / `cosyte deid`
 
-De-identification is the one operation whose _job_ is to strip PHI. It is **not implemented yet, on
-purpose.** It belongs to [`@cosyte/deid`](https://github.com/cosyte/deid). That package is now
-published, but the CLI does not wire it yet, and the wrapped parsers expose no de-identification API of
-their own. A built-in "minimal Safe-Harbor" pass over only
-the obvious fields would leave PHI behind and _look_ de-identified while silently under-redacting: the
-exact false-safety hazard `redact` exists to avoid. So `cosyte redact <file>` is an honest, typed
-`CLI_NOT_IMPLEMENTED` (exit `69`, `EX_UNAVAILABLE`) that **never reads your input** and **never emits a
-partial scrub dressed up as safe**. It will produce a real de-identified copy once the CLI wires
-`@cosyte/deid` and that integration is vetted.
+De-identification is the one operation whose _job_ is to strip identifiers, and the CLI **owns none of
+the policy**. It belongs to [`@cosyte/deid`](https://github.com/cosyte/deid): the CLI locates nothing,
+transforms nothing, and has no fallback scrub, because a built-in "minimal Safe-Harbor" pass over only
+the obvious fields would leave PHI behind and _look_ de-identified while silently under-redacting, the
+exact false-safety hazard `redact` exists to avoid.
+
+```bash
+cosyte redact adt.hl7 > clean.hl7   # stdout: the de-identified message. stderr: what was touched
+```
+
+**Covered formats: `ccda`, `fhir`, `hl7`, `x12`** (what the library covers and this CLI can serialize
+onto a text stdout). Anything else emits nothing at all:
+
+| Outcome                                                                              | Diagnostic               | Exit |
+| ------------------------------------------------------------------------------------ | ------------------------ | ---- |
+| every locus handled                                                                  | the manifest             | `0`  |
+| a locus the library reports it could not handle                                      | `CLI_DEID_INCOMPLETE`    | `1`  |
+| `astm`, `mllp`, `ncpdp`: no adapter in that library                                  | `CLI_NOT_IMPLEMENTED`    | `69` |
+| `dicom`: covered there, but its de-identified form is binary and this stdout is text | `CLI_FORMAT_UNSUPPORTED` | `65` |
+| `@cosyte/deid` not installed (an optional dependency)                                | `CLI_PARSER_UNAVAILABLE` | `69` |
+
+stderr carries the library's **own value-free manifest** (category, transform, the structural path,
+count, disposition and its stable code) and the library's **own published label and version**: the CLI
+asserts no de-identification standard of its own. An absent library is decided **before your input is
+read**. Identifier surrogates are keyed with a **per-invocation ephemeral key**: consistent within one
+output, deliberately not stable across runs.
 
 ## `cosyte completion`
 

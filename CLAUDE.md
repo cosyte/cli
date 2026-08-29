@@ -53,11 +53,34 @@ per-format adapter registry (`src/core/parsers.ts`), exposes the same `core` thr
 [agent-notes § Shipped phases](documentation/agent-notes.md#shipped-phases).
 
 **Deferred, honestly and never faked:** `dicom` `parse`/`fmt`, `ccda` `parse`, `mllp`
-`fmt`/`validate`; `redact`/`deid` and `map-codes` MCP tools and remote/HTTP MCP; `redact`'s real
-de-identification (gated stub + seam landed, waiting on `@cosyte/deid`, and **never a built-in
-partial scrub**, which would risk a false-safety impression); `validate --profile` (reserved,
-`CLI_NOT_IMPLEMENTED`/`69`). Detail:
+`fmt`/`validate`; `redact`/`deid` and `map-codes` MCP tools and remote/HTTP MCP; `validate --profile`
+(reserved, `CLI_NOT_IMPLEMENTED`/`69`). Detail:
 [agent-notes § Deferred](documentation/agent-notes.md#deferred).
+
+### `redact` delegates to `@cosyte/deid`, and every refusal is load-bearing
+
+- **The CLI adds NO de-identification logic. Ever.** No policy, no locus map, no transform, no
+  fallback scrub. `src/core/deid.ts` is the ONE file that names the package; it either delegates or
+  refuses. **A partial scrub presented as de-identified is the cardinal hazard** this command exists
+  to prevent, so **anything short of a clean, fully-handled pass is non-zero with EMPTY stdout**.
+- **Two refusals, two codes, and they are not interchangeable.** No adapter in that library
+  (`astm`/`mllp`/`ncpdp`) is `CLI_NOT_IMPLEMENTED`/`69`; **`dicom` is `CLI_FORMAT_UNSUPPORTED`/`65`
+  because the CLI cannot carry Part 10 bytes on a `string` stdout**, which is the CLI's own limit.
+  **Never blame the library for our channel**: that is a false attribution, and the attribution test
+  pins it. A `blocked` locus is `CLI_DEID_INCOMPLETE`/`1`, never `70`.
+- **`@cosyte/deid/ncpdp` is NCPDP Telecom, not SCRIPT.** The subpath exists and looks like coverage;
+  this CLI resolves SCRIPT, so it is NOT covered. Re-derive coverage from the installed package's
+  types, never from the subpath list.
+- **The default policy pseudonymizes MRN / account / beneficiary, which is a KEYED transform**, and a
+  keyed transform with no context is a fatal there, never an unkeyed fallback. The CLI holds no key
+  and adds no key flag, so it keys each invocation with an **ephemeral random key** and **discloses
+  that surrogates are not stable across runs**. Removing that disclosure would imply a linkage
+  property the tool does not have.
+- **`redact` deliberately does NOT honour `--unsafe-show-values`.** On every other command that flag
+  is the one door to a value; here an excerpt of the un-stripped input is the exact leak. Do not
+  "restore consistency" by wiring it.
+- **The stderr manifest is the LIBRARY's**, value-free by its contract (a locus is a path). It is
+  rendered verbatim, and the PHI-leak matrix carries a redact row per mode to hold it to that.
 
 **ADRs:** `documentation/decisions/0021` (a `bin` hard-deps first-party siblings), `0022` (two bins,
 one core), `0023` (wire `transform` + `terminology`; 2 → 4 dep cap), `0024` (MCP SDK isolated and
@@ -110,6 +133,11 @@ Why: [agent-notes § The vendor to npm dependency swap](documentation/agent-note
 - **Two hard `dependencies`: `@cosyte/hl7` (`^0.0.7`) + `@cosyte/terminology` (`^0.0.9`)**, real
   registry ranges, lazy-loaded per command. That is **2** against the umbrella `verify-policy.json`
   cap of **4**: under it, not at it. On the `0.0.x` ladder those ranges are effectively exact pins.
+- **`@cosyte/deid` (`^0.0.9`) is an `optionalDependency`, outside the cap**, reached only from
+  `src/core/deid.ts` and only by `redact`. It declares all six parsers as **optional** peers, so it
+  adds no install edge of its own; an absent copy degrades to `CLI_PARSER_UNAVAILABLE`/`69` before
+  any input is read. Never promote it to `dependencies`: this package shipped an unreachable release
+  twice, and a hard dep a registry cannot resolve makes the whole CLI uninstallable.
 - **Do not "restore" `@cosyte/transform` to `dependencies` or declare `@cosyte/fhir`** without reading
   the swap note first. Everything else (`transform`, the six breadth parsers, the MCP SDK) is an
   `optionalDependency` outside the cap. Third-party CLI-core runtime deps: **zero**.
