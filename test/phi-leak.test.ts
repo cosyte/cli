@@ -5,12 +5,17 @@ import { describe, expect, it } from "vitest";
 
 import { run } from "../src/core/run.js";
 import type { RunDeps } from "../src/core/io.js";
+import { dispatchTool, type McpToolResult } from "../src/mcp/tools.js";
 
 /**
  * The load-bearing PHI safety layer (cli roadmap §7): the parsed model goes to **stdout** (the
  * explicit data channel), but **no input value ever reaches stderr**: under any command, flag, or
  * failure mode. Our synthetic fixtures carry sentinel identifiers; this suite proves they appear only
  * on the stdout data channel and never in a diagnostic.
+ *
+ * The **agent surface** is in the matrix too, because a tool result's `structuredContent` is a second
+ * place a value could reach a caller. It splits the same way: the tool's own payload is the data
+ * channel (the explicit request), and every other property of the structured result is value-free.
  */
 
 const FIXTURES = join(import.meta.dirname, "__fixtures__");
@@ -133,6 +138,65 @@ describe("PHI leak matrix: validate / inspect are value-free on BOTH channels", 
       const r = await run(c.argv, fileDeps(c.bytes));
       assertNoSentinelOnStderr(r.stderr);
       assertNoSentinelOnStderr(r.stdout); // validate/inspect stdout is value-free too
+    });
+  }
+});
+
+describe("PHI leak matrix: the agent surface's structured result", () => {
+  const HL7_TEXT = new TextDecoder().decode(HL7);
+  const FHIR_TEXT = new TextDecoder().decode(FHIR);
+
+  /** The structured result minus the tool's own payload: the part that must never carry a value. */
+  function outcomeOnly(r: McpToolResult): string {
+    const sc = r.structuredContent;
+    return JSON.stringify({ ok: sc.ok, status: sc.status, exit: sc.exit, code: sc.code });
+  }
+
+  // `parse` / `convert` answer with the requested data, so their payload carries values by design;
+  // every other property of the structured result, and the whole result on a failure, must not.
+  for (const c of [
+    { name: "parse hl7", tool: "parse", args: { content: HL7_TEXT } },
+    { name: "parse fhir", tool: "parse", args: { content: FHIR_TEXT } },
+    { name: "convert hl7", tool: "convert", args: { content: HL7_TEXT } },
+  ]) {
+    it(`${c.name}: the outcome fields are value-free; the payload IS the data channel`, async () => {
+      const r = await dispatchTool(c.tool, c.args);
+      assertNoSentinelOnStderr(outcomeOnly(r));
+      // Assert the premise as well as the remedy: the payload really did carry the requested data,
+      // so a green here cannot mean "there was nothing to leak".
+      expect(JSON.stringify(r.structuredContent.data).length).toBeGreaterThan(100);
+      expect(r.structuredContent.status).toBe("success");
+    });
+  }
+
+  // `validate` / `inspect` report a verdict and a structural summary: value-free on every property,
+  // so no sentinel may appear anywhere in the result, payload included.
+  for (const c of [
+    { name: "validate hl7", tool: "validate", args: { content: HL7_TEXT } },
+    { name: "validate fhir", tool: "validate", args: { content: FHIR_TEXT } },
+    { name: "inspect hl7", tool: "inspect", args: { content: HL7_TEXT } },
+    { name: "inspect fhir", tool: "inspect", args: { content: FHIR_TEXT } },
+  ]) {
+    it(`${c.name}: no sentinel anywhere in the structured result, payload included`, async () => {
+      const r = await dispatchTool(c.tool, c.args);
+      assertNoSentinelOnStderr(JSON.stringify(r));
+      expect(r.structuredContent.data).toBeDefined();
+    });
+  }
+
+  // Every failure mode, over PHI-laden input: nothing of the input reaches the result at all.
+  for (const c of [
+    { name: "unsupported operation", tool: "parse", args: { content: HL7_TEXT, format: "dicom" } },
+    { name: "not a convertible source", tool: "convert", args: { content: FHIR_TEXT } },
+    { name: "unsupported target", tool: "convert", args: { content: HL7_TEXT, to: "x12" } },
+    { name: "unknown tool", tool: HL7_TEXT, args: { content: HL7_TEXT } },
+    { name: "non-string content", tool: "parse", args: { content: 1 } },
+  ]) {
+    it(`${c.name}: the whole failed result is value-free`, async () => {
+      const r = await dispatchTool(c.tool, c.args);
+      expect(r.structuredContent.status).toBe("failed");
+      expect(r.structuredContent.data).toBeUndefined();
+      assertNoSentinelOnStderr(JSON.stringify(r));
     });
   }
 });

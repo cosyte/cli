@@ -323,6 +323,12 @@ and the agent get identical results. The PHI posture is inherited and hardened: 
 tool _error_ carries only value-free diagnostics (a stable code + position, never an input value). A
 parsed-but-invalid `validate` is a **successful** call reporting the verdict, not a tool error.
 
+**Every tool publishes an `outputSchema`**, so a client validates a result against a declared contract
+rather than pattern-matching prose. Each result carries `ok`, a `status` of `success` / `verdict` /
+`failed`, the `exit` code, a stable `code` on a failure, and the tool's own payload under `data`; the
+text content block carries the serialized JSON of that same structured result. See the docs for the
+per-tool payload shapes.
+
 The MCP SDK (`@modelcontextprotocol/sdk`) is the CLI's only third-party runtime dependency; it is
 declared **optional** and loaded only on the MCP path, so a `cosyte parse` invocation never pulls it and
 the core works with the SDK absent. The server surface is importable via the `@cosyte/cli/mcp` subpath
