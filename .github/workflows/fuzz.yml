@@ -25,9 +25,19 @@ jobs:
       CLI_FUZZ_RUNS: "25000"
     steps:
       - uses: actions/checkout@v4
+      # NO `version:` INPUT, DELIBERATELY. This step passes no version at all so
+      # `pnpm/action-setup` resolves exactly one, from `package.json`'s
+      # `packageManager` key (`pnpm@10.0.0`) and nowhere else. Supplying both is
+      # not a redundancy the action tolerates: it is a hard error
+      # ("Multiple versions of pnpm specified", ERR_PNPM_BAD_PM_VERSION) that
+      # fails setup before a runner ever installs anything, which is what held
+      # this workflow red on every scheduled run from 2026-08-17 to 2026-08-30
+      # while `CI` stayed green (every other workflow here delegates to the
+      # shared reusable pipeline and never calls this action directly).
+      # `packageManager` is the manifest's declaration and the version that must
+      # win, so if the two ever disagree again, change THIS file: never edit
+      # `packageManager` to match a workflow.
       - uses: pnpm/action-setup@v4
-        with:
-          version: 10
       - uses: actions/setup-node@v4
         with:
           node-version: 22
