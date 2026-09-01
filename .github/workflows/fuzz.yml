@@ -37,7 +37,7 @@ jobs:
       # `packageManager` is the manifest's declaration and the version that must
       # win, so if the two ever disagree again, change THIS file: never edit
       # `packageManager` to match a workflow.
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v4
         with:
           node-version: 22
