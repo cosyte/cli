@@ -24,7 +24,44 @@ on:
     branches: [main]
 
 jobs:
+  # ▶ THE GATE THE PUBLISH DEPENDS ON. `@cosyte/cli@0.0.1` and `0.0.2` are on the registry
+  # uninstallable forever, and the check that would have refused both is `npm install` of the packed
+  # tarball FROM A DIRECTORY OUTSIDE THIS REPO. Until this job existed that check was a sentence in a
+  # human checklist, and the shared pipeline's own install check runs AFTER `changesets/action` has
+  # published, so it can only report a dead version, never prevent one. `ci / prepublish` does ask
+  # the same question early, but it is not in this workflow's dependency graph and the merge that
+  # publishes arrives with zero check runs (the GITHUB_TOKEN trap above), so it does not gate a
+  # publish either.
+  #
+  # It runs on every push to `main`, which includes the push that opens or updates the "Version
+  # Packages" PR. That is deliberate. DO NOT make it skippable, and do not add an `if:` to `release`:
+  # `needs:` plus no condition is the whole mechanism by which a red or skipped gate stops the
+  # publish. `pnpm build` runs first because `files` ships `dist`, and a tarball packed without it
+  # carries no `cosyte` at all, which this gate reports as a packaging defect.
+  #
+  # NEVER ADD `release / install-gate` TO THE `ci-required-checks` RULESET. Like `release / release`
+  # it never runs on `pull_request`, and a required context nothing emits leaves every PR pending and
+  # unmergeable forever. What makes this gate binding is `needs:` inside this file, not the ruleset.
+  install-gate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      # NO `version:` INPUT, DELIBERATELY: `pnpm/action-setup` must resolve exactly one version, from
+      # `package.json`'s `packageManager` key and nowhere else. Passing both is a hard error that
+      # fails setup before anything installs. Same reasoning as `.github/workflows/fuzz.yml`.
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: node scripts/release-install-gate.mjs
+
   release:
+    needs: install-gate
     # Required. The repo default for GITHUB_TOKEN is `contents: read`, and a called workflow can only
     # downgrade the caller's token, never escalate it, so without this the shared pipeline's
     # `contents/id-token/pull-requests: write` is an escalation and GitHub rejects the whole workflow
