@@ -362,12 +362,15 @@ async function gate(opts) {
       );
     }
     // npm walks UP for a package root, so an unmarked directory would install somewhere else
-    // entirely. A caller-supplied manifest is never overwritten: a deliberately broken one is a
-    // thing this gate has to be able to observe.
+    // entirely. `wx` is an exclusive create, so a manifest already there is left exactly as it is
+    // with no check-then-write window in between: a caller-supplied one is never overwritten, and a
+    // deliberately broken one is a thing this gate has to be able to observe.
     const consumerManifest = join(consumerDir, "package.json");
-    if (!existsSync(consumerManifest)) {
+    try {
       const body = { name: "release-install-gate-consumer", version: "0.0.0", private: true };
-      writeFileSync(consumerManifest, `${JSON.stringify(body, null, 2)}\n`);
+      writeFileSync(consumerManifest, `${JSON.stringify(body, null, 2)}\n`, { flag: "wx" });
+    } catch (err) {
+      if (err?.code !== "EEXIST") throw err;
     }
 
     // --- 4. pack this tree, into a directory outside it too --------------------------------------
