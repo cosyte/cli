@@ -36,12 +36,16 @@ npm error path node_modules/@cosyte/cli/vendor/cosyte-fhir-0.0.0.tgz
 ```
 
 A published version is immutable (ADR 0001), so neither can be repaired; the fix ships as a later
-version. **The lesson, and it is now a checklist step:**
+version. **The lesson, and it is now a step the pipeline runs:**
 
 **`npm publish --dry-run` cannot catch this, and the checklist implied it could.** A dry-run packs a
 tarball; it never resolves that tarball's dependencies from a registry. The gate that catches it is
-`npm install` of the packed tarball **from a directory outside this repo**. That is step 6 below, and
-a green dry-run is not install-proof.
+`npm install` of the packed tarball **from a directory outside this repo**. A green dry-run is not
+install-proof.
+
+**That install is no longer something a human has to remember.** It is the `install-gate` job in
+`.github/workflows/release.yml`, and the `release` job that publishes `needs:` it, so a red gate
+stops the publish. See "The install gate" below for exactly what it does and does not cover.
 
 ### The dependency swap, as actually done
 
@@ -149,6 +153,48 @@ Releases run on [Changesets](https://github.com/changesets/changesets):
 `NPM_TOKEN` **must be an npm _Automation_ token** (a classic _Publish_ token demands a 2FA OTP CI
 cannot supply, and the publish dies at the very last step with `EOTP`).
 
+## The install gate
+
+`.github/workflows/release.yml` runs `node scripts/release-install-gate.mjs` in an `install-gate` job
+that the publishing job `needs:`. It is the automated form of what used to be checklist step 6, and
+it runs on **every** push to `main`, which includes the push that opens or updates the "Version
+Packages" PR. Locally: `pnpm build && node scripts/release-install-gate.mjs` (add `--json` for the
+full report, `--manifest-only` for the offline specifier lint alone).
+
+**What it does.** Packs this tree with `pnpm pack`, installs the packed tarball with `npm install`
+into a fresh directory **outside this repository's working tree** (and refuses if that directory is
+inside it), then **executes** every bin the manifest declares from the installed copy: `cosyte` must
+exit `0`, and `cosyte-mcp`, a stdio server that never exits on its own, must not exit non-zero inside
+a bounded window. Before any of that it refuses a specifier naming a local path (`file:`, `link:`, a
+relative or absolute path) in `dependencies`, `optionalDependencies` or `peerDependencies`.
+
+**It fails closed.** Every outcome that is not a clean pass exits non-zero with its own reason, and
+those reasons are deliberately distinct: `install-failed` (the install exited non-zero),
+`bin-missing` (a packaging defect: the tarball has no file for a declared bin), `bin-failed` (the bin
+ran and failed), `local-path-specifier`, and `gate-timeout` / `gate-registry-unreachable` /
+`gate-error` for a run that reached no verdict at all. A transient registry fault therefore delays a
+correct release until the run is repeated; the alternative, warning and continuing, is how `0.0.1`
+and `0.0.2` happened.
+
+**What it deliberately does NOT cover.**
+
+- **`devDependencies`.** A consumer never installs them, so the `file:vendor/*.tgz` specifier this
+  manifest carries on purpose is reported and passed over. The gate names it in its report rather
+  than ignoring the field silently.
+- **`@cosyte/fhir` and `@cosyte/transform` being absent from an installed copy.** That is the
+  designed state, not a defect; those paths degrade to a value-free `CLI_PARSER_UNAVAILABLE`
+  (exit `69`). The gate asserts the install exited zero and the bins ran, never that some named
+  package is present.
+- **A real parse from the installed copy.** Each bin is invoked with `--version`, which is the load
+  path: it proves the command starts and its module graph resolves, not that a message parses. That
+  stays the job of the suite, of `pnpm smoke`, and of step 6 below.
+- **The version string the installed bin prints.** `cosyte --version` printing `0.0.0` is the
+  skipped-`sync-version` defect, which is a different failure from "cannot be installed". **That
+  stays a human step**, and it is step 6 below.
+- **The published artifact.** The gate reads the tarball this tree packs, not the registry. The
+  shared pipeline's own install check runs _after_ `changesets/action` has published and fail-opens,
+  so it can report a dead version but cannot prevent one.
+
 ## Provenance & OIDC
 
 - `package.json#publishConfig` sets `"provenance": true`, and `release.yml` grants
@@ -165,9 +211,15 @@ The publish path is exercised **without uploading anything**:
 ```bash
 pnpm build            # dist/ must exist first
 pnpm attw             # per-condition types resolve (node16 import + require, bundler)
-pnpm smoke            # built dual ESM/CJS `.` + `./mcp`, and BOTH bins run under node
+pnpm smoke            # built dual ESM/CJS `.` + `./mcp`, and BOTH bins run under node, IN dist/
 npm publish --dry-run # assembles the tarball (dist + README/LICENSE/CHANGELOG), no upload
+
+node scripts/release-install-gate.mjs # packs, INSTALLS the tarball outside this repo, runs both bins
 ```
+
+`pnpm smoke` and the install gate look similar and answer different questions. `smoke` exercises
+`dist/` **in place**, so every path it walks is a path inside this repo; the gate installs the packed
+tarball somewhere else entirely, which is the only way the `file:vendor/*.tgz` shape ever surfaces.
 
 `scripts/verify.sh cli` runs `test:coverage` (per-dir ≥ 90 on `core` + `commands`), `build`, `attw`,
 and `smoke` as its gate. The nightly **Fuzz** workflow (`.github/workflows/fuzz.yml`, `pnpm test:fuzz`)
@@ -180,8 +232,12 @@ would fail.
 
 ## The publish checklist (for the human at the gate)
 
-Steps 1, 2 and 3 are **already done**. Step 2 is the one that was skipped twice, and it is why this
-checklist has a step 6.
+Steps 1, 2 and 3 are **already done**. Step 2 is the one that was skipped twice.
+
+**The install itself is not on this list any more.** `install-gate` in `.github/workflows/release.yml`
+packs this tree, installs the tarball outside the repo and runs both bins on every push to `main`,
+and the publishing job `needs:` it. What is left for a human is the one check that gate does not
+make: the version string.
 
 1. ~~`PUB-FLIP` the repo public (founder stop 1).~~ Done; the repo is public.
 2. ~~Swap the vendored `file:` deps for real `@cosyte/*` npm ranges.~~ Done; see "The dependency swap,
@@ -192,15 +248,16 @@ checklist has a step 6.
 4. Land the release changeset; approve the **"Version Packages"** PR.
 5. Approve the protected `release` environment to publish (founder stop 2). Provenance attaches
    automatically.
-6. **Install the published version from outside this repo before calling it shipped**, in a clean
-   temp directory. A green `--dry-run` does not prove this, and `0.0.1` and `0.0.2` are the proof that
-   it does not. Run the binary too, because installing is not the same as working:
+6. **A HUMAN STEP, AND STILL ONE: check the version string the published bin prints.** The install
+   gate proves the published version can be installed and run; it deliberately does not assert WHICH
+   version the bin reports, because a wrong version string and an uninstallable package are different
+   failures. Nothing automated catches this one:
 
    ```bash
    cd "$(mktemp -d)" && npm init -y >/dev/null
-   npm install @cosyte/cli@<version>          # must exit 0
+   npm install @cosyte/cli@<version>          # the gate already proved this shape; expect exit 0
    node_modules/.bin/cosyte --version         # must print <version>, NOT 0.0.0
-   node_modules/.bin/cosyte parse some.hl7    # must exit 0
+   node_modules/.bin/cosyte parse some.hl7    # must exit 0; the gate runs the bin, not a real parse
    node -e 'import("@cosyte/cli").then(m=>console.log(m.VERSION))'
    ```
 

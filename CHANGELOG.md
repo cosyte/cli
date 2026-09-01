@@ -17,6 +17,26 @@ still do. Each entry was assigned to the release whose tag first contains it, re
 
 ### Added
 
+- **The release pipeline now installs the packed tarball from outside this repository, and runs both
+  bins from that installed copy, before anything can publish.** `0.0.1` and `0.0.2` are on npm
+  permanently uninstallable, and the check that catches that shape was a sentence in a human
+  checklist: a `--dry-run` packs a tarball but never resolves its dependencies from a registry. It is
+  now the `install-gate` job in the release workflow, which the publishing job `needs:`, so a red
+  gate stops the publish rather than reporting on one that already happened.
+  - **It refuses a local-path dependency specifier before it packs anything.** A `file:`, `link:` or
+    bare filesystem path in `dependencies`, `optionalDependencies` or `peerDependencies` is what made
+    those two versions uninstallable, and it is now a refusal naming the field and the specifier.
+    `devDependencies` is deliberately exempt and reported rather than skipped silently: a consumer
+    never installs them, which is why this package can carry one on purpose.
+  - **Both bins are executed, not stat-ed.** `cosyte` must exit `0` from the installed copy, and
+    `cosyte-mcp`, a stdio server that never exits on its own, must not exit non-zero inside a bounded
+    window. A bin whose file is missing from the tarball is reported as a packaging defect, in words
+    that do not read like an install failure.
+  - **It fails closed.** An install that exceeds its time bound, a registry that does not answer and
+    a throw inside the gate each refuse with their own reason rather than warning and continuing. The
+    accepted cost is that a transient fault delays a correct release until the run is repeated.
+  - No dependency was added, no manifest field moved, and nothing a consumer receives changed.
+
 - **Every MCP tool now publishes an `outputSchema`, and every tool result conforms to it.** An agent
   calling a cosyte tool used to receive `structuredContent: { exit, ok }` with no schema to check it
   against, so deciding whether a result held data or a diagnostic meant pattern-matching a text blob.

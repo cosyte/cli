@@ -116,7 +116,10 @@ Why: [agent-notes § The vendor to npm dependency swap](documentation/agent-note
   through `loadOptional()`'s stock wording): `npm install @cosyte/transform` fails `E404` on its own
   `fhir` peer, so that advice sends a user at a command that cannot succeed.
 - **Verify a release by INSTALLING the packed tarball outside the repo, never by `--dry-run`.** It is
-  checklist step 6 in `RELEASING.md`; keep it.
+  the `install-gate` job in `.github/workflows/release.yml` (`scripts/release-install-gate.mjs`),
+  which the publishing job `needs:`; keep it, and **never make it skippable**. What it does not cover
+  is in `RELEASING.md` under "The install gate", and the version-string check stays checklist step 6,
+  a human one.
 - **`npx @cosyte/cli …` fails** with `could not determine executable to run` (the bins are `cosyte`
   and `cosyte-mcp`). Use `npx --package @cosyte/cli cosyte …`. **A `cli` bin alias would fix it and is
   deliberately not added** (`npm install -g` would claim the name `cli` on the user's `PATH`): founder

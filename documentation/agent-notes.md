@@ -690,7 +690,9 @@ because it is its own item.
   that, which is why neither goes through it.
   **Verified by installing, which a `--dry-run` cannot do**: pack, `npm install` the tarball in a clean
   directory outside the repo (exit 0), run both bins, import `.` under ESM and CJS. Negative control:
-  the published `0.0.2` still `ENOENT`s. Keep that step; it is checklist step 6 in `RELEASING.md`.
+  the published `0.0.2` still `ENOENT`s. Keep that step; it is now the `install-gate` job in
+  `.github/workflows/release.yml`, which the publishing job `needs:`, rather than a line a human has
+  to remember.
   **A THIRD fault is real, pre-existing, and NOT fixed by any of this: `npx @cosyte/cli …` fails with
   `could not determine executable to run`.** `npx` runs the bin matching the package name's last
   segment (`cli`); this package ships `cosyte` and `cosyte-mcp`. The `bin` block is byte-identical to
