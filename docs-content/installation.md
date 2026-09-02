@@ -69,7 +69,9 @@ node dist/bin/cosyte.mjs --help
 
 ## Prerequisites
 
-- **Node.js >= 22** (the whole `@cosyte/*` suite targets ES2023 / Node 22+).
+- **Node.js >= 22 and < 26** (the whole `@cosyte/*` suite targets ES2023 / Node 22+). The upper
+  bound is deliberate: this package declares support only for the release lines its own test suite
+  runs on, so a line nobody has exercised is stated as unsupported rather than implied to work.
 - A package manager: `pnpm`, `npm`, or `yarn`.
 
 ## Run it

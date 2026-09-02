@@ -203,6 +203,25 @@ still do. Each entry was assigned to the release whose tag first contains it, re
 
 ### Changed
 
+- **The declared Node range now matches the release lines this package is tested on.**
+  `engines.node` narrows from `>=22.0.0` to `>=22.0.0 <26.0.0`. Node 26 is supported upstream and
+  was admitted by the old open-ended range while the test matrix exercises 22 and 24 only, so an
+  install on Node 26 was a combination nobody here had run and the manifest said nothing about it.
+  The claim narrows to the tested set rather than the tested set widening to the claim: every matrix
+  cell is a required status check whose name is fixed by a repository setting no commit can edit, so
+  adding a line is a change that has to start outside this repository.
+  - **The tested set is stated here now.** The CI caller passes the Node majors explicitly rather
+    than inheriting them from the shared pipeline's input default. The same two versions run and
+    every status-check name is byte-identical; what changed is that the set is readable and diffable
+    in this repository instead of resolved somewhere else.
+  - **A guard reds when the two drift apart again.** It derives the lines upstream still supports
+    from a release schedule committed beside it, evaluated at the run date rather than pinned to a
+    number typed into a test, and reports a supported line the range admits but the matrix skips, a
+    matrix cell the range refuses, a range admitting a line the schedule does not carry, and any
+    prose surface restating the range or the matrix differently. It refuses to report agreement over
+    an absent, empty or provenance-less schedule.
+  - **The installation prerequisite states the upper bound too**, so the published documentation and
+    the published manifest cannot disagree about which runtimes are supported.
 - **The MCP text content block is now the serialized JSON of the structured result**, replacing the
   command's raw stdout (on a success) or its stderr diagnostic (on a failure). A client that reads
   only text now sees exactly the value a schema-aware client validates: there is one value, serialized
