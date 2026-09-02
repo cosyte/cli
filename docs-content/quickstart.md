@@ -61,6 +61,7 @@ Every command is safe to branch on in CI. The exit code carries the outcome:
 | `66` | no input (missing/unreadable file)                         |
 | `69` | unavailable (a capability is not wired for this input, e.g. `redact` on `astm`) |
 | `70` | internal error (a bug)                                     |
+| `74` | output error (the output stream closed before the CLI had finished writing to it, e.g. piping into a reader that exits early) |
 
 ```ts runnable
 import { EXIT } from "@cosyte/cli";

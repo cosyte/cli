@@ -148,6 +148,11 @@ tools over the same core. See [MCP server](./mcp).
 | `66` | no input: the file does not exist or is unreadable                                     |
 | `69` | unavailable: a capability is not wired here (e.g. `redact` on a format `@cosyte/deid` has no adapter for, `--profile`) |
 | `70` | internal error: an unexpected exception (a bug)                                        |
+| `74` | output error: the output stream closed before the CLI had finished writing to it, the shape a downstream consumer that exits early produces (`cosyte parse bulk.ndjson --ndjson \| head -3`, a pager you quit). Never a bug in the CLI, and never a silent `0`: the answer did not reach the consumer |
+
+A closed output stream terminates the run quietly under `74` with the stable
+`CLI_OUTPUT_WRITE_FAILED` code on stderr: no stack trace, no platform error text, and no byte of the
+input. It reads the same whether the output was a record stream or a single write.
 
 The contract is a **stability surface**: renaming a code or a stable `CLI_*` diagnostic is a breaking
 change, and it is locked by an exit-code golden matrix in the test suite.

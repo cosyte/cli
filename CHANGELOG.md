@@ -17,6 +17,34 @@ still do. Each entry was assigned to the release whose tag first contains it, re
 
 ### Added
 
+- **A downstream consumer that closes the CLI's stdout now ends the run quietly, under a documented
+  code of its own: `74` (`IOERR`, the value `sysexits.h` assigns `EX_IOERR`).** A pipeline into
+  `head`, a pager you quit, or any early-exiting reader gets the stable value-free
+  `CLI_OUTPUT_WRITE_FAILED` diagnostic and that exit code: no stack trace, no platform error text,
+  and no byte of the input on stderr. The contract is additive; no existing code is renamed,
+  repurposed or removed, and no existing code's meaning changes.
+  - **The code was chosen on a measurement, not a citation.** A write to a closed stdout is a Node
+    `EPIPE` on the stream, which is fatal when nothing is listening: measured here, the unguarded
+    shape prints a ten-frame stack trace and exits `1`. It is a handled condition the consumer owns,
+    so reporting it as `70` told an operator their pipeline had hit a bug in the CLI. The one
+    condition that moves onto the new code is that write failure itself, which previously reported
+    `70` on the record-stream path.
+  - **A single-write result no longer exits `0` when nothing reached the consumer.** The
+    whole-result write in the `cosyte` bin bypassed the guarded output sink, so a single-message
+    parse piped into a reader that stopped early could report success over output that was never
+    delivered. It now goes through the same closed-stream check the record stream uses and waits
+    for the platform's acknowledgement, so a truncated or wholly undelivered result resolves to
+    `74` whatever the command had resolved to before the write.
+  - **`cosyte-mcp` terminates quietly when its client goes away.** A closed stdout used to reach the
+    process as an unhandled stream error, printing a Node stack trace naming this machine's install
+    paths. It is now a value-free diagnostic and the same exit code, and the server ends rather than
+    serving a channel nobody is reading.
+  - **A closed stderr cannot turn either termination into an unhandled error.** Both bins hear the
+    diagnostic channel's own error and fall back to the exit code as the whole signal.
+  - `test/pipe-close.test.ts` spawns real processes and closes their real streams, which nothing in
+    this suite did before: the existing coverage drove an injected sink inside the test process and
+    could say nothing about the process adapters.
+
 - **The release pipeline now installs the packed tarball from outside this repository, and runs both
   bins from that installed copy, before anything can publish.** `0.0.1` and `0.0.2` are on npm
   permanently uninstallable, and the check that catches that shape was a sentence in a human

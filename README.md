@@ -253,9 +253,25 @@ for either:
 | `66` | no input (missing/unreadable file)                                                                                  |
 | `69` | unavailable (a capability is not wired for this input, e.g. `redact` on a format `@cosyte/deid` has no adapter for) |
 | `70` | internal error (a bug)                                                                                              |
+| `74` | output error: the output stream closed before the CLI finished writing (a consumer that exited early)               |
 
 The load-bearing rule: the CLI **never prints a reassuring line and exits `0`** on input it could not
-handle, or on an invalid message.
+handle, on an invalid message, or on output that never reached its consumer.
+
+### A consumer that goes away
+
+Piping into a reader that stops early is ordinary shell usage (a pager you quit, a `head` that has
+seen enough), and it is not an error in your input:
+
+```bash
+cosyte parse bulk.ndjson --ndjson | head -3   # three lines, then exit 74, and a value-free note
+```
+
+The CLI terminates quietly under `74`: no stack trace, no platform error text, and no byte of the
+input on stderr, just the stable `CLI_OUTPUT_WRITE_FAILED` code. Exit `74` is deliberately not the
+internal-error code: nothing went wrong inside the CLI, the answer simply did not reach you. The
+same holds when the whole result is one write, so a run whose output never arrived is never
+reported as a success.
 
 ## PHI posture
 
