@@ -8,6 +8,12 @@
 //   2. The `./mcp` subpath (the agent front door) imports/requires both ways and dispatches a tool.
 //   3. Both `bin` executables actually run under `node`: `cosyte --version`, `cosyte parse -` over a
 //      piped stdin message, and the `cosyte-mcp` stdio server starts without crashing on load.
+//   4. A consumer that goes away (`| head -1`, a pager the user quit) does not turn into a success
+//      over output nobody received. This one is HERE and not only in the source-level suite on
+//      purpose: the platform reports a closed consumer asynchronously, so how much of a short run is
+//      already enqueued when that report lands depends on how fast the process reaches its writes,
+//      and the packaged bin under plain `node` starts far faster than the sources under a loader.
+//      The measured window is wide enough that a defect invisible to the source suite ships here.
 //
 // Run after `build`; it consumes `dist/`. Wired into `verify.sh` (the ladder runs `smoke` when present).
 
@@ -21,6 +27,9 @@ const require = createRequire(import.meta.url);
 
 const HL7 = "MSH|^~\\&|A|B|C|D|20240101||ADT^A01|1|P|2.5\r";
 const hl7Bytes = new TextEncoder().encode(HL7);
+// The same message twice, MLLP-framed: two records, which is the record-stream write path over a
+// stream short enough that both lines can be enqueued before a closed consumer is reported.
+const MLLP_TWO = `\x0b${HL7}\x1c\r\x0b${HL7}\x1c\r`;
 // run() needs injected input readers; --version and detectFormat never touch them, but be complete.
 const deps = {
   readFile: () => Promise.resolve(hl7Bytes),
@@ -77,6 +86,30 @@ function runBin(relPath, args, stdin) {
   });
 }
 
+/**
+ * Run a bin with its stdout closed before it can deliver a byte, the way an early-exiting consumer
+ * leaves. Resolves with the exit status and whatever the bin managed to say on its diagnostic
+ * channel; `stdout` is not collected because the point is that nothing reaches it.
+ */
+function runBinClosedStdout(relPath, args, stdin) {
+  return new Promise((resolve) => {
+    const child = spawn(process.execPath, [join(root, relPath), ...args], {
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+    let stdout = "";
+    let stderr = "";
+    child.stdout.on("data", (d) => (stdout += d.toString()));
+    child.stderr.on("data", (d) => (stderr += d.toString()));
+    child.stdout.destroy();
+    child.stdin.on("error", () => {
+      // The child is already gone; its end of the pipe went with it.
+    });
+    child.on("close", (code) => resolve({ code, stdout, stderr }));
+    if (stdin !== undefined) child.stdin.write(stdin);
+    child.stdin.end();
+  });
+}
+
 /** Start a long-lived server bin and assert it does NOT crash on load within a short window. */
 function startServerBin(relPath) {
   return new Promise((resolve) => {
@@ -98,9 +131,29 @@ function startServerBin(relPath) {
   });
 }
 
+/** The packaged bin, its consumer gone before a byte was read: one code, one value-free line. */
+async function checkClosedConsumer(label, args, stdin, ioerr) {
+  const r = await runBinClosedStdout("dist/bin/cosyte.mjs", args, stdin);
+  ok(r.stdout === "", `${label}: the consumer really received nothing (the premise)`);
+  ok(r.code === ioerr, `${label}: exit ${String(ioerr)}, never 0 (got ${String(r.code)})`);
+  ok(
+    r.stderr.includes("CLI_OUTPUT_WRITE_FAILED"),
+    `${label}: the stable output-error code on stderr`,
+  );
+  ok(
+    !/parsed \d+ \w+ record\(s\)/.test(r.stderr) && !/parsed \w+ with \d+ warning/.test(r.stderr),
+    `${label}: no success summary over output nobody received`,
+  );
+  ok(
+    !r.stderr.includes("EPIPE") && !/\s+at\s+\S+:\d+/.test(r.stderr),
+    `${label}: value-free, no platform error identity and no stack frame`,
+  );
+}
+
 async function main() {
   console.log("smoke: `.` subpath (built dual ESM/CJS)");
-  await checkCore(await import(join(root, "dist/index.mjs")), "ESM");
+  const esm = await import(join(root, "dist/index.mjs"));
+  await checkCore(esm, "ESM");
   await checkCore(require(join(root, "dist/index.cjs")), "CJS");
 
   console.log("smoke: `./mcp` subpath (built dual ESM/CJS)");
@@ -119,6 +172,15 @@ async function main() {
     parsed.code === 0 && parsed.stdout.length > 0,
     "cosyte parse - (piped HL7) → exit 0 + parsed model",
   );
+
+  console.log("smoke: a downstream consumer that goes away, against the packaged bin");
+  const ioerr = esm.EXIT.IOERR;
+  ok(
+    typeof ioerr === "number" && ioerr !== 0,
+    "the output-error code is published on the contract",
+  );
+  await checkClosedConsumer("single write", ["parse", "-"], HL7, ioerr);
+  await checkClosedConsumer("record stream", ["parse", "-"], MLLP_TWO, ioerr);
 
   const server = await startServerBin("dist/bin/cosyte-mcp.mjs");
   ok(

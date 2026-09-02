@@ -35,10 +35,12 @@ routing layer.
 Exit codes are a **designed surface** CI depends on: `0` success, `1` an operation-level failure (an
 invalid `validate` verdict, a `redact` the de-identifier could not complete), `2` usage error, `65`
 data error (unparseable / undetected), `66` no input, `69` a capability not wired for this input,
-`70` internal error. The codes from `65` up are the values the Unix `sysexits.h` header assigns to
-the conditions they name; `1` and `2` are this CLI's own values, because that header defines no
-constant for either. The load-bearing rule: the CLI **never prints a reassuring line and exits `0`**
-on input it could not handle.
+`70` internal error, `74` an output error (the stream the CLI was writing to closed before the
+output was delivered, the shape a downstream consumer that exits early produces). The codes from
+`65` up are the values the Unix `sysexits.h` header assigns to the conditions they name; `1` and `2`
+are this CLI's own values, because that header defines no constant for either. The load-bearing
+rule: the CLI **never prints a reassuring line and exits `0`** on input it could not handle, or on
+output that never reached its consumer.
 
 ## The PHI posture
 

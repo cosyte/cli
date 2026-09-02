@@ -37,6 +37,21 @@ const throwingStdin: RunDeps = {
   readStdin: () => Promise.reject(new Error("boom")),
 };
 
+/** Two NDJSON records, so a consumer that goes away on the first write has a stream to interrupt. */
+const TWO_RECORDS = `${VALID_FHIR}\n${VALID_FHIR}\n`;
+
+/**
+ * A dep whose output sink is a consumer that has gone away: the closed-pipe shape, reproduced
+ * in-process. The real bins reach the same code through the platform's own closed-stream error.
+ */
+const closedConsumer: RunDeps = {
+  readFile: () => Promise.resolve(enc(TWO_RECORDS)),
+  readStdin: () => Promise.resolve(enc(TWO_RECORDS)),
+  writeStdout: () => {
+    throw new Error("the consumer closed the pipe");
+  },
+};
+
 interface Case {
   readonly name: string;
   readonly argv: string[];
@@ -142,6 +157,14 @@ const MATRIX: readonly Case[] = [
     argv: ["parse", "-"],
     deps: throwingStdin,
     exit: EXIT.SOFTWARE,
+  },
+  // 74: output error (the consumer closed the stream), deliberately NOT the internal-error code:
+  // nothing went wrong in the CLI, and the answer did not reach the consumer.
+  {
+    name: "a downstream consumer that closed the output stream",
+    argv: ["parse", "bulk.ndjson", "--ndjson", "--format", "fhir"],
+    deps: closedConsumer,
+    exit: EXIT.IOERR,
   },
 ];
 

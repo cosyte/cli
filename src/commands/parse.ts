@@ -212,7 +212,7 @@ async function parseMulti(
       // an unhandled platform error reaching the terminal.
       throw new CliError(
         CLI_CODES.CLI_OUTPUT_WRITE_FAILED,
-        EXIT.SOFTWARE,
+        EXIT.IOERR,
         "could not write to the output stream; it closed before the record stream finished",
       );
     }

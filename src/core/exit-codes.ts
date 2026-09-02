@@ -5,8 +5,9 @@
  * this CLI's own, because that header defines no constant for either.
  *
  * The load-bearing rule: **the CLI never prints a reassuring line and exits `0` on input it could not
- * handle.** An undetectable format, an unreadable file, or a parser that throws each map to a
- * distinct, stable non-zero code, never a silent success.
+ * handle.** An undetectable format, an unreadable file, a parser that throws, or a consumer that
+ * closed the output stream before the output arrived each map to a distinct, stable non-zero code,
+ * never a silent success.
  *
  * | Code | Name       | Meaning                                                              |
  * |------|------------|----------------------------------------------------------------------|
@@ -17,6 +18,7 @@
  * | `66` | `NOINPUT`  | no input: the file does not exist or is unreadable (EX_NOINPUT)     |
  * | `69` | `UNAVAILABLE` | a required capability is not wired for this input: e.g. `redact` on a format `@cosyte/deid` has no adapter for (EX_UNAVAILABLE) |
  * | `70` | `SOFTWARE` | internal error: an unexpected exception, i.e. a bug (EX_SOFTWARE)   |
+ * | `74` | `IOERR`    | output error: the output stream closed before the CLI had finished writing to it, the shape a downstream consumer that exits early produces (EX_IOERR) |
  *
  * The load-bearing `validate` rule: a **parseable-but-invalid** message is exit `1`, never exit `0`.
  * The CLI must never print a reassuring line and exit green on a bad message. Exit `65` is reserved
@@ -57,6 +59,12 @@ export const EXIT = {
   UNAVAILABLE: 69,
   /** Internal error: an unexpected exception (a bug), distinct from a handled bad input (`EX_SOFTWARE`). */
   SOFTWARE: 70,
+  /** Output error: the stream the CLI was writing to closed before the output had been delivered, so
+   * the consumer holds nothing or holds only part of the answer. The shape a downstream consumer
+   * that exits early produces (a pager quit, a `head` that has seen enough). A handled condition the
+   * consumer owns, never a defect in the CLI, so it is deliberately distinct from `SOFTWARE`
+   * (`EX_IOERR`). */
+  IOERR: 74,
 } as const;
 
 /**

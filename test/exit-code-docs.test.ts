@@ -23,8 +23,8 @@ import { EXIT } from "../src/core/exit-codes.js";
  *   2. Exit `1` and exit `2` carry NO sysexits constant, because the header defines neither, and
  *      each is documented as this CLI's own value rather than left to inherit the framing of the
  *      codes around it.
- *   3. The exported `EXIT` map still holds exactly the seven member/value pairs it publishes, and
- *      each documentation surface still describes exactly those seven numbers.
+ *   3. The exported `EXIT` map still holds exactly the eight member/value pairs it publishes, and
+ *      each documentation surface still describes exactly those eight numbers.
  *
  * ASSERT THE PREMISE, NOT ONLY THE REMEDY. Two vacuity traps have already sprung in this
  * repository's suite (a fixture whose setup refused, so every later assertion held over an empty
@@ -312,14 +312,26 @@ describe("the sweep opens a real population of shipped surfaces", () => {
     const found = SURFACES.flatMap(attributions);
     expect(found.length).toBeGreaterThan(0);
     const names = [...new Set(found.map((a) => a.name))];
-    for (const expected of ["EX_DATAERR", "EX_NOINPUT", "EX_UNAVAILABLE", "EX_SOFTWARE"]) {
+    for (const expected of [
+      "EX_DATAERR",
+      "EX_NOINPUT",
+      "EX_UNAVAILABLE",
+      "EX_SOFTWARE",
+      "EX_IOERR",
+    ]) {
       expect(names).toContain(expected);
     }
   });
 });
 
 describe("the extractor binds each label to the number it labels", () => {
-  const CORRECT = { EX_DATAERR: 65, EX_NOINPUT: 66, EX_UNAVAILABLE: 69, EX_SOFTWARE: 70 };
+  const CORRECT = {
+    EX_DATAERR: 65,
+    EX_NOINPUT: 66,
+    EX_UNAVAILABLE: 69,
+    EX_SOFTWARE: 70,
+    EX_IOERR: 74,
+  };
 
   it("reads every member of the exported map out of the source, values included", () => {
     expect(memberSpans(surfaceText(EXIT_CODES_TS)).map((s) => s.code)).toStrictEqual(
@@ -327,7 +339,7 @@ describe("the extractor binds each label to the number it labels", () => {
     );
   });
 
-  it("binds the four header labels through the member rule", () => {
+  it("binds the five header labels through the member rule", () => {
     const bound = attributions(surfaceOf(EXIT_CODES_TS)).filter((a) => a.rule === "member");
     expect(Object.fromEntries(bound.map((a) => [a.name, a.code]))).toStrictEqual(CORRECT);
   });
@@ -382,7 +394,7 @@ describe("a code sysexits.h does not define is documented as this CLI's own", ()
 });
 
 describe("the published numbers do not move", () => {
-  it("the exported map is exactly the seven documented pairs, in order", () => {
+  it("the exported map is exactly the eight documented pairs, in order", () => {
     expect(EXIT).toStrictEqual({
       OK: 0,
       INVALID: 1,
@@ -391,6 +403,7 @@ describe("the published numbers do not move", () => {
       NOINPUT: 66,
       UNAVAILABLE: 69,
       SOFTWARE: 70,
+      IOERR: 74,
     });
     expect(Object.keys(EXIT)).toStrictEqual([
       "OK",
@@ -400,10 +413,11 @@ describe("the published numbers do not move", () => {
       "NOINPUT",
       "UNAVAILABLE",
       "SOFTWARE",
+      "IOERR",
     ]);
   });
 
-  it("each published page describes exactly those seven numbers and no others", () => {
+  it("each published page describes exactly those eight numbers and no others", () => {
     for (const page of CONTRACT_PAGES) {
       expect(sorted(codesIn(exitCodeSection(page))), page).toStrictEqual(
         sorted(Object.values(EXIT)),
@@ -411,7 +425,7 @@ describe("the published numbers do not move", () => {
     }
   });
 
-  it("the docblock table lists exactly those seven numbers", () => {
+  it("the docblock table lists exactly those eight numbers", () => {
     expect(sorted(docblockRows(moduleDocblock(EXIT_CODES_TS)).keys())).toStrictEqual(
       sorted(Object.values(EXIT)),
     );

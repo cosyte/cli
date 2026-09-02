@@ -50,9 +50,10 @@ export const CLI_CODES = {
    * against the running byte count while the input is read, so the refusal always arrives before an
    * allocation ceiling could. Names the limit, never the input. Exit `65`, never `70`. */
   CLI_INPUT_TOO_LARGE: "CLI_INPUT_TOO_LARGE",
-  /** The output stream could not be written: a record stream is emitted line by line, so a consumer
-   * that closes the pipe part way through ends the invocation here rather than as an unhandled
-   * platform error. Names no input. Exit `70`. */
+  /** The output stream could not be written: a consumer that closes the pipe ends the invocation
+   * here rather than as an unhandled platform error, whether it went away part way through a record
+   * stream or before a single-result write was delivered. Names no input, and never the platform's
+   * own error text. Exit `74`. */
   CLI_OUTPUT_WRITE_FAILED: "CLI_OUTPUT_WRITE_FAILED",
   /** The BYO ConceptMap supplied to `map-codes` is not valid JSON or not a loadable FHIR ConceptMap.
    * Names the stable terminology-loader code, never the map's bytes. Exit `65`. */
