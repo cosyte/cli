@@ -29,12 +29,14 @@ still do. Each entry was assigned to the release whose tag first contains it, re
     so reporting it as `70` told an operator their pipeline had hit a bug in the CLI. The one
     condition that moves onto the new code is that write failure itself, which previously reported
     `70` on the record-stream path.
-  - **A single-write result no longer exits `0` when nothing reached the consumer.** The
-    whole-result write in the `cosyte` bin bypassed the guarded output sink, so a single-message
-    parse piped into a reader that stopped early could report success over output that was never
-    delivered. It now goes through the same closed-stream check the record stream uses and waits
-    for the platform's acknowledgement, so a truncated or wholly undelivered result resolves to
-    `74` whatever the command had resolved to before the write.
+  - **Neither write path reports a success over output that reached nobody.** The whole-result write
+    in the `cosyte` bin bypassed the guarded output sink altogether, and the record stream's sink
+    only consulted a flag the platform sets asynchronously, so a short enough run could have every
+    line enqueued before the closed consumer was reported. Either way a parse piped into a reader
+    that stopped early could print a summary and exit `0` over output that was never delivered.
+    Every chunk bound for stdout now waits for the platform's acknowledgement before the run may
+    resolve, so an undelivered result resolves to `74` whatever the command had computed, and the
+    summary describing that computed outcome is withdrawn with it.
   - **`cosyte-mcp` terminates quietly when its client goes away.** A closed stdout used to reach the
     process as an unhandled stream error, printing a Node stack trace naming this machine's install
     paths. It is now a value-free diagnostic and the same exit code, and the server ends rather than
@@ -43,7 +45,10 @@ still do. Each entry was assigned to the release whose tag first contains it, re
     diagnostic channel's own error and fall back to the exit code as the whole signal.
   - `test/pipe-close.test.ts` spawns real processes and closes their real streams, which nothing in
     this suite did before: the existing coverage drove an injected sink inside the test process and
-    could say nothing about the process adapters.
+    could say nothing about the process adapters. Its record-stream cases run at one and two records
+    on purpose, because a long stream fails on a later write and so is caught however the earlier
+    ones were handled, and `scripts/smoke.mjs` asks the same question of the PACKAGED bin under
+    plain `node`, where a faster start widens the window further.
 
 - **The release pipeline now installs the packed tarball from outside this repository, and runs both
   bins from that installed copy, before anything can publish.** `0.0.1` and `0.0.2` are on npm

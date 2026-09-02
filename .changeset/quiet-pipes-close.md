@@ -14,11 +14,14 @@ and reporting it as `70` told an operator their pipeline had hit a bug in the CL
 that moves onto the new code is the closed-consumer write failure itself, which previously reported
 `70` on the record-stream path.
 
-- **A single-write result no longer exits `0` when nothing reached the consumer.** The whole-result
-  write in the `cosyte` bin bypassed the guarded output sink, so `cosyte parse msg.hl7 | head -1`
-  could report success over output that was never delivered. It now goes through the same closed
-  stream check the record stream uses and waits for the platform's acknowledgement, so a truncated
-  or wholly undelivered result resolves to `74` regardless of what the command had resolved to.
+- **Neither write path reports a success over output that reached nobody.** The whole-result write
+  in the `cosyte` bin bypassed the guarded output sink altogether, and the record stream's sink only
+  consulted a flag the platform sets asynchronously, so a short enough run could have every line
+  enqueued before the closed consumer was reported: `cosyte parse msg.hl7 | head -1` and
+  `cosyte parse bulk.ndjson --ndjson | head -1` could each print a summary and exit `0` over output
+  that was never delivered. Every chunk bound for stdout now waits for the platform's
+  acknowledgement before the run may resolve, so an undelivered result resolves to `74` whatever the
+  command had computed, and the summary describing that computed outcome is withdrawn with it.
 - **`cosyte-mcp` terminates quietly when its client goes away.** A closed stdout used to reach the
   process as an unhandled stream error, printing a Node stack trace that named this machine's
   install paths. It is now a value-free diagnostic and the same exit code, and the server ends

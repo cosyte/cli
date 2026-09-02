@@ -36,6 +36,17 @@ import { EXIT } from "../src/core/exit-codes.js";
  * than an accident of a run that emitted nothing; and the unguarded shape really does fail the way
  * this file claims, replayed as a NEGATIVE CONTROL against the platform itself.
  *
+ * ▶ THE RECORD COUNT IS LOAD-BEARING, AND A BIG ONE HIDES THE DEFECT THIS FILE IS ABOUT. A record
+ * stream writes line by line, and the platform reports a closed consumer ASYNCHRONOUSLY. So a long
+ * stream fails on a later write and is caught whatever the adapter does with the earlier ones, while
+ * a SHORT one can have every line enqueued before the report arrives: an adapter that never waits
+ * for the platform's acknowledgement then sees an open stream, resolves, and reports a success over
+ * bytes nobody received. That is the whole failure, and only a small count reaches it. So the
+ * closed-before-a-byte cases below run at ONE and TWO records, the long fixture is kept only for the
+ * mid-stream case that needs a stream long enough to interrupt, and every closed-consumer case
+ * refuses a success summary on stderr as well as a zero exit. A sibling gate on the PACKAGED bin
+ * under plain `node` lives in `scripts/smoke.mjs`, because the window widens on a faster start.
+ *
  * SECURITY: every subprocess call uses `spawn` with array args and `shell: false`. No exec, no
  * string interpolation into a command line.
  *
@@ -70,11 +81,16 @@ const MCP_REQUEST =
 let dir: string;
 let patientPath: string;
 let bulkPath: string;
+/** One record, and two: small enough that every line is enqueued before the close is reported. */
+let onePath: string;
+let twoPath: string;
 
 beforeAll(() => {
   dir = mkdtempSync(join(tmpdir(), "cosyte-pipe-close-"));
   patientPath = join(dir, "patient.json");
   bulkPath = join(dir, "bulk.ndjson");
+  onePath = join(dir, "one.ndjson");
+  twoPath = join(dir, "two.ndjson");
   const patient = (id: string): string =>
     JSON.stringify({
       resourceType: "Patient",
@@ -83,6 +99,8 @@ beforeAll(() => {
       name: [{ family: SENTINEL, given: ["Q"] }],
     });
   writeFileSync(patientPath, patient("one") + "\n");
+  writeFileSync(onePath, patient("r0") + "\n");
+  writeFileSync(twoPath, [patient("r0"), patient("r1")].join("\n") + "\n");
   // Large enough that the child is still writing when the consumer goes away: the OS pipe buffer
   // holds far less than this, so the stream cannot have finished behind the test's back.
   const lines: string[] = [];
@@ -162,6 +180,16 @@ function spawnBin(argv: readonly string[], options: Options = {}): Promise<Spawn
   });
 }
 
+/**
+ * A run whose output reached nobody must not also print the summary of the work it did. The exit
+ * code alone is not the whole criterion: a reassuring line over undelivered output is the shape the
+ * published contract refuses, and it is what an adapter that never confirms delivery prints.
+ */
+function expectNoSuccessSummary(stderr: string): void {
+  expect(stderr).not.toMatch(/parsed \d+ \w+ record\(s\)/);
+  expect(stderr).not.toMatch(/parsed \w+ with \d+ warning/);
+}
+
 /** No stack frame, no platform error identity, no byte of the input: the value-free posture. */
 function expectValueFree(stderr: string): void {
   expect(stderr).not.toContain(SENTINEL);
@@ -200,6 +228,27 @@ describe("the premise: the spawned bin runs, and the sentinel really is in what 
   );
 
   it(
+    "streams a one-record and a two-record input in full when the consumer stays",
+    async () => {
+      for (const [path, n] of [
+        [onePath, 1],
+        [twoPath, 2],
+      ] as const) {
+        const r = await spawnBin([COSYTE, "parse", path, "--ndjson", "--format", "fhir"], {
+          keepStdoutOpen: true,
+        });
+        expect(r.code).toBe(EXIT.OK);
+        expect(r.stdout.split("\n").length - 1).toBe(n);
+        expect(r.stdout).toContain(SENTINEL);
+        // The premise for the cases below: with the consumer present these runs DO print the
+        // summary that must never appear once the consumer has gone.
+        expect(r.stderr).toMatch(/parsed \d+ \w+ record\(s\)/);
+      }
+    },
+    SLOW_MS,
+  );
+
+  it(
     "still routes an ordinary failure to its own code with the consumer present",
     async () => {
       const r = await spawnBin([COSYTE, "frobnicate"], { keepStdoutOpen: true });
@@ -230,6 +279,7 @@ describe("a single-write result whose consumer closed the stream", () => {
       const r = await spawnBin([COSYTE, "parse", patientPath]);
       expect(r.stderr).toContain("CLI_OUTPUT_WRITE_FAILED");
       expect(r.stderr.split("CLI_OUTPUT_WRITE_FAILED")).toHaveLength(2);
+      expectNoSuccessSummary(r.stderr);
       expectValueFree(r.stderr);
     },
     SLOW_MS,
@@ -261,6 +311,7 @@ describe("a record stream whose consumer goes away part way through", () => {
       // The premise: the run really was interrupted rather than allowed to finish.
       expect(r.stdout.split("\n").length - 1).toBeLessThan(4000);
       expect(r.stderr).toContain("CLI_OUTPUT_WRITE_FAILED");
+      expectNoSuccessSummary(r.stderr);
       expectValueFree(r.stderr);
     },
     SLOW_MS,
@@ -274,6 +325,7 @@ describe("a record stream whose consumer goes away part way through", () => {
       expect(r.code).not.toBe(EXIT.OK);
       expect(r.stdout).toBe("");
       expect(r.stderr).toContain("CLI_OUTPUT_WRITE_FAILED");
+      expectNoSuccessSummary(r.stderr);
       expectValueFree(r.stderr);
     },
     SLOW_MS,
@@ -282,11 +334,46 @@ describe("a record stream whose consumer goes away part way through", () => {
   it(
     "reports one failure under one code, whichever write path hit it",
     async () => {
+      // The record stream here is ONE record: the count at which the two paths' handling of the
+      // platform's asynchronous close report can diverge, and so the count at which this criterion
+      // is actually measured rather than assumed.
       const single = await spawnBin([COSYTE, "parse", patientPath]);
-      const stream = await spawnBin([COSYTE, "parse", bulkPath, "--ndjson", "--format", "fhir"]);
+      const stream = await spawnBin([COSYTE, "parse", onePath, "--ndjson", "--format", "fhir"]);
       expect(single.code).toBe(stream.code);
+      expect(single.code).toBe(EXIT.IOERR);
       expect(single.stderr).toContain("CLI_OUTPUT_WRITE_FAILED");
       expect(stream.stderr).toContain("CLI_OUTPUT_WRITE_FAILED");
+      // One failure, one outcome: on this surface the two paths are not merely both non-zero, they
+      // are byte for byte the same diagnostic.
+      expect(stream.stderr).toBe(single.stderr);
+    },
+    SLOW_MS,
+  );
+});
+
+/**
+ * THE SHORT STREAM, which is where an adapter that never waits for the platform stays green. Every
+ * line is enqueued before the closed-consumer report is dispatched, so nothing throws, the command
+ * resolves to success, and only an acknowledgement from the platform can tell the process that its
+ * output reached nobody.
+ */
+describe("a record stream short enough to be written before the close is reported", () => {
+  it.each([
+    { label: "one record", path: (): string => onePath },
+    { label: "two records", path: (): string => twoPath },
+  ])(
+    "never reports $label as a success when the consumer received nothing",
+    async ({ path }) => {
+      const argv = [COSYTE, "parse", path(), "--ndjson", "--format", "fhir"];
+      const r = await spawnBin(argv);
+      expect(r.code).toBe(EXIT.IOERR);
+      expect(r.code).not.toBe(EXIT.OK);
+      expect(r.signal).toBeNull();
+      // The premise: nothing at all reached the consumer, so this is the undelivered case.
+      expect(r.stdout).toBe("");
+      expect(r.stderr).toContain("CLI_OUTPUT_WRITE_FAILED");
+      expectNoSuccessSummary(r.stderr);
+      expectValueFree(r.stderr);
     },
     SLOW_MS,
   );

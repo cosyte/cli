@@ -75,31 +75,55 @@ process.stdout.on("error", () => {
   process.stdin.destroy();
 });
 
+// Delivery is one question with one answer, however the output was produced. The `stdoutOpen` flag
+// alone cannot answer it: the platform flips it when it dispatches the closed-stream error, which is
+// asynchronous, so a run whose writes are all enqueued before that error arrives would see an open
+// stream, resolve, and report a success over bytes nobody received. So every chunk bound for stdout
+// goes through `emit` and is owed an acknowledgement from the platform, and the invocation may not
+// resolve until each one has come back.
+let produced = false;
+let delivered = true;
+let queued = 0;
+let onFlushed: (() => void) | undefined;
+
+/** Queue one chunk of the data channel on stdout; it counts as undelivered until acknowledged. */
+function emit(chunk: string): void {
+  produced = true;
+  if (!stdoutOpen) {
+    delivered = false;
+    return;
+  }
+  queued += 1;
+  process.stdout.write(chunk, (err) => {
+    if (err !== null && err !== undefined) delivered = false;
+    queued -= 1;
+    if (queued > 0 || onFlushed === undefined) return;
+    const resume = onFlushed;
+    onFlushed = undefined;
+    resume();
+  });
+}
+
+/** Resolve once every queued write has come back from the platform, acknowledged or failed. */
+function flushed(): Promise<void> {
+  if (queued === 0) return Promise.resolve();
+  return new Promise((resolve) => {
+    onFlushed = resolve;
+  });
+}
+
 const deps: RunDeps = {
   readFile: (path) => readFileBytes(path),
   readStdin: () => readStreamBytes(process.stdin),
   openFile: (path) => fileChunks(path),
   openStdin: () => streamChunks(process.stdin),
   writeStdout: (chunk) => {
+    // Fail fast so the rest of a record stream is not parsed into a channel that is already gone;
+    // the acknowledgement in `emit` is what catches a consumer that leaves without a write failing.
     if (!stdoutOpen) throw new Error("stdout closed");
-    process.stdout.write(chunk);
+    emit(chunk);
   },
 };
-
-/**
- * Write a whole single-result payload to stdout and resolve to whether the consumer actually got it.
- * The record stream fails fast through `deps.writeStdout`; a single write has no later write to
- * fail, so it waits for the platform's acknowledgement instead. Otherwise a result that never
- * reached anyone would still be reported as the success the command resolved to.
- */
-function writeResult(chunk: string): Promise<boolean> {
-  if (!stdoutOpen) return Promise.resolve(false);
-  return new Promise((resolve) => {
-    process.stdout.write(chunk, (err) => {
-      resolve(err === null || err === undefined);
-    });
-  });
-}
 
 // The `cosyte mcp` subcommand starts the stdio MCP server (also reachable as the `cosyte-mcp` bin).
 // It is dispatched here, before `run`, and the server module is DYNAMICALLY imported so the
@@ -115,13 +139,25 @@ if (serverMode) {
 } else {
   run(process.argv.slice(2), deps)
     .then(async (result) => {
-      const delivered = result.stdout === "" ? true : await writeResult(result.stdout);
+      // A single-result command hands its whole payload over here; a record stream has already
+      // written itself, line by line, through `deps.writeStdout`. Both are the same `emit`.
+      if (result.stdout !== "") emit(result.stdout);
+      // Fail safe across the window where an acknowledgement is still outstanding: if the process
+      // were ever to end without the platform coming back, the code left standing is the
+      // output-error one, never a success over bytes nobody has confirmed receiving.
+      if (produced) process.exitCode = EXIT.IOERR;
+      await flushed();
+
+      // Output that reached nobody overrides whatever the command resolved to: the invocation did
+      // not finish, so it is never reported as the success (or the data error) it computed, and the
+      // summary describing that outcome is withdrawn with it. A command that legitimately produced
+      // no output at all is untouched by this: it delivered everything it owed.
+      if (produced && !(delivered && stdoutOpen)) {
+        reportOutputClosed();
+        return;
+      }
       if (result.stderr) note(result.stderr);
       process.exitCode = result.exit;
-      // An undelivered result overrides whatever the command resolved to: the invocation did not
-      // finish, so it is never reported as the success (or the data error) it would otherwise be.
-      // A record stream that failed mid-flight has already reported itself, through the result.
-      if (!delivered) reportOutputClosed();
     })
     .catch(() => {
       // Last-resort guard: a truly unexpected failure prints a value-free line and exits EX_SOFTWARE.
