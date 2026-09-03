@@ -137,6 +137,6 @@
     "@cosyte/ncpdp": "^0.0.8",
     "@cosyte/transform": "^0.0.4",
     "@cosyte/x12": "^0.0.8",
-    "@modelcontextprotocol/sdk": "1.29.0"
+    "@modelcontextprotocol/sdk": "1.30.0"
   }
 }
