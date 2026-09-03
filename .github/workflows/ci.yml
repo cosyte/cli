@@ -61,7 +61,29 @@ jobs:
   # PHI-scan step is switched on. NOTE: the scaffolded scanner is a STARTER: it detects only
   # cross-cutting SSN/email shapes until you add structured, field-level detection for this
   # standard's PHI (see the STARTER banner in scripts/phi-scan.ts).
+  #
+  # THE NODE MATRIX IS DECLARED HERE, DELIBERATELY, AND THESE TWO VALUES ARE NOT FREE TO CHANGE.
+  # `node-versions` has an upstream default (`'["22", "24"]'`) and passing it explicitly changes
+  # nothing about what runs: the point is that the set this repo is tested on is a fact stated in
+  # this repository, readable without resolving the called workflow's input defaults, and diffable
+  # when it moves. `package.json`'s `engines.node` range is bound to this list, and
+  # `test/node-support.test.ts` fails the build when the two disagree in either direction.
+  #
+  # EACH VALUE IS A REQUIRED STATUS-CHECK CONTEXT. The matrix cell `22` produces
+  # `ci / verify (22, ubuntu-latest)` and `24` produces `ci / verify (24, ubuntu-latest)`; both are
+  # named in the `ci-required-checks` ruleset with `bypass_actors: []`. Removing or renaming a value
+  # stops its context being emitted, and a required context nothing emits is PENDING rather than
+  # failing: every pull request, including the one that would undo it, becomes unmergeable by
+  # anyone, admin included. Nothing in this repository can edit that ruleset; it is a GitHub setting
+  # a human with repo admin changes.
+  #
+  # SO THE ORDER IS RULESET FIRST, MATRIX SECOND, RANGE THIRD. Adding a line (Node 26, say) without
+  # adding its context to the ruleset first gets a `ci / verify (26, ubuntu-latest)` that arrives
+  # NOT REQUIRED: a red X that blocks nothing, which is the appearance of a gate rather than a gate.
+  # That has happened here for real once (`prepublish`, 2026-08-05, see the banner above). Dropping
+  # a line without removing its context first is the worse direction and bricks the branch.
   ci:
     uses: cosyte/.github/.github/workflows/ci.yml@main
     with:
       run-phi-scan: true
+      node-versions: '["22", "24"]'

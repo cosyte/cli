@@ -26,7 +26,7 @@
   "author": "Cosyte <hello@cosyte.com> (https://cosyte.com)",
   "type": "module",
   "engines": {
-    "node": ">=22.0.0"
+    "node": ">=22.0.0 <26.0.0"
   },
   "packageManager": "pnpm@10.0.0",
   "main": "./dist/index.cjs",
