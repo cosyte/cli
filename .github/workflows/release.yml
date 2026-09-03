@@ -51,7 +51,7 @@ jobs:
       # NO `version:` INPUT, DELIBERATELY: `pnpm/action-setup` must resolve exactly one version, from
       # `package.json`'s `packageManager` key and nowhere else. Passing both is a hard error that
       # fails setup before anything installs. Same reasoning as `.github/workflows/fuzz.yml`.
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v4
         with:
           node-version: 22
