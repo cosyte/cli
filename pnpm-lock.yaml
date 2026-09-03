@@ -16,8 +16,8 @@ importers:
         specifier: ^0.0.7
         version: 0.0.7
       '@cosyte/terminology':
-        specifier: ^0.0.9
-        version: 0.0.9
+        specifier: ^0.0.13
+        version: 0.0.13
     devDependencies:
       '@arethetypeswrong/cli':
         specifier: 0.18.4
@@ -277,8 +277,8 @@ packages:
   '@cosyte/prettier-config@0.0.2':
     resolution: {integrity: sha512-nmplXQKNq5DZ+Su/tCUF6m9UJ9MOArhw5NG0X9yqi6B5zvxmVXtKMAX1N2bKkqpKhZqyQOR9ALGYVpTx022R/g==}
 
-  '@cosyte/terminology@0.0.9':
-    resolution: {integrity: sha512-tztqLojYIsNY1HxY2CgsiCK+XX9ajzwfUecR+sY6dt0kfFGJNrGSisI7BrYcQSYZ4fjpsL+w44gkIfZmTnR2WA==}
+  '@cosyte/terminology@0.0.13':
+    resolution: {integrity: sha512-go/cEq6egXZlRYNYqXSdpIPn8pdA9kbwXgMbkqnlZUQJuRXiRGynIiYqeDD2hnBiVZmR9kN+7a/VziN14S38lg==}
     engines: {node: '>=22.0.0'}
 
   '@cosyte/test-utils@0.0.1':
@@ -2488,7 +2488,7 @@ snapshots:
 
   '@cosyte/prettier-config@0.0.2': {}
 
-  '@cosyte/terminology@0.0.9': {}
+  '@cosyte/terminology@0.0.13': {}
 
   '@cosyte/test-utils@0.0.1(fast-check@3.23.2)':
     dependencies:

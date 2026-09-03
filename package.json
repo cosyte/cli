@@ -126,7 +126,7 @@
   },
   "dependencies": {
     "@cosyte/hl7": "^0.0.7",
-    "@cosyte/terminology": "^0.0.9"
+    "@cosyte/terminology": "^0.0.13"
   },
   "optionalDependencies": {
     "@cosyte/astm": "^0.0.11",
