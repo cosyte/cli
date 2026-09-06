@@ -53,7 +53,39 @@
  *   <path> [<path>...]       - scan specific paths
  *   (no args)                - scan all in-scope working-tree files
  *
- * Exit codes: 0 (clean), 1 (hits found), 2 (invocation error).
+ * Exit codes: 0 (clean), 1 (hits found), 2 (invocation error, and every refusal
+ * this file raises - a run that cannot vouch for what it enumerated has no
+ * verdict, which is neither "clean" nor "hits found").
+ *
+ * ===========================================================================
+ * A TARGET THIS RUN ENUMERATED AND NEVER READ REFUSES THE SCAN (exit 2). The
+ * enumeration decides what the run is a statement ABOUT; a withdrawal (an
+ * `--allow-fixture` bypass, honoured only when it is logged) then decides what
+ * it actually opens. Where those two differ the run has nothing true to say
+ * about the difference, so it says that rather than reporting over it: a scan
+ * that did not open a file has no clean verdict to give about it.
+ *
+ * ▶ IT IS A SET DIFFERENCE AND MUST STAY ONE. A COUNT COUNTS THE TARGETS THAT
+ * DID GET READ, so `n read of n targets` is exactly the arithmetic that hides
+ * WHICH ones did not, and it reads healthy at the moment a withdrawal empties
+ * the corpus. A denominator is refused here for the same reason it is refused
+ * by the observation rule below.
+ *
+ * ▶ HITS ARE REPORTED FIRST, ALWAYS, AND THE ORDER IS LOAD-BEARING. A refusal
+ * raised before the findings were written would discard every hit the run did
+ * find, which turns a stricter gate into a quieter one. The report runs first
+ * and the refusal changes only the exit status and adds its own lines.
+ *
+ * ▶ EXIT 2 IS THIS SCANNER'S OWN REFUSAL STATUS, derived from the contract
+ * above and not ported from a sibling: `1` means "hits found" here, and a
+ * caller branching on `1` must never be handed a run that did not open
+ * everything it named. Both refusals below answer with the same status for the
+ * same reason.
+ *
+ * ▶ AN HONEST RUN IS UNTOUCHED. With no `--allow-fixture` the read set is the
+ * enumerated set, so the whole-repo sweep, the `--staged` pre-commit hook and a
+ * plain `phi-scan <path>` keep exactly the codes they had.
+ * ===========================================================================
  *
  * ===========================================================================
  * AN ENUMERATED IN-SCOPE ENTRY THAT IS NOT A REGULAR FILE REFUSES THE SCAN
@@ -355,11 +387,12 @@ const OVERRIDE_LOG_PATH = join(REPO_ROOT, "phi-scan-overrides.md");
 //     declaration is the thing that produced the hit, because the SSN pass reads
 //     no allow-list.
 //   - "run with --allow-fixture <path>" does not reach this sweep at all.
-//     `parseArgs` sends an `--allow-fixture` invocation down PATHS mode, and the
-//     one named target is then filtered out, so it opens ZERO files and prints
-//     "OK, no hits" at exit 0. That collapse is PRE-EXISTING (it behaves
-//     identically on `ba059a2`) and is deliberately not fixed here; it is
-//     recorded because widening the walk is what makes it the tempting answer.
+//     `parseArgs` sends an `--allow-fixture` invocation down PATHS mode, so the
+//     sweep is never built and the one named target is withdrawn from the paths
+//     run instead. That invocation now REFUSES at exit 2 under the completeness
+//     rule (it enumerated the path and opened nothing), so it is a visible
+//     no-answer rather than the "OK, no hits" at exit 0 it used to print, and it
+//     is still not a route to the allow-list's own bytes.
 // AND IT IS NOT `DELIBERATE_VIOLATOR_SOURCES` EITHER. Exempting the allow-list
 // would leave the one file a developer is most likely to paste a real value into
 // unswept, which is the opposite of what this root was added for.
@@ -1147,11 +1180,15 @@ function scanTarget(target: Target, allow: AllowList, hits: Hit[]): void {
 // Reporting
 // ---------------------------------------------------------------------------
 
+/**
+ * Write the findings. It reports HITS ONLY, and the clean line is the caller's
+ * to write: a run that is about to refuse over a target it never opened must not
+ * first claim "OK, no hits", which is the very verdict it has no standing to
+ * give. The hit half still runs unconditionally and BEFORE any refusal, so no
+ * finding is ever discarded by one.
+ */
 function report(hits: Hit[]): void {
-  if (hits.length === 0) {
-    process.stdout.write("[phi-scan] OK, no hits\n");
-    return;
-  }
+  if (hits.length === 0) return;
   const byPath = new Map<string, Hit[]>();
   for (const h of hits) {
     const arr = byPath.get(h.path);
@@ -1170,6 +1207,27 @@ function report(hits: Hit[]): void {
     `[phi-scan] ${String(hits.length)} hit(s) across ${String(byPath.size)} file(s). ` +
       `If a value is genuinely synthetic, declare it in scripts/phi-allow-list.txt OR ` +
       `run with --allow-fixture <path> AND log it in phi-scan-overrides.md.\n`,
+  );
+}
+
+/**
+ * The refusal over targets this run enumerated and never opened. EVERY offender
+ * is named, for the reason `refuseUnscannable` names every one: a developer who
+ * has to re-run the gate once per withdrawal learns to distrust it.
+ *
+ * The remedy points at the ALLOW-LIST rather than at the bypass that produced
+ * this, and that direction is the whole rule: a token-level declaration leaves
+ * the file inside the scan, while withdrawing it removes the only evidence the
+ * run could have had about it.
+ */
+function unreadRefusal(unread: readonly string[]): string {
+  const lines = unread.map((p) => `  - ${p}`).join("\n");
+  return (
+    `refusing the scan: ${String(unread.length)} target(s) were enumerated and never read:\n` +
+    `${lines}\n` +
+    "A scan that did not open a file has no clean verdict to give about it. If the file is " +
+    "genuinely synthetic, declare its identifiers in scripts/phi-allow-list.txt rather than " +
+    "withdrawing the file from the scan."
   );
 }
 
@@ -1221,10 +1279,19 @@ function main(): number {
     throw err;
   }
 
-  targets = targets.filter((t) => !allowed.has(t.path));
+  // What this run is a statement ABOUT, recorded BEFORE any withdrawal, against
+  // what it actually opened. The refusal below is the DIFFERENCE of the two
+  // sets and is deliberately not a count: see the completeness banner at the top
+  // of this file for why `n read of n` is the arithmetic that hides the answer.
+  const enumerated = new Set<string>(targets.map((t) => t.path));
+  const read = new Set<string>();
 
   const hits: Hit[] = [];
   for (const t of targets) {
+    // A withdrawn target stays ENUMERATED and simply never joins `read`.
+    // Filtering the list before this loop is what used to let it vanish without
+    // a trace, so the run reported on a corpus it had silently shrunk.
+    if (allowed.has(t.path)) continue;
     try {
       scanTarget(t, allow, hits);
     } catch (err) {
@@ -1234,9 +1301,22 @@ function main(): number {
       }
       throw err;
     }
+    // Recorded AFTER the scan returned: a target whose read threw is not one
+    // this run opened, and it exits 2 above rather than reaching here.
+    read.add(t.path);
   }
 
+  const unread = [...enumerated].filter((p) => !read.has(p));
+
+  // HITS FIRST, unconditionally. A refusal must never swallow a finding.
   report(hits);
+
+  if (unread.length > 0) {
+    process.stderr.write(`[phi-scan] ${unreadRefusal(unread)}\n`);
+    return 2;
+  }
+
+  if (hits.length === 0) process.stdout.write("[phi-scan] OK, no hits\n");
   return hits.length === 0 ? 0 : 1;
 }
 
