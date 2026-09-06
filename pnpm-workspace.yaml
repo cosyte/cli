@@ -1,0 +1,13 @@
+# Install hardening for this package. Both keys are pnpm settings, and both are
+# honoured only by the pnpm this repo pins in `package.json#packageManager`:
+# `minimumReleaseAge` landed in pnpm 10.16.0 and `trustPolicy` in pnpm 10.21.0,
+# so an older pnpm ignores them and the file decorates rather than defends.
+#
+# minimumReleaseAge is in MINUTES: 1440 is 24 hours, pnpm's own floor. A version
+# published inside that window is not installed, which is the cooling-off period
+# that blunts a compromised-release supply-chain attack.
+#
+# trustPolicy "no-downgrade" refuses a resolution that moves a package backwards
+# from what the lockfile already trusts.
+minimumReleaseAge: 1440
+trustPolicy: "no-downgrade"

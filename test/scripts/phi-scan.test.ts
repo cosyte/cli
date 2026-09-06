@@ -1203,25 +1203,31 @@ describe(
     });
 
     it("--allow-fixture cannot reach the all-mode sweep, so it is not the remedy either", () => {
-      // PRE-EXISTING and deliberately not fixed here: an `--allow-fixture`
-      // invocation is routed down PATHS mode, and the one named target is then
-      // filtered out, so it opens ZERO files and reports clean. Pinned because
-      // widening the walk is what makes it the tempting answer to the case
-      // above, and because a reader would otherwise take the hit message's own
-      // advice.
+      // An `--allow-fixture` invocation is routed down PATHS mode, and the one
+      // named target is then withdrawn, so the sweep is never built and ZERO
+      // files are opened. Pinned because widening the walk is what makes it the
+      // tempting answer to the case above, and because a reader would otherwise
+      // take the hit message's own advice.
+      //
+      // WHAT CHANGED IS THE ANSWER, NOT THE ROUTE. The collapse used to report
+      // "OK, no hits" at exit 0, which is the reading the completeness rule
+      // exists to end; it now refuses at exit 2 and names the path it never
+      // opened. Still not a route to the allow-list's own bytes either way.
       const root = makeRepo();
       writeFileSync(join(root, "src", "violator.ts"), SYNTHETIC_PHI);
       writeFileSync(
         join(root, "phi-scan-overrides.md"),
         "# overrides\n\n### src/violator.ts\n\nsynthetic\n",
       );
-      // The premise: without the flag this really is a hit, so a green below is
-      // the collapse and not an empty corpus.
+      // The premise: without the flag this really is a hit, so the refusal below
+      // is about a withdrawn target and not about an empty corpus.
       expect(runScanner([], root).code).toBe(1);
 
       const r = runScanner(["--allow-fixture", "src/violator.ts"], root);
-      expect(r.code, `stderr: ${r.stderr}`).toBe(0);
-      expect(r.stdout).toMatch(/OK, no hits/);
+      expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+      expect(r.stderr).toContain("enumerated and never read");
+      expect(r.stderr).toContain("src/violator.ts");
+      expect(r.stdout).not.toMatch(/OK, no hits/);
     });
 
     it("an empty `test/__fixtures__` git tracks nothing under no longer refuses", () => {
@@ -1522,3 +1528,164 @@ describe("phi-scan: the escape-decoded view was MEASURED and DECLINED, and stays
     expect(divergent).toStrictEqual([]);
   });
 });
+
+describe(
+  "phi-scan: a target enumerated and never read refuses the scan",
+  { timeout: SLOW_MS },
+  () => {
+    // The completeness rule. A run is a statement about what it ENUMERATED, so a
+    // target withdrawn AFTER enumeration leaves the run with nothing true to say
+    // about that path, and reporting on the rest as though the corpus were whole
+    // is the reading this refuses. Withdrawal is the only route into the state
+    // and it is already a logged, reviewed act, which is why closing it costs an
+    // honest run nothing (the last case here is that half).
+    //
+    // THE REFUSAL IS A SET DIFFERENCE, NOT A COUNT, and these cases are written
+    // to fail a count-based implementation: each names the withdrawn PATH, which
+    // is exactly what `n read of n targets` cannot produce.
+
+    /** A repo whose override log admits the paths a case is about to withdraw. */
+    function repoAdmitting(paths: string[]): string {
+      const root = makeRepo();
+      const entries = paths
+        .map((p) => `### ${p}\n\n- **Date:** test\n- **Reason:** synthetic fixture\n`)
+        .join("\n");
+      writeFileSync(join(root, "phi-scan-overrides.md"), `# overrides\n\n## Entries\n\n${entries}`);
+      return root;
+    }
+
+    it("refuses a withdrawn target over an otherwise CLEAN corpus, and names it", () => {
+      const root = repoAdmitting(["test/__fixtures__/decoy.txt"]);
+      writeFileSync(join(root, "test", "__fixtures__", "decoy.txt"), "nothing to see here\n");
+      writeFileSync(join(root, "test", "__fixtures__", "kept.txt"), "ordinary placeholder\n");
+
+      // The premise. Both files scan clean on their own, so the refusal below is
+      // about the withdrawal and not about a corpus that was never scannable.
+      // Without it a green-to-red flip proves nothing about WHICH rule fired.
+      expect(runScanner(["test/__fixtures__/decoy.txt"], root).code).toBe(0);
+      expect(runScanner(["test/__fixtures__/kept.txt"], root).code).toBe(0);
+
+      const r = runScanner(
+        [
+          "test/__fixtures__/kept.txt",
+          "test/__fixtures__/decoy.txt",
+          "--allow-fixture",
+          "test/__fixtures__/decoy.txt",
+        ],
+        root,
+      );
+      // Stated as the two things it must NOT be, because that is the contract:
+      // neither the clean status nor the hits status, so no caller branching on
+      // either is handed a run that did not open everything it named.
+      expect(r.code, `stderr: ${r.stderr}`).not.toBe(0);
+      expect(r.code, `stderr: ${r.stderr}`).not.toBe(1);
+      expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+      expect(r.stderr).toContain("[phi-scan] refusing the scan");
+      expect(r.stderr).toContain("enumerated and never read");
+      expect(r.stderr).toContain("test/__fixtures__/decoy.txt");
+      // The clean line is the verdict this run has no standing to give.
+      expect(r.stdout).not.toMatch(/OK, no hits/);
+      // The kept target was read, so it is not named as unread.
+      expect(r.stderr).not.toContain("test/__fixtures__/kept.txt");
+    });
+
+    it("reports the hits BEFORE refusing, so a refusal cannot swallow a finding", () => {
+      const root = repoAdmitting(["test/__fixtures__/decoy.txt"]);
+      writeFileSync(join(root, "test", "__fixtures__", "violator.txt"), SYNTHETIC_PHI);
+      writeFileSync(join(root, "test", "__fixtures__", "decoy.txt"), "nothing to see here\n");
+
+      // The premise, both halves: the violator really is a hit and the decoy
+      // really is clean, so the run below differs from a plain hits run by the
+      // withdrawal alone.
+      expect(runScanner(["test/__fixtures__/violator.txt"], root).code).toBe(1);
+      expect(runScanner(["test/__fixtures__/decoy.txt"], root).code).toBe(0);
+
+      const r = runScanner(
+        [
+          "test/__fixtures__/violator.txt",
+          "test/__fixtures__/decoy.txt",
+          "--allow-fixture",
+          "test/__fixtures__/decoy.txt",
+        ],
+        root,
+      );
+      expect(r.code, `stderr: ${r.stderr}`).not.toBe(0);
+      expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+
+      // The finding survives the refusal, in full: the locus, the value and the
+      // summary line a developer acts on.
+      expect(r.stderr).toContain("HIT: test/__fixtures__/violator.txt");
+      expect(r.stderr).toContain(SYNTHETIC_SSN);
+      expect(r.stderr).toContain(SYNTHETIC_EMAIL);
+      expect(r.stderr).toMatch(/2 hit\(s\) across 1 file\(s\)/);
+
+      // And it is written FIRST. Order is the whole guarantee: a refusal raised
+      // before the report would have discarded every line above.
+      const hitAt = r.stderr.indexOf("HIT: test/__fixtures__/violator.txt");
+      const refusalAt = r.stderr.indexOf("enumerated and never read");
+      expect(hitAt).toBeGreaterThanOrEqual(0);
+      expect(refusalAt).toBeGreaterThan(hitAt);
+      expect(r.stderr).toContain("test/__fixtures__/decoy.txt");
+    });
+
+    it("names EVERY unread target, not just the first", () => {
+      // Same reason `refuseUnscannable` names every offender: a developer who has
+      // to re-run the gate once per withdrawal learns to distrust it.
+      const root = repoAdmitting(["test/__fixtures__/a.txt", "test/__fixtures__/b.txt"]);
+      writeFileSync(join(root, "test", "__fixtures__", "a.txt"), "clean a\n");
+      writeFileSync(join(root, "test", "__fixtures__", "b.txt"), "clean b\n");
+      writeFileSync(join(root, "test", "__fixtures__", "kept.txt"), "clean kept\n");
+
+      const r = runScanner(
+        [
+          "test/__fixtures__/a.txt",
+          "test/__fixtures__/b.txt",
+          "test/__fixtures__/kept.txt",
+          "--allow-fixture",
+          "test/__fixtures__/a.txt",
+          "--allow-fixture",
+          "test/__fixtures__/b.txt",
+        ],
+        root,
+      );
+      expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+      expect(r.stderr).toContain("2 target(s) were enumerated and never read");
+      expect(r.stderr).toContain("test/__fixtures__/a.txt");
+      expect(r.stderr).toContain("test/__fixtures__/b.txt");
+      expect(r.stderr).not.toContain("test/__fixtures__/kept.txt");
+    });
+
+    it("leaves an honest run alone: no withdrawal, no refusal", () => {
+      // The cost side, asserted rather than assumed. With nothing withdrawn the
+      // read set IS the enumerated set, so every existing verdict stands: this is
+      // what keeps the pre-commit hook and the CI sweep exactly as strict as they
+      // were, and no stricter.
+      const root = repoAdmitting([]);
+      writeFileSync(join(root, "test", "__fixtures__", "clean.txt"), "ordinary placeholder\n");
+
+      const clean = runScanner(["test/__fixtures__/clean.txt"], root);
+      expect(clean.code, `stderr: ${clean.stderr}`).toBe(0);
+      expect(clean.stdout).toMatch(/OK, no hits/);
+      expect(clean.stderr).not.toContain("enumerated and never read");
+
+      writeFileSync(join(root, "test", "__fixtures__", "hit.txt"), SYNTHETIC_PHI);
+      const hit = runScanner(["test/__fixtures__/hit.txt"], root);
+      expect(hit.code, `stderr: ${hit.stderr}`).toBe(1);
+      expect(hit.stderr).not.toContain("enumerated and never read");
+
+      const sweep = runScanner([], root);
+      expect(sweep.code, `stderr: ${sweep.stderr}`).toBe(1);
+      expect(sweep.stderr).not.toContain("enumerated and never read");
+    });
+
+    it("this repository's own whole-corpus sweep still exits 0", () => {
+      // The gate a commit and `ci / verify` actually walk through, run over the
+      // tree as it stands. A rule that reds an honest scan is a rule someone
+      // disables.
+      const r = runScanner([]);
+      expect(r.code, `stderr: ${r.stderr}`).toBe(0);
+      expect(r.stdout).toMatch(/OK, no hits/);
+      expect(r.stderr).not.toContain("enumerated and never read");
+    });
+  },
+);

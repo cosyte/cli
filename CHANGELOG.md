@@ -203,6 +203,23 @@ still do. Each entry was assigned to the release whose tag first contains it, re
 
 ### Changed
 
+- **The `js-yaml` dependency override now covers the advisory's extended range.** The pin moves from
+  `4.2.0` on `>=4.0.0 <4.2.0` to `4.3.0` on `>=4.0.0 <4.3.0`, so a transitive resolution landing
+  inside the newly covered window is remediated instead of being admitted silently. The `esbuild`
+  override is untouched, and the lockfile records the new pin.
+- **`pnpm-workspace.yaml` declares the install hardening this package relies on**: a
+  `minimumReleaseAge` of 1440 minutes, which is the cooling-off window that blunts a compromised
+  release, and a `trustPolicy` of `no-downgrade`.
+  - **The `packageManager` pin moves to a pnpm release that honours both keys.** The previous pin
+    predates them, so it would have ignored the settings file entirely: a file that decorates rather
+    than defends is worse than an absent one, because it reads as a control that is in place.
+  - **Nothing an install resolves changed beyond the override above.** The full pre-publish ladder
+    (clean, typecheck, lint, test, build and the types check) runs green on the new pin.
+- **The always-read agent guide is inside its declared line budget, and nothing it said was lost.**
+  Every rule and every trap stays there as a one-line imperative carrying a resolving pointer, and
+  the sentences that explained each one moved into the narrative document verbatim. The two-file
+  contract gate checks on every run that each pointer still lands on a section with a body, so the
+  compression cannot quietly become a deletion.
 - **The declared Node range now matches the release lines this package is tested on.**
   `engines.node` narrows from `>=22.0.0` to `>=22.0.0 <26.0.0`. Node 26 is supported upstream and
   was admitted by the old open-ended range while the test matrix exercises 22 and 24 only, so an
@@ -249,6 +266,23 @@ still do. Each entry was assigned to the release whose tag first contains it, re
 
 ### Fixed
 
+- **The PHI scanner reported on a run that had enumerated a target and never read it.** A logged
+  `--allow-fixture` bypass withdraws a file after the scan has already named it on the command line,
+  and the run then reported on whatever was left as though the corpus were whole. Over a corpus whose
+  only violator was withdrawn, that reads as a clean verdict about a file nobody opened.
+  - **The run now refuses, with a status distinct from both the clean status and the hits status.**
+    The refusal names every enumerated path that went unread and points at the token-level allow-list
+    as the remedy, because declaring an identifier keeps the file inside the scan while withdrawing it
+    removes the only evidence the run could have had about it.
+  - **Hits are reported FIRST, always.** A refusal raised before the findings were written would
+    discard every hit the run did find, which turns a stricter gate into a quieter one. The report
+    runs first and the refusal changes only the exit status.
+  - **The question is answered as a set difference, never as a count.** A count counts the targets
+    that DID get read, so it reads healthy at the exact moment a withdrawal empties the corpus, and it
+    cannot say which paths were missed.
+  - **An honest run is untouched.** With nothing withdrawn, the read set is the enumerated set, so the
+    pre-commit hook, the whole-tree sweep and a plain scan of named paths keep the exit codes they
+    already had.
 - **The exit-code contract labelled exit `2` as `EX_USAGE`, and `sysexits.h` assigns `EX_USAGE` the
   value `64` (EXIT-CODE-SYSEXITS-LABEL).** The label sat in two places in `src/core/exit-codes.ts`,
   the module's contract table and the `USAGE` member's JSDoc, so it compiled into `dist/*.d.ts` and
