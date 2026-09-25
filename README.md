@@ -48,19 +48,17 @@ releases, not a fault in any command.
 sibling packages are now declared as real npm ranges, and the resulting tarball has been installed from
 outside this repository and exercised, which is the check a `npm publish --dry-run` cannot perform.
 
-**One dependency could not be made real, and it costs you FHIR support.** `@cosyte/fhir` is not on the
-npm registry, so it cannot be a dependency of this package at all; `@cosyte/transform` is on npm but
-requires it, so npm skips that too. In an installed copy:
+**FHIR support arrives through a peer, not a declared dependency.** `@cosyte/fhir` is not in this
+package's manifest. `npm install` brings it in as the peer dependency of `@cosyte/transform`, one of
+this package's optional dependencies, and the FHIR `parse` / `inspect` / `fmt` / `validate` commands
+and `convert` use that copy. If your package manager skips optional dependencies or does not install
+peers, a command whose library is missing reports a value-free `CLI_PARSER_UNAVAILABLE` and exits
+`69`: it never guesses, and it never blames your input. HL7 v2 and `map-codes` run on the two hard
+dependencies, `@cosyte/hl7` and `@cosyte/terminology`, and always work.
 
-- FHIR `parse` / `inspect` / `fmt` / `validate` and the `convert` command report a value-free
-  `CLI_PARSER_UNAVAILABLE` and exit `69`. They never guess, and they never blame your input.
-- HL7 v2, `map-codes`, and the six breadth formats (X12, C-CDA, DICOM, NCPDP, ASTM, MLLP) all work.
-
-To use the FHIR commands today, run the CLI from a source checkout (`pnpm install && pnpm build`, then
-invoke `dist/bin/cosyte.mjs`), where the FHIR library is supplied locally.
-
-> **Status:** pre-alpha (`0.0.x`). `0.0.1` and `0.0.2` are on npm and **cannot be installed** (see
-> above); a later version fixes that. The `cosyte` command wraps **all eight
+> **Status:** `0.1`. While the package is below 1.0, a breaking change ships in a minor version and is
+> called out in the changelog. `0.0.1` and `0.0.2` are on npm and **cannot be installed** (see above);
+> every later version installs. The `cosyte` command wraps **all eight
 > cosyte formats** (**HL7 v2**, **FHIR R4**, **X12**, **ASTM**, **NCPDP SCRIPT**, **C-CDA**, **DICOM**,
 > and **MLLP**) plus the `@cosyte/transform` and `@cosyte/terminology` higher-layer libraries, with
 > conservative content-format autodetection and a documented exit-code contract:
@@ -95,20 +93,22 @@ invoke `dist/bin/cosyte.mjs`), where the FHIR library is supplied locally.
 > described above, which is why `0.0.1` and `0.0.2` published green and still cannot be installed: a
 > dry-run builds the tarball but never resolves it from a registry. **That swap has now been made**,
 > and installing the packed tarball from outside the repository is a release step in its own right.
-> `@cosyte/fhir` is the one dependency it could not cover, which is why FHIR support is absent from an
-> installed copy rather than merely deferred. See [RELEASING.md](./RELEASING.md).
+> `@cosyte/fhir` reaches an installed copy as a peer of `@cosyte/transform` (see above). See
+> [RELEASING.md](./RELEASING.md).
 
 ## Run it
 
-> **These commands do not work yet, and the reason is now only that no fixed version has shipped.**
-> The newest version on npm is `0.0.2`, and it is one of the two that cannot be installed. The
-> packaging defect is fixed in this repository and proven by installing the packed tarball outside it,
-> but a published version is immutable, so the fix reaches you only in the next release. Until then,
-> run it from a source checkout: `pnpm install && pnpm build`, then invoke `dist/bin/cosyte.mjs`.
+Requires Node `>=22.0.0 <26.0.0`. This block runs as-is in an empty directory: it installs the CLI,
+writes a short synthetic HL7 v2 message, and reads it back.
 
 ```bash
 npm install -g @cosyte/cli          # put `cosyte` on your PATH
-cosyte parse message.hl7            # format autodetected → HL7 v2
+
+# A synthetic ADT^A01 admit. HL7 v2 ends every segment with a carriage return (\r).
+printf 'MSH|^~\\&|SENDINGAPP|SENDINGFAC|RECEIVINGAPP|RECEIVINGFAC|20240101120000||ADT^A01|MSG00001|P|2.5\rEVN|A01|20240101120000\rPID|1||MRN-000123^^^HOSP^MR||ZZSENTINELLAST^ZZSENTINELFIRST^M||19800101|M\rPV1|1|I|WARD^101^A\r' > message.hl7
+
+cosyte parse message.hl7            # format autodetected → HL7 v2, typed JSON on stdout
+cosyte inspect message.hl7          # a value-free summary: type, version, segment counts
 ```
 
 Or without installing, using `npx`:

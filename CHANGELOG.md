@@ -15,6 +15,20 @@ still do. Each entry was assigned to the release whose tag first contains it, re
 
 ## [Unreleased]
 
+**What 0.1 means for you.** This is the first release whose commands, output and exit codes we treat
+as settled: command names, flags, the JSON output shapes, the exit-code contract (`0`, `1`, `2`,
+`65`, `66`, `69`, `70`, `74`) and the diagnostic codes are the surface we keep stable. It covers the
+`cosyte` command over all eight cosyte formats (`parse`, `validate`, `inspect`, `fmt`, `convert`,
+`map-codes`, `redact` / `deid`, `completion`), value-free diagnostics with `--unsafe-show-values` as
+the one opt-in, the `cosyte-mcp` stdio server and the programmatic `core` API. While the package is
+below 1.0, a breaking change bumps the minor version and is called out here; a fix that changes no
+output ships as a patch. Not covered yet: DICOM `parse` and `fmt`, C-CDA `parse`, and MLLP `fmt` and
+`validate` (`CLI_FORMAT_UNSUPPORTED`), `validate --profile` (`CLI_NOT_IMPLEMENTED`), `redact` for
+`astm`, `dicom`, `mllp` and `ncpdp`, a remote MCP transport and MCP tools for `redact` and
+`map-codes`. The FHIR commands and `convert` use `@cosyte/fhir` as the peer of the optional
+`@cosyte/transform`, and report `CLI_PARSER_UNAVAILABLE` (exit `69`) when a package manager leaves
+it out.
+
 ### Added
 
 - **A downstream consumer that closes the CLI's stdout now ends the run quietly, under a documented
