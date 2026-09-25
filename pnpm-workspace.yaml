@@ -6,8 +6,12 @@
 # minimumReleaseAge is in MINUTES: 1440 is 24 hours, pnpm's own floor. A version
 # published inside that window is not installed, which is the cooling-off period
 # that blunts a compromised-release supply-chain attack.
+# @cosyte is exempt by operator decision; every third-party package keeps the floor.
 #
 # trustPolicy "no-downgrade" refuses a resolution that moves a package backwards
 # from what the lockfile already trusts.
 minimumReleaseAge: 1440
+minimumReleaseAgeExclude:
+  # reason: first-party @cosyte package, exempt from the floor by operator decision
+  - "@cosyte/*"
 trustPolicy: "no-downgrade"
