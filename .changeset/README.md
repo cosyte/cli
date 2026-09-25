@@ -10,5 +10,7 @@ Add a changeset for every meaningful change:
 pnpm changeset
 ```
 
-During pre-alpha, pick **patch**. That keeps the package on the `0.0.x` ladder until its first
-alpha. See the cosyte version ladder in the meta-repo's `documentation/conventions.md`.
+While the version is below 1.0, pick **minor** for a breaking change (a renamed or removed command,
+flag, output field, exit code or diagnostic code) and call the break out in the changeset and in
+`CHANGELOG.md`; new capability ships in a minor too. Pick **patch** for a fix that changes no
+output.
