@@ -227,6 +227,8 @@ describe("PHI leak matrix: redact is value-free on stderr in EVERY mode", () => 
   ];
 
   for (const c of cases) {
+    // AC-11 (the hl7 covered rows read the clean input); AC-6 (the unsafe-show-values row, which
+    // feeds adt-a01.hl7, is a blocked hl7 run).
     it(`${c.name}: no sentinel on stderr`, async () => {
       const r = await run(c.argv, fileDeps(c.bytes));
       assertNoSentinelOnStderr(r.stderr);

@@ -118,6 +118,7 @@ describe("redact with @cosyte/deid absent: 69, value-free, and the input is neve
 });
 
 describe("a bug in the delegated library stays a bug", () => {
+  // AC-14: a throw with no stable code reaches the internal-error boundary, never exit 1.
   it("an unrecognised throw propagates to the dispatcher rather than becoming a soft failure", async () => {
     // A CliError is a condition the command answers for; anything else is a defect, and the
     // contract reserves exit 70 for exactly that. The command must not dress it up as an
