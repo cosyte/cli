@@ -59,10 +59,11 @@ Why: [agent-notes § The redact delegation](documentation/agent-notes.md#the-red
   channel limit (**never blame the library for our channel**), and a `blocked` locus is
   `CLI_DEID_INCOMPLETE`/`1`.
 - **`@cosyte/deid/ncpdp` is NCPDP Telecom, not SCRIPT**, so it is NOT coverage: **re-derive coverage
-  from the installed package's types, never from the subpath list.** **The default policy is a KEYED
-  transform**, so the CLI keys each invocation with an **ephemeral random key** and **discloses that
-  surrogates are not stable across runs**; **never remove that disclosure**, and **never substitute an
-  unkeyed fallback**.
+  from the installed package's types, never from the subpath list.** The default policy REMOVES MRN /
+  account / member numbers (`DEID_CATEGORY_REMOVED`) rather than surrogating them, and a keyed
+  transform with no key is a fatal there, so the CLI still keys each invocation with an **ephemeral
+  random key** and **discloses that surrogates are not stable across runs**; **never remove that
+  disclosure**, **never drop the key context**, and **never substitute an unkeyed fallback**.
 - **`redact` deliberately does NOT honour `--unsafe-show-values`.** Do not "restore consistency".
   **The stderr manifest is the LIBRARY's**, value-free by contract and rendered verbatim; the PHI-leak
   matrix carries a redact row per mode. **ADRs** `documentation/decisions/0021` through `0025` govern

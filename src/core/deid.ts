@@ -28,11 +28,13 @@
  *
  * ## The key context, and why it is ephemeral
  *
- * The delegate's default policy pseudonymizes MRN / account / beneficiary identifiers, and a keyed
- * transform with no key context is a fatal, never an unkeyed fallback. The CLI holds no key material
- * and offers no key surface, so it creates a **per-invocation ephemeral key**: surrogates are
- * consistent within one output and deliberately **not** stable across runs (no cross-run linkage).
- * That property is disclosed on the diagnostic channel rather than left to be discovered.
+ * The delegate's default policy removes MRN / account / member identifiers rather than replacing
+ * them with a keyed surrogate, so a default run needs no key. The CLI binds a key context anyway,
+ * because a keyed transform with no key context is a fatal there, never an unkeyed fallback, and the
+ * CLI holds no key material and offers no key surface. So it creates a **per-invocation ephemeral
+ * key**: any surrogate the delegate mints is consistent within one output and deliberately **not**
+ * stable across runs (no cross-run linkage). That property is disclosed on the diagnostic channel
+ * rather than left to be discovered.
  *
  * @packageDocumentation
  */

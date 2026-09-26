@@ -86,11 +86,13 @@ function tally(format: CosyteFormat, outcome: RedactOutcome): string {
 }
 
 /**
- * The ephemeral-key disclosure. The delegate's default policy pseudonymizes MRN / account /
- * beneficiary identifiers with the caller's key; the CLI holds no key material and offers no key
- * surface, so it keys each invocation with a fresh random value. Stated rather than left to be
- * discovered, because "the same identifier maps to the same surrogate" is true *within* one output
- * and deliberately false *across* runs.
+ * The ephemeral-key disclosure. The delegate's default policy removes MRN / account / member
+ * identifiers rather than replacing them with a keyed surrogate, but the CLI binds every run to a key
+ * context so that any keyed transform the delegate applies is never unkeyed; it holds no key
+ * material and offers no key surface, so it keys each invocation with a fresh random value. Stated
+ * rather than left to be discovered, because "the same identifier maps to the same surrogate" is true
+ * *within* one output and deliberately false *across* runs. The line stays even when the manifest
+ * shows no keyed transform: it then overstates, which is the safe direction.
  */
 const EPHEMERAL_KEY_NOTE =
   "cosyte: redact: identifier surrogates are keyed with a per-invocation ephemeral key: " +
