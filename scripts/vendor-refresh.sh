@@ -2,25 +2,16 @@
 #
 # vendor-refresh.sh: regenerate the vendored @cosyte sibling tarballs.
 #
-# ▶ READ THIS FIRST: ONLY ONE OF THESE TARBALLS IS STILL WIRED TO ANYTHING.
+# ▶ READ THIS FIRST: NONE OF THESE TARBALLS IS WIRED TO ANYTHING.
 #
-# The vendor -> npm dependency swap has happened. package.json now declares real registry ranges for
-# every sibling EXCEPT @cosyte/fhir, which is not on the npm registry and therefore cannot be a
-# dependency of a published package at all. So:
+# The vendor -> npm dependency swap is complete. package.json declares a real registry range for
+# every sibling, @cosyte/fhir included: it is on the npm registry now, and it is a devDependency on
+# that range, NOT a runtime one. It exists so this repo's own FHIR + convert tests can run, and so
+# that @cosyte/transform's mandatory @cosyte/fhir peer resolves in the dev tree. No tarball here
+# supplies it any more.
 #
-#   @cosyte/fhir   file:vendor/cosyte-fhir-0.0.0.tgz, and it is a devDependency, NOT a runtime one.
-#                  It exists so this repo's own FHIR + convert tests can run, and so that
-#                  @cosyte/transform's mandatory @cosyte/fhir peer resolves in the dev tree.
-#                  NOTE, because the shorter sentence is false: devDependencies ARE published, so
-#                  this file: specifier does ship in the manifest. It is harmless only because a
-#                  consumer never installs a dependency's devDependencies, so npm never resolves
-#                  the path. Verified by installing the packed tarball in a clean directory.
-#   everything else  a real "^0.0.x" range from npm. The nine other tarballs below are refreshed by
-#                  this script but referenced by nothing. They are kept because @cosyte/fhir's
-#                  refresh shares this machinery, and removing them is a separate cleanup.
-#
-# When @cosyte/fhir publishes: declare it as a real range alongside the others, drop the
-# devDependency, and this script can go. See RELEASING.md.
+# The nine tarballs below are refreshed by this script but referenced by nothing. Removing them,
+# and this script with them, is a separate cleanup. See RELEASING.md.
 #
 # @cosyte/cli is a `bin` package (the `cosyte` command), not a library. An `npx`-invoked bin CANNOT
 # rely on the user having pre-installed anything, so, unlike @cosyte/mllp (peer + optional on
@@ -45,13 +36,12 @@
 # This is READ-ONLY on the sibling repos: it builds + packs them in place and copies the tarball
 # here; it never commits, mutates source, or touches their git state.
 #
-# Usage (run from the cli repo root, with ../hl7 ../fhir ../transform ../terminology checked out):
+# Usage (run from the cli repo root, with each sibling below checked out next to cli/):
 #   pnpm vendor:refresh
 #
 # Pinned sibling commits (record every bump here AND in the CHANGELOG):
 #   HARD dependencies (cap = 4):
 #   @cosyte/hl7         → 46d50eb775dc6576cec8ca5a2315720a65cb7418  (v0.0.1)
-#   @cosyte/fhir        → 7a099b24e399b91d780be8110c529bc570756cfe  (v0.0.0)
 #   @cosyte/transform   → e6c453157f83a8484e8f8254b1bdbc4ac3223571  (v0.0.0)
 #   @cosyte/terminology → e5ed3682787a185bf213c034ea2009d020e2d916  (v0.0.1)
 #   OPTIONAL breadth parsers (CLI-6, ADR 0025: outside the cap):
@@ -87,7 +77,6 @@ refresh() {
 
 # Hard dependencies (cap = 4).
 refresh "@cosyte/hl7"         hl7         cosyte-hl7-0.0.0.tgz
-refresh "@cosyte/fhir"        fhir        cosyte-fhir-0.0.0.tgz
 refresh "@cosyte/transform"   transform   cosyte-transform-0.0.0.tgz
 refresh "@cosyte/terminology" terminology cosyte-terminology-0.0.1.tgz
 

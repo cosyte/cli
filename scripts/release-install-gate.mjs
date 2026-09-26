@@ -49,9 +49,8 @@ const CONSUMER_FIELDS = ["dependencies", "optionalDependencies", "peerDependenci
 
 /**
  * The manifest field a consumer's install never resolves. A local path here is REPORTED and is
- * deliberately not a failure: this package carries one on purpose, so that its own test run has a
- * FHIR parser that is not on the registry. Counting it would red this gate on day one over a
- * specifier no consumer install ever reads.
+ * deliberately not a failure: a package may carry one for its own test run, and counting it would
+ * red this gate over a specifier no consumer install ever reads.
  */
 const IGNORED_FIELD = "devDependencies";
 

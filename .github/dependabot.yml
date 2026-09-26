@@ -21,15 +21,14 @@ updates:
   #   * The `@cosyte/*` siblings are now REAL npm ranges, not `file:vendor/*.tgz` tarballs, so
   #     Dependabot resolves and bumps them like any other dependency. That is a change: it
   #     previously could not see ANY of them. Covered now: the two hard `dependencies`
-  #     (`@cosyte/hl7`, `@cosyte/terminology`) and seven of the eight `optionalDependencies`
-  #     (`@cosyte/astm`, `ccda`, `dicom`, `mllp`, `ncpdp`, `x12`, `transform`).
-  #   * `@cosyte/fhir` is the ONE that is still invisible, and it is invisible because it is not
-  #     DECLARED, not because of a `file:` spec. It is not on the npm registry, so it cannot be a
-  #     dependency of this package at all; it is carried as a `file:vendor/*.tgz` DEV dependency so
-  #     this repo's own FHIR tests still run. Dependabot does not resolve `file:` specs, so that one
-  #     stays a hand-refresh (`pnpm vendor:refresh`). An installed copy simply has no FHIR library,
-  #     and the CLI reports `CLI_PARSER_UNAVAILABLE` rather than pretending. This config does not
-  #     imply cover it does not give.
+  #     (`@cosyte/hl7`, `@cosyte/terminology`) and the eight `@cosyte/*` `optionalDependencies`
+  #     (`@cosyte/astm`, `ccda`, `deid`, `dicom`, `mllp`, `ncpdp`, `x12`, `transform`).
+  #   * `@cosyte/fhir` is visible too, as a DEV dependency on its registry range, which is what
+  #     this repo's own FHIR tests run against, so its bumps land in the grouped development
+  #     updates below. It is not a runtime dependency of this package: an installed copy gets it
+  #     only as the peer of the optional `@cosyte/transform`, and without it the CLI reports
+  #     `CLI_PARSER_UNAVAILABLE` rather than pretending. This config does not imply cover it does
+  #     not give.
   #   * `@modelcontextprotocol/sdk` (exact-pinned) is the one third-party RUNTIME dependency
   #     Dependabot can see and bump. It is kept OUT of the group below by an explicit
   #     `exclude-patterns`, so a runtime bump on the MCP agent surface lands as its own

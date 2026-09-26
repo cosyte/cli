@@ -43,7 +43,7 @@ jobs:
   # ONE DEFAULT IS PERMANENTLY STALE HERE, AND THE OBVIOUS "FIX" FOR IT IS FORBIDDEN. The upstream
   # default for `expect-unpublished-deps` is `@cosyte/fhir=blocked`. Be precise about why that is
   # stale, because the short version is false: `@cosyte/fhir` IS declared in this manifest, as
-  # `devDependencies: {"@cosyte/fhir": "file:vendor/cosyte-fhir-0.0.0.tgz"}`, which is what lets this
+  # `devDependencies: {"@cosyte/fhir": "^0.1.0"}`, a registry range, which is what lets this
   # repo's own FHIR tests run. The operative fact is that `prepublish-check.mjs` does not read
   # `devDependencies` at all (a `file:` specifier is fine there, since no consumer installs them), so
   # the allowance names a package that is not a CONSUMER dependency of this one and is reported stale

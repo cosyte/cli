@@ -71,9 +71,9 @@
 # where it applies.
 #
 # It does not apply here, and in this repo the reason is NOT the durability argument mllp
-# had to make. It is a present-day, measured red. `@cosyte/cli` is a `bin` package with
-# HARD vendored dependencies (ADR 0021): ten `pnpm pack` tarballs under `vendor/`, consumed
-# as `file:vendor/*.tgz` and refreshed by `pnpm vendor:refresh`. A tarball is a gzip
+# had to make. It is a present-day, measured red. `@cosyte/cli` tracks nine `pnpm pack`
+# tarballs under `vendor/`, once HARD vendored dependencies (ADR 0021), wired to nothing
+# now and still refreshed by `pnpm vendor:refresh`. A tarball is a gzip
 # DEFLATE stream, and a compressed stream contains any given three-byte sequence by
 # coincidence with real probability. Measured on this tree, not argued:
 #
@@ -125,7 +125,7 @@
 # the same tarball bytes with every NUL replaced, carrying the same em dash, goes RED.
 #
 # cli has NO tracked TEXT file with a NUL today, so the exclusion currently exempts exactly
-# eleven files and all eleven are genuine binaries. Do NOT round that off to "the hole is
+# ten files and all ten are genuine binaries. Do NOT round that off to "the hole is
 # hypothetical here". Three first-party TypeScript files elsewhere in this ecosystem carry a
 # FUNCTIONAL raw NUL that cannot be removed, because the byte is the feature:
 # `dicom/src/dataset/vr/charset.ts` (DICOM's own NUL padding), `ccda/src/profiles/merge.ts`
@@ -133,7 +133,7 @@
 # cli has no such file, and that was checked over all 124 tracked files rather than assumed.
 # But cli wraps every one of those parsers, and its `test/__fixtures__/` corpus is the
 # obvious place a NUL-bearing text fixture would arrive. The tell is the excluded count on
-# the OK line: it reads 11 today, and anything higher wants a look rather than a shrug.
+# the OK line: it reads 10 today, and anything higher wants a look rather than a shrug.
 # Closing it properly needs a rule about what a text file IS (the `.gitattributes`
 # declaration pathways prefers, which cli does not have: it declares no attributes at all),
 # and that is an ecosystem-wide EMDASH-CONFORMANCE question, not something to grow this

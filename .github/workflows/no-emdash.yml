@@ -22,9 +22,9 @@ name: Em-dash gate
 # calls refuses to print OK from a scan that did not read everything it was handed,
 # and why every one of those refusals was checked red before this landed.
 #
-# cli tracks ELEVEN binaries: the ten `vendor/cosyte-*.tgz` packed sibling
-# dependencies (ADR 0021: an `npx` bin cannot peer-depend, so the parsers are hard,
-# vendored deps) and `test/__fixtures__/sample.dcm`. That is why this repo runs
+# cli tracks TEN binaries: the nine `vendor/cosyte-*.tgz` packed sibling
+# tarballs (once hard vendored deps under ADR 0021, now wired to nothing) and
+# `test/__fixtures__/sample.dcm`. That is why this repo runs
 # website's NUL-exclusion variant of the script rather than the text-only one
 # knowledgebase, hl7, fhir, pathways, x12, ncpdp and dicom run. The full reasoning is
 # in the script header, and unlike mllp it does not rest on a hypothetical: measured

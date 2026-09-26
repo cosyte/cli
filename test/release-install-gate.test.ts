@@ -12,9 +12,10 @@
  *
  *   1. A local path in a field a CONSUMER resolves reds the gate, naming the field and the
  *      specifier, in each of the three fields and each of the shapes a local path takes. The control
- *      is THIS repository's own manifest, which carries `"@cosyte/fhir": "file:vendor/…tgz"` in
- *      `devDependencies` on purpose: it must reach a PASSING verdict, and the report must show the
- *      gate SAW that specifier rather than passing because it never looked.
+ *      is a fixture that carries a `file:` specifier in `devDependencies`: it must reach a PASSING
+ *      verdict, and the report must show the gate SAW that specifier rather than passing because it
+ *      never looked. THIS repository's own manifest must pass as well, and it names no local path in
+ *      any field, `devDependencies` included, which is asserted off the report rather than assumed.
  *   2. Both declared bins are EXECUTED from the installed copy, not stat-ed. The two shapes have
  *      opposite behaviour and both are pinned: a command that exits zero, and a long-lived stdio
  *      server that is still running at the end of its window. A bin that exits non-zero on load reds
@@ -120,7 +121,7 @@ function runGate(args: string[], env: NodeJS.ProcessEnv = {}): GateRun {
 
 let root: string;
 
-/** Both bin shapes healthy, and a `file:` devDependency the way this repo carries one. */
+/** Both bin shapes healthy, and a `file:` devDependency, a field a consumer's install never reads. */
 let healthy: string;
 /** A consumer-resolved `file:` specifier: the exact shape that killed `0.0.1` and `0.0.2`. */
 let localPathDep: string;
@@ -467,7 +468,31 @@ describe("a consumer-resolved local path is refused", () => {
 
 describe("a local path a consumer never installs is not a release blocker", () => {
   it(
-    "passes on this repository's own unmodified manifest, having seen the file: devDependency",
+    "passes a manifest whose only local path is a devDependency, having seen that specifier",
+    () => {
+      const run = runGate(["--manifest-only", "--package-dir", healthy]);
+      expect(run.report.ok).toBe(true);
+      expect(run.report.reason).toBeNull();
+      expect(run.status).toBe(0);
+      expect(run.report.packageName).toBe("gate-fixture-healthy");
+      expect(run.report.phases.manifest?.localPathSpecifiers).toEqual([]);
+
+      // NOT VACUOUS: the gate has to have LOOKED at the specifier it is passing over. This asserts
+      // the report names it, so a gate that skipped devDependencies entirely would red here.
+      expect(run.report.phases.manifest?.ignoredLocalPathSpecifiers).toEqual([
+        {
+          field: "devDependencies",
+          name: "gate-fixture-vendored",
+          specifier: "file:./vendor/vendored.tgz",
+          kind: "file: protocol",
+        },
+      ]);
+    },
+    CASE_TIMEOUT,
+  );
+
+  it(
+    "passes on this repository's own unmodified manifest, which names no local path in any field",
     () => {
       const run = runGate(["--manifest-only", "--package-dir", REPO_ROOT]);
       expect(run.report.ok).toBe(true);
@@ -475,19 +500,16 @@ describe("a local path a consumer never installs is not a release blocker", () =
       expect(run.status).toBe(0);
       expect(run.report.packageName).toBe("@cosyte/cli");
       expect(run.report.phases.manifest?.localPathSpecifiers).toEqual([]);
+      // `devDependencies` included, so there is nothing for the gate to pass over here. A local path
+      // added to that field later reds this line, and is then a decision to record, not a silent pass.
+      expect(run.report.phases.manifest?.ignoredLocalPathSpecifiers).toEqual([]);
 
-      // NOT VACUOUS: the gate has to have LOOKED at the specifier it is passing over. This asserts
-      // the report names it, so a gate that skipped devDependencies entirely would red here.
-      const ignored = run.report.phases.manifest?.ignoredLocalPathSpecifiers ?? [];
-      const fhir = ignored.find((e) => e.name === "@cosyte/fhir");
-      expect(fhir?.field).toBe("devDependencies");
-      expect(fhir?.specifier).toMatch(/^file:/);
-
-      // And the manifest really does still carry it: the fixture for this criterion is the repo.
+      // And the premise, read off the manifest itself: the fixture for this criterion is the repo,
+      // and `@cosyte/fhir`, the devDependency this repo's FHIR tests run against, is a registry range.
       const manifest = JSON.parse(readFileSync(join(REPO_ROOT, "package.json"), "utf8")) as {
         devDependencies: Record<string, string>;
       };
-      expect(manifest.devDependencies["@cosyte/fhir"]).toMatch(/^file:vendor\//);
+      expect(manifest.devDependencies["@cosyte/fhir"]).toMatch(/^[\^~]?\d+\.\d+\.\d+$/);
     },
     CASE_TIMEOUT,
   );
