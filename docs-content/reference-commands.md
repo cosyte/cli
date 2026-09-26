@@ -119,12 +119,25 @@ Anything short of a clean, fully-handled pass emits **nothing** on stdout:
 | `dicom`: covered by the library, but its de-identified form is a binary stream this text stdout cannot carry | `CLI_FORMAT_UNSUPPORTED` | `65` |
 | `@cosyte/deid` is not installed (it is an optional dependency)   | `CLI_PARSER_UNAVAILABLE` | `69` |
 
-An absent library is decided **before the input is read**. Identifier surrogates (MRN, account and
-member numbers) are keyed with a **per-invocation ephemeral key**: consistent within one output, and
-deliberately not stable across runs, so two runs cannot be linked by their surrogates.
+An absent library is decided **before the input is read**.
+
+What the library's **default policy** does, applied unmodified (the CLI passes it no policy, profile
+or retention set of its own):
+
+- **Medical record, account and member numbers are removed**, not replaced by a surrogate. Their
+  manifest lines carry the disposition `removed` and the code `DEID_CATEGORY_REMOVED`.
+- **A visit or order number is blocked, and the run is refused.** An HL7 visit number (`PV1-19`) and
+  a placer or filler order number (`ORC-2`/`ORC-3`, `OBR-2`/`OBR-3`) fall to the library's catch-all
+  identifier category, which its default policy blocks. The run ends `CLI_DEID_INCOMPLETE` with exit `1`
+  and nothing on stdout, and stderr names each blocked locus with the library's `DEID_LOCUS_BLOCKED`
+  code. An ADT message that carries `PV1-19` therefore produces no output.
+
+The CLI keys every run with a **per-invocation ephemeral key** and discloses it on stderr: any
+identifier surrogate is consistent within one output and deliberately not stable across runs, so two
+runs cannot be linked by their surrogates.
 
 ```bash
-cosyte redact adt.hl7 > clean.hl7        # stdout is the document, stderr is the manifest
+cosyte redact adt.hl7 > clean.hl7        # stdout is the document (or nothing, on exit 1), stderr is the manifest
 cosyte redact adt.hl7 2>/dev/null        # the manifest suppressed; the exit code still carries the verdict
 ```
 
