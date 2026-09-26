@@ -54,7 +54,7 @@ interface Covered {
   readonly bytes: Uint8Array;
 }
 
-/** The committed clean HL7 input: planted PID identifiers, the full MSH-7/EVN-2 timestamp, no visit number. */
+/** The clean HL7 input: planted PID identifiers, the full MSH-7/EVN-2 timestamp, no visit number. */
 const HL7_CLEAN = "adt-a01-no-visit.hl7";
 
 const COVERED: readonly Covered[] = [
@@ -180,7 +180,9 @@ describe("the clean HL7 input under the delegate's default policy", () => {
   it("exits 0 and reports 0 blocked in the stderr tally", async () => {
     const r = await redact();
     expect(r.exit).toBe(EXIT.OK);
-    const tally = r.stderr.split("\n").filter((l) => /^cosyte: redact: hl7: \d+ loci acted on /.test(l));
+    const tally = r.stderr
+      .split("\n")
+      .filter((l) => /^cosyte: redact: hl7: \d+ loci acted on /.test(l));
     expect(tally).toHaveLength(1);
     expect(tally[0]).toMatch(/, 0 blocked\)$/);
     expect(r.stderr).not.toContain("CLI_DEID_INCOMPLETE");
