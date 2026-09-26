@@ -1162,6 +1162,19 @@ without a number: **`@cosyte/fhir` is still absent from the manifest because `fh
 was dropped, for exactly the reason ADR 0023 deleted the umbrella's version list: a quoted version
 here is a number that goes stale between the write and the read.
 
+**The redact key-context premise was corrected when the CLI moved to the `0.1` releases of
+`@cosyte/deid`.** `### The redact delegation and its refusals` below, and the matching line in `CLAUDE.md`,
+said the delegate's default policy pseudonymizes identifiers. Measured on the installed delegate,
+its default policy removes a PID-3 medical record number (`DEID_CATEGORY_REMOVED`) and blocks a
+PV1-19 visit number (`DEID_LOCUS_BLOCKED`). The ephemeral key, the disclosure and the ban on an
+unkeyed fallback are unchanged; only the premise moved. The superseded bullet read:
+
+> - **The default policy pseudonymizes MRN / account / beneficiary, which is a KEYED transform**, and a
+>   keyed transform with no context is a fatal there, never an unkeyed fallback. The CLI holds no key
+>   and adds no key flag, so it keys each invocation with an **ephemeral random key** and **discloses
+>   that surrogates are not stable across runs**. Removing that disclosure would imply a linkage
+>   property the tool does not have.
+
 ---
 
 ## The rules as they stood before the trim
@@ -1248,11 +1261,11 @@ per-format adapter registry (`src/core/parsers.ts`), exposes the same `core` thr
 - **`@cosyte/deid/ncpdp` is NCPDP Telecom, not SCRIPT.** The subpath exists and looks like coverage;
   this CLI resolves SCRIPT, so it is NOT covered. Re-derive coverage from the installed package's
   types, never from the subpath list.
-- **The default policy pseudonymizes MRN / account / beneficiary, which is a KEYED transform**, and a
-  keyed transform with no context is a fatal there, never an unkeyed fallback. The CLI holds no key
-  and adds no key flag, so it keys each invocation with an **ephemeral random key** and **discloses
-  that surrogates are not stable across runs**. Removing that disclosure would imply a linkage
-  property the tool does not have.
+- **The default policy removes MRN / account / member numbers (`DEID_CATEGORY_REMOVED`) rather than
+  surrogating them**, and a keyed transform with no context is a fatal there, never an unkeyed
+  fallback. The CLI holds no key and adds no key flag, so it still keys each invocation with an
+  **ephemeral random key** and **discloses that surrogates are not stable across runs**. Removing
+  that disclosure would imply a linkage property the tool does not have.
 - **`redact` deliberately does NOT honour `--unsafe-show-values`.** On every other command that flag
   is the one door to a value; here an excerpt of the un-stripped input is the exact leak. Do not
   "restore consistency" by wiring it.

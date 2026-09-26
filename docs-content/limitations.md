@@ -59,7 +59,11 @@ These are **non-goals**, not missing features: named so nothing over-trusts the 
     `mllp` and `ncpdp` have no adapter there (`CLI_NOT_IMPLEMENTED`, exit `69`); `dicom` is covered
     there but its de-identified form is a binary stream this text stdout cannot carry
     (`CLI_FORMAT_UNSUPPORTED`, exit `65`). If the library reports a locus it could not handle, the run
-    exits `1` with **no output at all**. The CLI ships **no** built-in partial scrub that could give a
+    exits `1` with **no output at all**. Under the library's default policy that is every HL7 message
+    carrying a visit number (`PV1-19`) or a placer or filler order number: those are blocked
+    (`DEID_LOCUS_BLOCKED`), and the CLI offers no setting that turns a block into a removal. Medical
+    record, account and member numbers are removed (`DEID_CATEGORY_REMOVED`), not replaced by a
+    surrogate. The CLI ships **no** built-in partial scrub that could give a
     false sense of safety, and asserts no de-identification standard of its own: it reports the
     library's own published label and version.
   - **`validate --profile`** is reserved but gated (`CLI_NOT_IMPLEMENTED`) until the CLI can load a

@@ -30,8 +30,13 @@ function deps(bytes: Uint8Array): RunDeps {
   return { readFile: () => Promise.resolve(bytes), readStdin: () => Promise.resolve(bytes) };
 }
 
+/** HL7 with no visit number: the delegate's default policy blocks nothing in it. */
+const HL7_CLEAN = "adt-a01-no-visit.hl7";
+/** HL7 carrying a PV1-19 visit number, which the delegate's default policy blocks. */
+const HL7_BLOCKED = "adt-a01.hl7";
+
 const PRODUCING: readonly { format: string; bytes: Uint8Array }[] = [
-  { format: "hl7", bytes: FIX("adt-a01.hl7") },
+  { format: "hl7", bytes: FIX(HL7_CLEAN) },
   { format: "fhir", bytes: FIX("patient.fhir.json") },
   { format: "x12", bytes: FIX("834-enrollee.edi") },
   { format: "ccda", bytes: FIX("ccd.xml") },
@@ -39,6 +44,7 @@ const PRODUCING: readonly { format: string; bytes: Uint8Array }[] = [
 
 describe("redact attributes its policy to the delegated library, verbatim", () => {
   for (const c of PRODUCING) {
+    // AC-11: each covered format's committed clean input exits 0, attributed to the delegate.
     it(`${c.format}: stderr names the package and quotes its own label and version`, async () => {
       const delegate = await loadDeidDelegate();
       const r = await run(["redact", "in", "--format", c.format], deps(c.bytes));
@@ -59,19 +65,31 @@ describe("redact attributes its policy to the delegated library, verbatim", () =
     expect(delegate.version.length).toBeGreaterThan(0);
   });
 
-  it("a blocked run still attributes the policy to the library", async () => {
-    const delegate = await loadDeidDelegate();
-    const r = await run(["redact", "834.edi"], deps(FIX("834.edi")));
-    expect(r.exit).toBe(EXIT.INVALID);
-    expect(r.stderr).toContain("@cosyte/deid");
-    expect(r.stderr).toContain(delegate.label);
-    expect(r.stderr).toContain(delegate.version);
-  });
+  for (const blocked of [
+    { name: "hl7", argv: ["redact", HL7_BLOCKED], fixture: HL7_BLOCKED },
+    { name: "x12", argv: ["redact", "834.edi"], fixture: "834.edi" },
+  ]) {
+    // AC-5: a refused run still names the delegate, its own label and its own version, and no
+    // channel claims the refused input was de-identified.
+    it(`a blocked ${blocked.name} run still attributes the policy to the library`, async () => {
+      const delegate = await loadDeidDelegate();
+      const r = await run(blocked.argv, deps(FIX(blocked.fixture)));
+      expect(r.exit).toBe(EXIT.INVALID);
+      expect(r.stdout).toBe("");
+      expect(r.stderr).toContain("CLI_DEID_INCOMPLETE");
+      expect(r.stderr).toContain("@cosyte/deid");
+      expect(r.stderr).toContain(delegate.label);
+      expect(r.stderr).toContain(delegate.version);
+      for (const channel of [r.stdout, r.stderr]) expect(channel).not.toMatch(FALSE_SAFETY);
+      expect(r.stderr).not.toMatch(CONFORMANCE_CLAIM);
+    });
+  }
 });
 
 describe("no channel, in any mode, claims a de-identification standard", () => {
   const modes: { name: string; argv: string[]; bytes: Uint8Array }[] = [
-    { name: "hl7 clean", argv: ["redact", "m.hl7"], bytes: FIX("adt-a01.hl7") },
+    { name: "hl7 clean", argv: ["redact", "m.hl7"], bytes: FIX(HL7_CLEAN) },
+    { name: "hl7 blocked", argv: ["redact", "m.hl7"], bytes: FIX(HL7_BLOCKED) },
     { name: "fhir clean", argv: ["redact", "p.json"], bytes: FIX("patient.fhir.json") },
     { name: "x12 clean", argv: ["redact", "e.edi"], bytes: FIX("834-enrollee.edi") },
     { name: "ccda clean", argv: ["redact", "c.xml"], bytes: FIX("ccd.xml") },
@@ -80,10 +98,11 @@ describe("no channel, in any mode, claims a de-identification standard", () => {
     { name: "ncpdp refused", argv: ["redact", "rx.xml"], bytes: FIX("newrx.xml") },
     { name: "dicom refused", argv: ["redact", "s.dcm"], bytes: FIX("sample.dcm") },
     { name: "unparseable", argv: ["redact", "x.hl7", "--format", "hl7"], bytes: FIX("ccd.xml") },
-    { name: "deid alias", argv: ["deid", "m.hl7"], bytes: FIX("adt-a01.hl7") },
+    { name: "deid alias", argv: ["deid", "m.hl7"], bytes: FIX(HL7_CLEAN) },
   ];
 
   for (const m of modes) {
+    // AC-5 (the two blocked modes); the other modes are the existing matrix.
     it(`${m.name}: neither channel claims conformance`, async () => {
       const r = await run(m.argv, deps(m.bytes));
       for (const channel of [r.stdout, r.stderr]) {

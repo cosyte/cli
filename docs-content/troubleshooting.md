@@ -79,6 +79,19 @@ you can see exactly where the gap is. This is an operation-level failure, like a
 verdict: the tool worked, the input could not be fully handled. It is never exit `70`, which means a
 bug.
 
+The most common cause is an HL7 visit number. Under the library's default policy an encounter
+(visit) number such as `PV1-19`, and a placer or filler order number (`ORC-2`/`ORC-3`,
+`OBR-2`/`OBR-3`), is blocked as the catch-all identifier category, so a message carrying one is
+refused. The manifest line for it reads like this (a structural path and codes, never the value):
+
+```text
+cosyte: redact: OTHER_UNIQUE_ID block PV1-19[0] x1 blocked DEID_LOCUS_BLOCKED
+```
+
+The CLI passes the library no policy of its own and has no flag to change that, so there is no
+setting that turns the refusal into output. Medical record, account and member numbers are not a
+cause: the default policy removes them (`DEID_CATEGORY_REMOVED`) and the run continues.
+
 ## `CLI_PARSER_UNAVAILABLE` from `redact` (exit 69)
 
 `@cosyte/deid` is an **optional dependency**: an install without it degrades rather than failing. The
@@ -126,7 +139,9 @@ a successful parse still keeps values on stdout alone.
   refuses everything else rather than approximating it: `astm`/`mllp`/`ncpdp` are
   `CLI_NOT_IMPLEMENTED` (`69`), `dicom` is `CLI_FORMAT_UNSUPPORTED` (`65`, its de-identified form is
   binary and this stdout is text), and a locus the library could not handle is `CLI_DEID_INCOMPLETE`
-  (`1`) with no output. Its stderr manifest is the library's own; the CLI asserts no standard.
+  (`1`) with no output: under the library's default policy that includes any HL7 message carrying a
+  visit number (`PV1-19`) or an order number. Its stderr manifest is the library's own; the CLI
+  asserts no standard.
 - `redact` does **not** honour `--unsafe-show-values`. An excerpt of the input you asked to have
   stripped is exactly the leak that command exists to prevent, so its diagnostics stay value-free
   under every flag.

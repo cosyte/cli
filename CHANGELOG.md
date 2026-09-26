@@ -221,8 +221,26 @@ it out.
   The two required dependencies, `@cosyte/hl7` and `@cosyte/terminology`, and the optional
   `@cosyte/astm`, `@cosyte/ccda`, `@cosyte/dicom`, `@cosyte/mllp`, `@cosyte/ncpdp`,
   `@cosyte/transform` and `@cosyte/x12` move from their `0.0.x` releases to `^0.1.0`, so an install
-  takes their `0.1.x` patch releases and stops before `0.2.0`. `redact` still delegates to
-  `@cosyte/deid` `0.0.9`. The CLI's commands, flags, exit codes and diagnostic codes are unchanged.
+  takes their `0.1.x` patch releases and stops before `0.2.0`. `@cosyte/deid` follows in the next
+  entry, because it changes what `redact` does. The CLI's commands, flags, exit codes and diagnostic
+  codes are unchanged.
+- **`redact` now delegates to the 0.1 releases of `@cosyte/deid`, and refuses more HL7 messages.**
+  The optional `@cosyte/deid` moves from `^0.0.9` (which pinned exactly `0.0.9`) to `^0.1.0`. The
+  library's default policy is the one `redact` applies, unmodified, and under it:
+  - **An HL7 visit number or order number refuses the run.** `PV1-19`, and a placer or filler order
+    number (`ORC-2`/`ORC-3`, `OBR-2`/`OBR-3`), fall to the catch-all identifier category, which the
+    default policy blocks (`DEID_LOCUS_BLOCKED`). `redact` answers with its existing refusal:
+    `CLI_DEID_INCOMPLETE`, exit `1`, nothing on stdout, and each blocked locus named on stderr with
+    the policy still attributed to the library. An ADT message that carries a visit number, which
+    `redact` used to de-identify, is now refused. The CLI passes no policy of its own to turn the
+    block into a removal: the library's own profile API rejects that weakening.
+  - **Medical record, account and member numbers are removed** (`DEID_CATEGORY_REMOVED`) rather than
+    replaced by a keyed surrogate. The per-invocation ephemeral key and its stderr disclosure stay,
+    so any keyed transform the library applies is never unkeyed.
+  - **HL7 `MSH-7` and `EVN-2` timestamps are now generalized.** The `0.0.9` policy left them
+    unchanged; a guard in the suite reds if a delegate that does so is ever resolved again.
+  - No exit code, diagnostic code or flag changed. The README and the command reference, limitations
+    and troubleshooting pages say which inputs produce output and which are refused.
 - **The `js-yaml` dependency override now covers the advisory's extended range.** The pin moves from
   `4.2.0` on `>=4.0.0 <4.2.0` to `4.3.0` on `>=4.0.0 <4.3.0`, so a transitive resolution landing
   inside the newly covered window is remediated instead of being admitted silently. The `esbuild`

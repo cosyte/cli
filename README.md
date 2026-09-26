@@ -304,6 +304,7 @@ exact false-safety hazard `redact` exists to avoid.
 
 ```bash
 cosyte redact adt.hl7 > clean.hl7   # stdout: the de-identified message. stderr: what was touched
+echo $?                             # 0: clean.hl7 is the copy. 1: clean.hl7 is empty, see stderr
 ```
 
 **Covered formats: `ccda`, `fhir`, `hl7`, `x12`** (what the library covers and this CLI can serialize
@@ -320,8 +321,22 @@ onto a text stdout). Anything else emits nothing at all:
 stderr carries the library's **own value-free manifest** (category, transform, the structural path,
 count, disposition and its stable code) and the library's **own published label and version**: the CLI
 asserts no de-identification standard of its own. An absent library is decided **before your input is
-read**. Identifier surrogates are keyed with a **per-invocation ephemeral key**: consistent within one
-output, deliberately not stable across runs.
+read**.
+
+What the library's default policy does decides which of the first two rows you get, and the CLI
+passes it no policy of its own:
+
+- **Medical record, account and member numbers are removed**, not replaced by a surrogate: their
+  manifest lines read `removed DEID_CATEGORY_REMOVED`.
+- **A visit number or an order number is blocked, so the whole run is refused.** An HL7 visit number
+  (`PV1-19`), and a placer or filler order number (`ORC-2`/`ORC-3`, `OBR-2`/`OBR-3`), fall to the
+  library's catch-all identifier category, which its default policy blocks rather than removes. Such a
+  message exits with `CLI_DEID_INCOMPLETE` (exit `1`) and nothing on stdout, and stderr names each
+  blocked locus with the library's `DEID_LOCUS_BLOCKED` code. Many real ADT messages carry `PV1-19`,
+  so check the exit code before you use `clean.hl7`.
+
+The CLI still keys every run with a **per-invocation ephemeral key** and says so on stderr: any
+identifier surrogate is consistent within one output and deliberately not stable across runs.
 
 ## `cosyte completion`
 
