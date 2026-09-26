@@ -144,7 +144,7 @@
   "optionalDependencies": {
     "@cosyte/astm": "^0.1.0",
     "@cosyte/ccda": "^0.1.0",
-    "@cosyte/deid": "^0.0.9",
+    "@cosyte/deid": "^0.1.0",
     "@cosyte/dicom": "^0.1.0",
     "@cosyte/mllp": "^0.1.0",
     "@cosyte/ncpdp": "^0.1.0",
