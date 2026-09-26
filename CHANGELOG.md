@@ -217,6 +217,12 @@ it out.
 
 ### Changed
 
+- **The CLI now runs on the 0.1 releases of every `@cosyte` library it uses except `@cosyte/deid`.**
+  The two required dependencies, `@cosyte/hl7` and `@cosyte/terminology`, and the optional
+  `@cosyte/astm`, `@cosyte/ccda`, `@cosyte/dicom`, `@cosyte/mllp`, `@cosyte/ncpdp`,
+  `@cosyte/transform` and `@cosyte/x12` move from their `0.0.x` releases to `^0.1.0`, so an install
+  takes their `0.1.x` patch releases and stops before `0.2.0`. `redact` still delegates to
+  `@cosyte/deid` `0.0.9`. The CLI's commands, flags, exit codes and diagnostic codes are unchanged.
 - **The `js-yaml` dependency override now covers the advisory's extended range.** The pin moves from
   `4.2.0` on `>=4.0.0 <4.2.0` to `4.3.0` on `>=4.0.0 <4.3.0`, so a transitive resolution landing
   inside the newly covered window is remediated instead of being admitted silently. The `esbuild`

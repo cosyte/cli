@@ -19,10 +19,10 @@ Both are standing human gates. Everything up to them (the changeset, the version
 `pnpm pack` tarballs** (`file:vendor/*.tgz`, ADR 0021/0023). **A published package cannot ship a
 `file:vendor/…tgz` dependency**, and two releases went out doing exactly that.
 
-They are now real npm ranges, with the single exception of `@cosyte/fhir`, which is not on the
-registry and therefore is not declared at all. `vendor/` survives only to supply `@cosyte/fhir` to
-this repo's own test run, as a `devDependency`; `pnpm vendor:refresh` still refreshes the tarballs,
-and the other nine are no longer wired to anything.
+They are now real npm ranges. `@cosyte/fhir` is still not declared as a runtime dependency (see "The
+dependency swap, as actually done" below); this repo's own test run gets it as a `devDependency` on
+its registry range. No tarball under `vendor/` is wired to anything: `pnpm vendor:refresh` still
+refreshes the nine that remain, and removing them is a separate cleanup.
 
 ### ▶ THIS STEP WAS SKIPPED TWICE, AND `0.0.1` + `0.0.2` ARE BROKEN ON npm BECAUSE OF IT
 
@@ -84,7 +84,7 @@ the suite, that flag does not decide the outcome (`synth` marks all seven peers 
 fails `ERESOLVE`; `deid` declares the same optional `@cosyte/fhir` peer and installs cleanly). The
 mechanism is not yet explained. Record measurements, not theories.
 
-`@cosyte/fhir` is kept as a **`devDependency`** on the vendored tarball, so this repo's own FHIR and
+`@cosyte/fhir` is kept as a **`devDependency`** on its registry range, so this repo's own FHIR and
 `convert` tests still run, and so it satisfies `@cosyte/transform`'s peer in the dev tree.
 
 **Say this precisely, because the obvious shorter sentence is false.** `devDependencies` **are**
@@ -178,9 +178,8 @@ and `0.0.2` happened.
 
 **What it deliberately does NOT cover.**
 
-- **`devDependencies`.** A consumer never installs them, so the `file:vendor/*.tgz` specifier this
-  manifest carries on purpose is reported and passed over. The gate names it in its report rather
-  than ignoring the field silently.
+- **`devDependencies`.** A consumer never installs them, so a local-path specifier there is reported
+  and passed over. The gate names it in its report rather than ignoring the field silently.
 - **`@cosyte/fhir` and `@cosyte/transform` being absent from an installed copy.** That is the
   designed state, not a defect; those paths degrade to a value-free `CLI_PARSER_UNAVAILABLE`
   (exit `69`). The gate asserts the install exited zero and the bins ran, never that some named

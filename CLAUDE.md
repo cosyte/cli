@@ -79,7 +79,7 @@ Why: [agent-notes § The vendor to npm dependency swap](documentation/agent-note
   `peerDependenciesMeta.optional` flag**: measured, that flag does not decide the outcome. **An installed
   copy therefore has NO FHIR support**, stated on every consumer surface rather than discovered: those
   commands degrade to a value-free `CLI_PARSER_UNAVAILABLE` (`69`), and `@cosyte/fhir` survives only as a
-  **`devDependency`** on the vendored tarball.
+  **`devDependency`** on its registry range.
 - **Never quote the published version in this file** (derive it: `npm view @cosyte/cli version`), and
   **never move a published version backwards**: `0.0.1` and `0.0.2` are permanently broken on npm and
   both printed `VERSION = "0.0.0"`. **Fix the ASSERTION, not just the value**: `test/sanity.test.ts`
@@ -105,8 +105,8 @@ Why: [agent-notes § The vendor to npm dependency swap](documentation/agent-note
   copy degrades to `CLI_PARSER_UNAVAILABLE`/`69` before any input is read. **Never promote it to
   `dependencies`**: a hard dep a registry cannot resolve makes the whole CLI uninstallable.
 - **Do not "restore" `@cosyte/transform` to `dependencies` or declare `@cosyte/fhir`** without reading
-  the swap note first. **`vendor/` survives only to supply `@cosyte/fhir` as a devDependency**; the other
-  nine tarballs are wired to nothing, and removing them is a separate cleanup. Detail:
+  the swap note first. **No `vendor/` tarball is wired to anything**: `@cosyte/fhir` is a registry
+  devDependency, and removing the nine tarballs left is a separate cleanup. Detail:
   [agent-notes § Hard runtime deps](documentation/agent-notes.md#hard-runtime-deps).
 
 ### The docs sidebar is bound by an IA spine nothing here checks

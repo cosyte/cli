@@ -594,8 +594,8 @@ because it is its own item.
   `sed -z`, so the scan is a single command with the stderr capture bound to all of it, and there is no
   GNU-only `sed` dependency that has no self-test.
   **Why the NUL-exclusion shape here, and unlike `mllp` the reason is not a hypothetical.** This repo
-  tracks **eleven** binaries: the ten `vendor/cosyte-*.tgz` packed siblings (an `npx` bin cannot
-  peer-depend, so the parsers are hard vendored deps) and `test/__fixtures__/sample.dcm`. Measured on
+  tracks **ten** binaries: the nine `vendor/cosyte-*.tgz` packed siblings (once hard vendored deps,
+  now wired to nothing) and `test/__fixtures__/sample.dcm`. Measured on
   this tree: **`vendor/cosyte-hl7-0.0.0.tgz` already contains the byte sequence `E2 80 94`** (one
   occurrence, offset 50217 of 665534 bytes, in a DEFLATE stream). A text-only port therefore reds on
   this repo **today**, naming a compressed byte stream nobody wrote, and **that red has no
@@ -671,8 +671,8 @@ because it is its own item.
   fails the whole install with `ERESOLVE`: optional dep and optional _peer_ both. Either one alone
   installs clean; the pair does not. **Do not explain this with a missing
   `peerDependenciesMeta.optional` flag** - measured across the suite, that flag does not decide the
-  outcome, and the mechanism is unexplained. `@cosyte/fhir` is kept as a **`devDependency`** on the
-  vendored tarball so this repo's own FHIR/`convert` tests run and so `transform`'s peer resolves in
+  outcome, and the mechanism is unexplained. `@cosyte/fhir` is kept as a **`devDependency`**, on its
+  registry range, so this repo's own FHIR/`convert` tests run and so `transform`'s peer resolves in
   the dev tree. Consequence, stated on every consumer surface rather than discovered: **an installed
   copy has no FHIR support**, and FHIR `parse`/`inspect`/`fmt`/`validate` plus `convert` degrade to a
   value-free `CLI_PARSER_UNAVAILABLE` (69). That required `loadOptionalPackage(detail, load)` beneath
@@ -789,15 +789,15 @@ feature-complete: Phase 7 was the final phase.
 ### Hard runtime deps
 
 - **Hard runtime deps (ADR 0021 + 0023), as they stand AFTER the vendor → npm swap:** only
-  **`@cosyte/hl7` (`^0.0.7`) + `@cosyte/terminology` (`^0.0.9`)** are hard `dependencies` now, both
-  real registry ranges (an `npx` bin can't peer-depend). `@cosyte/transform` moved to
+  **`@cosyte/hl7` + `@cosyte/terminology`** are hard `dependencies` now, both real registry ranges
+  at `^0.1.0` (an `npx` bin can't peer-depend). `@cosyte/transform` moved to
   `optionalDependencies` and **`@cosyte/fhir` is undeclared** - see the swap note above for why, and
   do not "restore" either without reading it. That is **2** hard runtime deps against an umbrella
   `verify-policy.json` cap of **4**, so it is under the cap, not at it. **Lazy-loaded per command.**
-  On the `0.0.x` ladder `^0.0.7` permits no other version, so these are effectively exact pins, and
-  Dependabot now sees them (it never could while they were `file:` specs). `vendor/` survives only to
-  supply `@cosyte/fhir` as a **`devDependency`**; the other nine tarballs are refreshed by
-  `pnpm vendor:refresh` but wired to nothing, and removing them is a deliberate separate cleanup.
+  `^0.1.0` takes the 0.1.x patch releases and stops before 0.2.0, and Dependabot now sees these
+  ranges (it never could while they were `file:` specs). No `vendor/` tarball is wired to anything:
+  `@cosyte/fhir` is a **`devDependency`** on its registry range, and the nine tarballs left are
+  refreshed by `pnpm vendor:refresh` but wired to nothing; removing them is a separate cleanup.
   Third-party CLI-core runtime deps: **zero**. The MCP server's **`@modelcontextprotocol/sdk`** is the
   CLI's only third-party runtime dep: declared in **`optionalDependencies`** (not `dependencies`),
   isolated behind `./mcp`, so it is outside the hard-closure cap (ADR 0024).

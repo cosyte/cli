@@ -399,7 +399,7 @@ const OVERRIDE_LOG_PATH = join(REPO_ROOT, "phi-scan-overrides.md");
 //
 // WHAT IS DELIBERATELY *NOT* A ROOT, each for a measured reason rather than an
 // omission:
-//   - `vendor/`: ten `pnpm pack` tarballs. A DEFLATE stream decoded as UTF-8 is
+//   - `vendor/`: nine `pnpm pack` tarballs. A DEFLATE stream decoded as UTF-8 is
 //     not text this gate can say anything true about, and these are third-party
 //     build artifacts rather than this repository's authored corpus. The em-dash
 //     gate's NUL-exclusion grounding cites them for the same reason.
