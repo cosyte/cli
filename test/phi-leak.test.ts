@@ -202,6 +202,9 @@ describe("PHI leak matrix: redact is value-free on stderr in EVERY mode", () => 
   // value-free by the library's contract (its locus is a path); this matrix is what holds it to
   // that, across every mode the command has: a covered format, a refused format, a run the library
   // could not complete, the library absent, `--format` given and omitted, file and stdin.
+  // `adt-a01.hl7` carries a PV1-19 visit number the delegate's default policy blocks, so it is a
+  // refusal here; the same message without it is the covered HL7 run.
+  const HL7_CLEAN = readFileSync(join(FIXTURES, "adt-a01-no-visit.hl7"));
   const X12_CLEAN = readFileSync(join(FIXTURES, "834-enrollee.edi"));
   const X12_BLOCKED = readFileSync(join(FIXTURES, "834-blocked.edi"));
   const CCDA = readFileSync(join(FIXTURES, "ccd.xml"));
@@ -209,13 +212,13 @@ describe("PHI leak matrix: redact is value-free on stderr in EVERY mode", () => 
   const DICOM = readFileSync(join(FIXTURES, "sample.dcm"));
 
   const cases: { name: string; argv: string[]; bytes: Uint8Array }[] = [
-    { name: "hl7 covered, file", argv: ["redact", "m.hl7"], bytes: HL7 },
-    { name: "hl7 covered, stdin", argv: ["redact", "-"], bytes: HL7 },
-    { name: "hl7 covered, --format", argv: ["redact", "m", "--format", "hl7"], bytes: HL7 },
+    { name: "hl7 covered, file", argv: ["redact", "m.hl7"], bytes: HL7_CLEAN },
+    { name: "hl7 covered, stdin", argv: ["redact", "-"], bytes: HL7_CLEAN },
+    { name: "hl7 covered, --format", argv: ["redact", "m", "--format", "hl7"], bytes: HL7_CLEAN },
     { name: "fhir covered", argv: ["redact", "p.json"], bytes: FHIR },
     { name: "x12 covered", argv: ["redact", "e.edi"], bytes: X12_CLEAN },
     { name: "ccda covered", argv: ["redact", "c.xml"], bytes: CCDA },
-    { name: "deid alias", argv: ["deid", "m.hl7"], bytes: HL7 },
+    { name: "deid alias", argv: ["deid", "m.hl7"], bytes: HL7_CLEAN },
     { name: "blocked run", argv: ["redact", "b.edi"], bytes: X12_BLOCKED },
     { name: "astm refused", argv: ["redact", "r.astm"], bytes: ASTM },
     { name: "dicom refused", argv: ["redact", "s.dcm"], bytes: DICOM },
@@ -230,13 +233,48 @@ describe("PHI leak matrix: redact is value-free on stderr in EVERY mode", () => 
     });
   }
 
+  // AC-11: every covered format, from its committed clean input.
   it("a covered run keeps every sentinel off BOTH channels: that is the whole command", async () => {
-    for (const bytes of [HL7, FHIR, X12_CLEAN, CCDA]) {
+    for (const bytes of [HL7_CLEAN, FHIR, X12_CLEAN, CCDA]) {
       const r = await run(["redact", "in"], fileDeps(bytes));
       expect(r.exit).toBe(0);
       assertNoSentinelOnStderr(r.stderr);
       assertNoSentinelOnStderr(r.stdout); // redact's stdout is the STRIPPED document
       expect(r.stdout.length).toBeGreaterThan(0);
+    }
+  });
+
+  // AC-6: a run refused for a blocked HL7 visit number leaks no planted identifier on either
+  // channel, the blocked value itself included.
+  it("the blocked HL7 run names no planted identifier on either channel, VISIT-0001 included", async () => {
+    const planted = [
+      "ZZSENTINELLAST",
+      "ZZSENTINELFIRST",
+      "MRN-000123",
+      "123 SYNTHETIC ST",
+      "METROPOLIS",
+      "19800101",
+      "(555)000-0000",
+      "VISIT-0001",
+    ];
+    const text = HL7.toString("latin1");
+    // The premise: the input really carries every value this checks for.
+    for (const value of planted) expect(text).toContain(value);
+
+    for (const argv of [
+      ["redact", "m.hl7"],
+      ["redact", "-"],
+      ["redact", "m.hl7", "--format", "hl7"],
+      ["deid", "m.hl7"],
+      ["redact", "m.hl7", "--unsafe-show-values"],
+    ]) {
+      const r = await run(argv, fileDeps(HL7));
+      expect(r.exit, argv.join(" ")).toBe(1);
+      expect(r.stderr, argv.join(" ")).toContain("CLI_DEID_INCOMPLETE");
+      for (const value of planted) {
+        expect(r.stdout, `${argv.join(" ")}: stdout`).not.toContain(value);
+        expect(r.stderr, `${argv.join(" ")}: stderr`).not.toContain(value);
+      }
     }
   });
 

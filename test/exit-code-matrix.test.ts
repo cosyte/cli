@@ -203,11 +203,19 @@ describe("exit-code matrix: redact", () => {
   const FIX = (name: string): Uint8Array => readFileSync(join(FIXTURES, name));
 
   const REDACT: readonly Case[] = [
+    // AC-10, AC-7: the clean HL7 input (no visit number) is a clean pass.
     {
       name: "a clean pass over a covered format",
       argv: ["redact", "m.hl7"],
-      deps: deps(FIX("adt-a01.hl7")),
+      deps: deps(FIX("adt-a01-no-visit.hl7")),
       exit: EXIT.OK,
+    },
+    // AC-3, AC-10: an HL7 visit number is blocked by the delegate's default policy.
+    {
+      name: "an HL7 message carrying a visit number the de-identifier blocks",
+      argv: ["redact", "m.hl7"],
+      deps: deps(FIX("adt-a01.hl7")),
+      exit: EXIT.INVALID,
     },
     {
       name: "an input the de-identifier could not fully handle",

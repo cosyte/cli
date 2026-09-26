@@ -28,6 +28,8 @@ const throwOnRead: RunDeps = {
 };
 
 const HL7 = readFileSync(join(import.meta.dirname, "__fixtures__", "adt-a01.hl7"));
+/** The same message with its PV1-19 visit number left out: nothing in it is blocked. */
+const HL7_CLEAN = readFileSync(join(import.meta.dirname, "__fixtures__", "adt-a01-no-visit.hl7"));
 const fileDeps = (bytes: Uint8Array): RunDeps => ({
   readFile: () => Promise.resolve(bytes),
   readStdin: () => Promise.resolve(bytes),
@@ -68,6 +70,7 @@ describe("the de-id seam: the single point that answers 'is the ground layer her
 });
 
 describe("redact with @cosyte/deid absent: 69, value-free, and the input is never read", () => {
+  // AC-13
   it("`redact <file>` exits 69 with empty stdout and never reads the file", async () => {
     const r = await redactCommand(["message.hl7"], throwOnRead, absentLibrary);
     expect(r.exit).toBe(EXIT.UNAVAILABLE);
@@ -76,6 +79,7 @@ describe("redact with @cosyte/deid absent: 69, value-free, and the input is neve
     expect(r.stderr).toContain("CLI_PARSER_UNAVAILABLE");
   });
 
+  // AC-13
   it("`redact -` (stdin form) exits 69 and never drains stdin", async () => {
     const r = await redactCommand(["-"], throwOnRead, absentLibrary);
     expect(r.exit).toBe(EXIT.UNAVAILABLE);
@@ -83,6 +87,7 @@ describe("redact with @cosyte/deid absent: 69, value-free, and the input is neve
     expect(r.stderr).toContain("CLI_PARSER_UNAVAILABLE");
   });
 
+  // AC-13
   it("names the package and says how to get it, with no stack frame and no input value", async () => {
     const r = await redactCommand(["message.hl7"], throwOnRead, absentLibrary);
     expect(r.stderr).toContain("@cosyte/deid");
@@ -91,6 +96,7 @@ describe("redact with @cosyte/deid absent: 69, value-free, and the input is neve
     expect(r.stderr).not.toContain("message.hl7\n"); // the path is not echoed as content
   });
 
+  // AC-13
   it("never claims success or offers a scrubbed copy it did not produce", async () => {
     const r = await redactCommand(["message.hl7"], throwOnRead, absentLibrary);
     expect(r.stdout).toBe("");
@@ -130,24 +136,29 @@ describe("a bug in the delegated library stays a bug", () => {
 });
 
 describe("redact via run(): both command names reach the same wired command", () => {
+  /** The three input routes: a file, stdin, and a file with the format given explicitly. */
+  const ROUTES: readonly { name: string; args: readonly string[] }[] = [
+    { name: "by file", args: ["m.hl7"] },
+    { name: "by stdin", args: ["-"] },
+    { name: "with --format hl7", args: ["m.hl7", "--format", "hl7"] },
+  ];
+
   for (const cmd of ["redact", "deid"]) {
-    it(`\`${cmd}\` produces a de-identified document and a manifest`, async () => {
-      const r = await run([cmd, "m.hl7"], fileDeps(HL7));
-      expect(r.exit).toBe(EXIT.OK);
-      expect(r.stdout).toContain("MSH|");
-      expect(r.stderr).toContain("@cosyte/deid");
-    });
+    for (const route of ROUTES) {
+      // AC-10: the clean HL7 input is de-identified by every route.
+      it(`\`${cmd}\` ${route.name}: the clean input exits 0 with an HL7 document`, async () => {
+        const r = await run([cmd, ...route.args], fileDeps(HL7_CLEAN));
+        expect(r.exit).toBe(EXIT.OK);
+        expect(r.stdout).toContain("MSH|");
+        expect(r.stderr).toContain("@cosyte/deid");
+      });
+
+      // AC-10: the input carrying a visit number is refused by every route.
+      it(`\`${cmd}\` ${route.name}: adt-a01.hl7 exits 1 with empty stdout`, async () => {
+        const r = await run([cmd, ...route.args], fileDeps(HL7));
+        expect(r.exit).toBe(EXIT.INVALID);
+        expect(r.stdout).toBe("");
+      });
+    }
   }
-
-  it("accepts the --format override", async () => {
-    const r = await run(["redact", "m.hl7", "--format", "hl7"], fileDeps(HL7));
-    expect(r.exit).toBe(EXIT.OK);
-    expect(r.stdout).toContain("MSH|");
-  });
-
-  it("`redact -` reads stdin and de-identifies it", async () => {
-    const r = await run(["redact", "-"], fileDeps(HL7));
-    expect(r.exit).toBe(EXIT.OK);
-    expect(r.stdout).toContain("MSH|");
-  });
 });

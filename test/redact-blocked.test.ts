@@ -18,11 +18,15 @@ import { run } from "../src/core/run.js";
  * `834.edi` drives this for real: measured against the delegate's default policy, ten of its loci
  * fall to the open-ended catch-all category and are blocked. It is not a doctored input; it is the
  * fixture the rest of the suite already parses.
+ *
+ * `adt-a01.hl7` drives it for HL7: its PV1-19 visit number falls to the same catch-all category
+ * under the delegate's default policy, so the whole run is refused.
  */
 
 const FIXTURES = join(import.meta.dirname, "__fixtures__");
 const X12 = readFileSync(join(FIXTURES, "834.edi"));
-const HL7 = readFileSync(join(FIXTURES, "adt-a01.hl7"));
+const HL7_BLOCKED = readFileSync(join(FIXTURES, "adt-a01.hl7"));
+const HL7_CLEAN = readFileSync(join(FIXTURES, "adt-a01-no-visit.hl7"));
 
 function deps(bytes: Uint8Array): RunDeps {
   return { readFile: () => Promise.resolve(bytes), readStdin: () => Promise.resolve(bytes) };
@@ -88,8 +92,9 @@ describe("a blocked locus is a refusal, never a de-identified copy", () => {
     }
   });
 
+  // AC-7: the clean HL7 input, so the blocked path is shown not to be a blanket refusal.
   it("a fully-handled input is still a clean pass (the blocked path is not a blanket refusal)", async () => {
-    const r = await run(["redact", "m.hl7"], deps(HL7));
+    const r = await run(["redact", "m.hl7"], deps(HL7_CLEAN));
     expect(r.exit).toBe(EXIT.OK);
     expect(r.stdout.length).toBeGreaterThan(0);
     expect(r.stderr).not.toContain("CLI_DEID_INCOMPLETE");
@@ -97,7 +102,51 @@ describe("a blocked locus is a refusal, never a de-identified copy", () => {
   });
 });
 
+describe("an HL7 visit number is blocked by the delegate, so the run is refused", () => {
+  /** The delegate's own manifest for `adt-a01.hl7`, and its blocked entries. */
+  async function delegateBlocked(): Promise<
+    readonly { locus: string; count: number; disposition: string; code: string }[]
+  > {
+    const delegate = await loadDeidDelegate();
+    const { manifest } = await delegate.redact("hl7", HL7_BLOCKED);
+    return manifest.filter((e) => e.disposition === DEID_BLOCKED);
+  }
+
+  // AC-3: the premise, measured on the installed delegate rather than assumed.
+  it("the delegate's own manifest blocks the PV1 visit-number locus with DEID_LOCUS_BLOCKED", async () => {
+    const blocked = await delegateBlocked();
+    const visit = blocked.filter((e) => /^PV1-19(\[|$)/.test(e.locus));
+    expect(visit).toHaveLength(1);
+    expect(visit[0]?.code).toBe("DEID_LOCUS_BLOCKED");
+  });
+
+  // AC-3
+  it("exits 1 with nothing on stdout, CLI_DEID_INCOMPLETE and 'no output was emitted'", async () => {
+    const r = await run(["redact", "adt-a01.hl7"], deps(HL7_BLOCKED));
+    expect(r.exit).toBe(EXIT.INVALID);
+    expect(r.exit).toBe(1);
+    expect(r.stdout).toBe("");
+    expect(r.stderr).toContain("CLI_DEID_INCOMPLETE");
+    expect(r.stderr).toContain("no output was emitted");
+  });
+
+  // AC-3: every blocked entry, its locus and disposition code exactly as the delegate reported them.
+  it("names every blocked locus with its code, on one stderr line each", async () => {
+    const blocked = await delegateBlocked();
+    expect(blocked.length).toBeGreaterThan(0);
+
+    const r = await run(["redact", "adt-a01.hl7"], deps(HL7_BLOCKED));
+    const lines = r.stderr.split("\n");
+    for (const entry of blocked) {
+      const line = lines.find((l) => l.includes(` ${entry.locus} x${String(entry.count)} `));
+      expect(line, entry.locus).toBeDefined();
+      expect(line).toMatch(new RegExp(` ${entry.disposition} ${entry.code}$`));
+    }
+  });
+});
+
 describe("the two failure boundaries: a rejected input and a fatal the library reports", () => {
+  // AC-14
   it("a parser rejection is a value-free data error naming the format and a stable code", () => {
     const thrown = ((): unknown => {
       try {
@@ -120,6 +169,7 @@ describe("the two failure boundaries: a rejected input and a fatal the library r
     expect(err.message).not.toContain("ZZSENTINELLAST"); // the library's message is discarded
   });
 
+  // AC-14
   it("a parser rejection with no stable code still says nothing about the input", () => {
     try {
       parseOrFail("ccda", () => {
@@ -132,6 +182,7 @@ describe("the two failure boundaries: a rejected input and a fatal the library r
     }
   });
 
+  // AC-14
   it("a fatal the library names is an operation-level failure (exit 1), value-free", () => {
     try {
       deidentifyOrFail(() => {
@@ -149,6 +200,7 @@ describe("the two failure boundaries: a rejected input and a fatal the library r
     }
   });
 
+  // AC-14
   it("an error the library did NOT name propagates: a bug stays a bug, never a soft exit 1", () => {
     expect(() =>
       deidentifyOrFail(() => {
@@ -157,6 +209,7 @@ describe("the two failure boundaries: a rejected input and a fatal the library r
     ).toThrow(TypeError);
   });
 
+  // AC-14
   it("a completed pass passes straight through both boundaries", () => {
     expect(parseOrFail("x12", () => 42)).toBe(42);
     const outcome = { output: "x", manifest: [] };

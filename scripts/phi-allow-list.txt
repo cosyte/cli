@@ -30,10 +30,12 @@ EMAILDOMAIN example.test
 # --- Synthetic person-name tokens (used by the CLI's parse fixtures) ---
 # These are deliberately non-real sentinel tokens (prefix ZZSENTINEL) so a PHI-leak test can assert
 # they never reach stderr; they positively declare the fixtures' names as synthetic.
+# test/__fixtures__/adt-a01-no-visit.hl7 is adt-a01.hl7 with its visit number left out: it carries
+# the same synthetic name, date of birth and id tokens as below, and no new one.
 NAME ZZSENTINELLAST
 NAME ZZSENTINELFIRST
 
-# --- Synthetic dates of birth (test/__fixtures__/adt-a01.hl7, patient.fhir.json) ---
+# --- Synthetic dates of birth (test/__fixtures__/adt-a01.hl7, adt-a01-no-visit.hl7, patient.fhir.json) ---
 DOB 19800101
 
 # --- Synthetic ids: MRN / member-id shapes (test/__fixtures__/*) ---
