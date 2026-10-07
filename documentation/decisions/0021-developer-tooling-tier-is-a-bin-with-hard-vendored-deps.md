@@ -19,7 +19,7 @@ honest skin over the parsers (and, in later phases, `@cosyte/transform` + `@cosy
 dependency direction is one-way and acyclic: `cli → {parsers, transform, terminology}`; none of those
 ever depends back, and no parser gains a dependency because the CLI exists.
 
-The transformation tier (ADR 0001 of `@cosyte/transform`) declares its cosyte siblings as **peer +
+The transformation tier (ADR 0001 of `@cosyte/transform`) declares its Cosyte siblings as **peer +
 optional** dependencies: a *library* consumer already holds `@cosyte/hl7`/`@cosyte/fhir` to parse and
 validate, so it supplies them. **The CLI cannot make that assumption.** An end user runs
 `npx @cosyte/cli parse msg.hl7` with **nothing pre-installed**: an unmet peer dependency is a broken
@@ -34,7 +34,7 @@ command, not a graceful degrade. So the tier that consumes must decide, again, h
 
 2. **These are first-party deps, categorically distinct from third-party supply-chain risk.** The
    zero-dep rule governs **third-party** surface: a random npm package an integrator must vet. The
-   cosyte siblings are **first-party code we build, test, gate, and ship**; depending on lower layers
+   Cosyte siblings are **first-party code we build, test, gate, and ship**; depending on lower layers
    is the point of having layers. So the CLI takes them freely, while its **third-party** runtime
    surface stays at (near) zero: the CLI core parses arguments with Node's built-in `util.parseArgs`
    plus a hand-rolled dispatcher (**no CLI framework in the dependency tree**) and the only future

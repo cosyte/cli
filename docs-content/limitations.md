@@ -6,7 +6,7 @@ sidebar_position: 2
 
 # What `@cosyte/cli` does, and does not do
 
-The `cosyte` CLI touches **real files a developer points at**: the moment cosyte code meets
+The `cosyte` CLI touches **real files a developer points at**: the moment Cosyte code meets
 un-synthetic PHI on a real disk. So this page is deliberately blunt about the promise and its edges.
 Read it before you rely on the tool: the **API Reference** and `cosyte --help` are always the exact
 truth of what a given release ships; this page is the honest shape of the whole.
@@ -71,7 +71,7 @@ These are **non-goals**, not missing features: named so nothing over-trusts the 
   - **`convert`** covers **HL7 v2 → FHIR R4** only (via `@cosyte/transform`); **`map-codes`** requires
     a **bring-your-own** FHIR ConceptMap (via `@cosyte/terminology`), no terminology content is
     bundled.
-- **Per-(format, operation) support is honest, not uniform.** All eight cosyte formats are wired, but
+- **Per-(format, operation) support is honest, not uniform.** All eight Cosyte formats are wired, but
   a parser only advertises the operations it can actually back. An unsupported (format, op) is a
   value-free `CLI_FORMAT_UNSUPPORTED`, never a fake:
 

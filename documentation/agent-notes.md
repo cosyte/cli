@@ -38,7 +38,7 @@ A gate that catches a defect and then cannot block the merge that reintroduces i
 ### Why the matcher is the part that never ports
 
 **Counting first was the whole job, and skipping it has produced a false green twice in this
-ecosystem.** Two spellings of a pointer are live across the cosyte repos, and which one dominates is
+ecosystem.** Two spellings of a pointer are live across the Cosyte repos, and which one dominates is
 a property of the tree rather than of the convention:
 
 - **QUALIFIED**, `agent-notes.md#<anchor>`, optionally prefixed with a path; and
@@ -723,7 +723,7 @@ feature-complete: Phase 7 was the final phase.
   `bin`, the vendored `file:` sibling deps must become real `@cosyte/*` npm ranges at `PUB-FLIP` (a
   published package cannot ship a `file:` dep). Everything up to those is done.
 - **Phase 6 shipped** (`operations/roadmaps/cli.md` §Phase 6). **Six more formats + streaming + shell
-  completion** (ADR 0025). The CLI now wraps **all eight** cosyte formats through a single lazy
+  completion** (ADR 0025). The CLI now wraps **all eight** Cosyte formats through a single lazy
   **per-format adapter registry** (`src/core/parsers.ts`) that replaced the per-command `hl7 ? : fhir`
   branches and makes support **per (format, operation)** via `OP_SUPPORT`: an unsupported (format, op)
   is a value-free `CLI_FORMAT_UNSUPPORTED`, never a fake. Capabilities: `x12`/`astm`/`ncpdp` →
@@ -1213,7 +1213,7 @@ and **"I did not read the reason" is still not a licence to discount the rule.**
 
 ### Project, before the trim
 
-**`@cosyte/cli`**: the **cosyte CLI**: a **`bin` package** (the `cosyte` command), not a parser and
+**`@cosyte/cli`**: the **Cosyte CLI**: a **`bin` package** (the `cosyte` command), not a parser and
 not a library. Published under the Cosyte brand, open-source (MIT). It is the **developer-tooling
 tier**: a thin, honest, PHI-safe skin over the `@cosyte/*` parsers (and, in later phases,
 `@cosyte/transform` + `@cosyte/terminology`). It **wraps**; it re-implements no wire-format parsing.
@@ -1235,7 +1235,7 @@ subpath still exports a small programmatic `core` API (`detectFormat`, `EXIT`, `
 ### Status, before the trim
 
 **Feature-complete.** The roadmap's final phase shipped; no new runtime command surface is planned.
-The CLI wraps **all eight** cosyte formats through one lazy
+The CLI wraps **all eight** Cosyte formats through one lazy
 per-format adapter registry (`src/core/parsers.ts`), exposes the same `core` through a terminal bin
 (`cosyte`), an MCP server bin (`cosyte-mcp`) and the `.` / `./mcp` subpath exports, and states support
 **per (format, operation)** via `OP_SUPPORT`: an unsupported cell is a value-free

@@ -18,7 +18,7 @@ still do. Each entry was assigned to the release whose tag first contains it, re
 **What 0.1 means for you.** This is the first release whose commands, output and exit codes we treat
 as settled: command names, flags, the JSON output shapes, the exit-code contract (`0`, `1`, `2`,
 `65`, `66`, `69`, `70`, `74`) and the diagnostic codes are the surface we keep stable. It covers the
-`cosyte` command over all eight cosyte formats (`parse`, `validate`, `inspect`, `fmt`, `convert`,
+`cosyte` command over all eight Cosyte formats (`parse`, `validate`, `inspect`, `fmt`, `convert`,
 `map-codes`, `redact` / `deid`, `completion`), value-free diagnostics with `--unsafe-show-values` as
 the one opt-in, the `cosyte-mcp` stdio server and the programmatic `core` API. While the package is
 below 1.0, a breaking change bumps the minor version and is called out here; a fix that changes no
@@ -85,7 +85,7 @@ it out.
   - No dependency was added, no manifest field moved, and nothing a consumer receives changed.
 
 - **Every MCP tool now publishes an `outputSchema`, and every tool result conforms to it.** An agent
-  calling a cosyte tool used to receive `structuredContent: { exit, ok }` with no schema to check it
+  calling a Cosyte tool used to receive `structuredContent: { exit, ok }` with no schema to check it
   against, so deciding whether a result held data or a diagnostic meant pattern-matching a text blob.
   Each of the four tools now advertises an output schema and a `title` on `tools/list`, and every
   dispatch path (success, negative verdict, hard failure, usage error, internal error) returns
@@ -795,7 +795,7 @@ node_modules/@cosyte/cli/vendor/cosyte-fhir-0.0.0.tgz`. The siblings are now rea
     provenance/OIDC, the vendored-`file:`→npm dep swap, and the two standing founder stops).
 
 - **Phase 6: six more formats + streaming + shell completion (ADR 0025).** The `cosyte` CLI now wraps
-  **all eight cosyte formats**, routed through a single lazy **per-format adapter registry**
+  **all eight Cosyte formats**, routed through a single lazy **per-format adapter registry**
   (`src/core/parsers.ts`) that replaces the old per-command `hl7 ? : fhir` branches and makes support
   **per (format, operation)**. An unsupported (format, op) is a value-free `CLI_FORMAT_UNSUPPORTED`,
   never a fake (ADR 0018).
@@ -978,7 +978,7 @@ parse` invocation never loads it; the core works with the SDK absent (`--omit=op
   repo for this character, find the places it is a value rather than punctuation and convert those by
   hand, to a word, first.
 
-- **No cosyte surface in this repo uses an em dash any more, and a CI gate keeps it that way.** The
+- **No Cosyte surface in this repo uses an em dash any more, and a CI gate keeps it that way.** The
   brand rule (`knowledgebase/06-brand/voice-and-tone.md`, "No em dashes. Ever.") bans `U+2014`
   outright and names commit messages explicitly. Measured byte-level over **all 124 tracked files**,
   not over markdown alone: **659 occurrences across 87 files**, all as the literal character and none
