@@ -7,7 +7,7 @@
 
 # @cosyte/cli
 
-> The **cosyte CLI**: a PHI-safe developer front door over the `@cosyte/*` healthcare parsers.
+> The **Cosyte CLI**: a PHI-safe developer front door over the `@cosyte/*` healthcare parsers.
 
 `@cosyte/cli` is a **`bin` package**: its primary artifact is the `cosyte` command on your `PATH`. Pipe
 a raw message from a hospital feed into the terminal and get typed, structured JSON back in one line,
@@ -59,7 +59,7 @@ dependencies, `@cosyte/hl7` and `@cosyte/terminology`, and always work.
 > **Status:** `0.1`. While the package is below 1.0, a breaking change ships in a minor version and is
 > called out in the changelog. `0.0.1` and `0.0.2` are on npm and **cannot be installed** (see above);
 > every later version installs. The `cosyte` command wraps **all eight
-> cosyte formats** (**HL7 v2**, **FHIR R4**, **X12**, **ASTM**, **NCPDP SCRIPT**, **C-CDA**, **DICOM**,
+> Cosyte formats** (**HL7 v2**, **FHIR R4**, **X12**, **ASTM**, **NCPDP SCRIPT**, **C-CDA**, **DICOM**,
 > and **MLLP**) plus the `@cosyte/transform` and `@cosyte/terminology` higher-layer libraries, with
 > conservative content-format autodetection and a documented exit-code contract:
 >

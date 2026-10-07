@@ -22,7 +22,7 @@
 
 ## Project
 
-**`@cosyte/cli`**: the **cosyte CLI**, a **`bin` package** (the `cosyte` command), not a parser and not a
+**`@cosyte/cli`**: the **Cosyte CLI**, a **`bin` package** (the `cosyte` command), not a parser and not a
 library. It is the **developer-tooling tier**: a thin, honest, PHI-safe skin over the `@cosyte/*`
 parsers. It **wraps**; it re-implements no wire-format parsing.
 **North star:** `cat adt.hl7 | cosyte parse -` → typed JSON on stdout, the right exit code, and **not one
@@ -38,7 +38,7 @@ CLI framework**. The `.` subpath still exports a small programmatic `core` API.
 
 ## Status
 
-**Feature-complete.** No new runtime command surface is planned. The CLI wraps **all eight** cosyte
+**Feature-complete.** No new runtime command surface is planned. The CLI wraps **all eight** Cosyte
 formats through one lazy per-format adapter registry (`src/core/parsers.ts`), exposes the same `core`
 through the `cosyte` and `cosyte-mcp` bins and the `.` / `./mcp` exports, and states support **per
 (format, operation)** via `OP_SUPPORT`: an unsupported cell is a value-free `CLI_FORMAT_UNSUPPORTED`,

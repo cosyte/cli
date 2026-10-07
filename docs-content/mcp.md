@@ -4,7 +4,7 @@ title: MCP server (agent front door)
 sidebar_position: 5
 ---
 
-# The cosyte MCP server
+# The Cosyte MCP server
 
 `@cosyte/cli` ships a second front door over the **same** core as the `cosyte` command: a
 [Model Context Protocol](https://modelcontextprotocol.io) server that lets an LLM/agent parse, validate,

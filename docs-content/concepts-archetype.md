@@ -44,7 +44,7 @@ output that never reached its consumer.
 
 ## The PHI posture
 
-A CLI operates on real files a developer points at: the moment cosyte code touches un-synthetic PHI.
+A CLI operates on real files a developer points at: the moment Cosyte code touches un-synthetic PHI.
 So the channels are split:
 
 - **stdout is the data channel.** `parse` emits the parsed model there because that is your explicit

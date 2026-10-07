@@ -12,7 +12,7 @@ question.
 > **Status:** pre-alpha (`0.0.x`), published to npm at `0.0.1`. **That release cannot be installed**
 > (a packaging defect: see [Installation](./installation)), so run the CLI from a source checkout for
 > now. The `cosyte` command wraps **all eight
-> cosyte formats** (HL7 v2, FHIR R4, X12, ASTM, NCPDP SCRIPT, C-CDA, DICOM, MLLP) plus the
+> Cosyte formats** (HL7 v2, FHIR R4, X12, ASTM, NCPDP SCRIPT, C-CDA, DICOM, MLLP) plus the
 > `@cosyte/transform` and `@cosyte/terminology` higher-layer libraries: `parse` (autodetect → typed JSON,
 > with NDJSON streaming for MLLP frames and `--ndjson`), `validate` (verdict in the exit code), `inspect`
 > (a value-free structural summary), `fmt` (canonical re-serialization), `convert` (HL7 v2 → FHIR R4 via
