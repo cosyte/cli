@@ -10,7 +10,7 @@
 
 ## Context
 
-The cosyte parsers are **siblings that mirror each other's API and do not import one another**
+The Cosyte parsers are **siblings that mirror each other's API and do not import one another**
 (`@cosyte/hl7` is the reference), and each ships **zero third-party runtime dependencies**: a
 supply-chain gate, because healthcare integrators vet every dependency.
 
