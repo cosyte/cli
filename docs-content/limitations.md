@@ -83,17 +83,14 @@ These are **non-goals**, not missing features: named so nothing over-trusts the 
   | `dicom`                | not supported (binary model)              | ✓       | not supported | ✓             |
   | `mllp`                 | ✓ (de-framed to HL7)                      | ✓       | not supported | not supported |
 
-  **The matrix says what the CLI implements. It is not a promise about what your install can reach**,
-  and for one format those differ today:
+  **The matrix says what the CLI implements. It is not a promise about what your install can reach**:
 
-- **FHIR is implemented but not available from an npm install.** `@cosyte/fhir` is not on the npm
-  registry, so it cannot be a dependency of this package. In an installed copy every FHIR cell above
-  reports a value-free `CLI_PARSER_UNAVAILABLE` and exits `69`, and so does **`convert`**, which needs
-  both `@cosyte/fhir` and `@cosyte/transform` (the latter requires the former, so npm skips it as an
-  unresolvable optional dependency). This is stated rather than discovered: the commands do not guess,
-  and they do not report your input as bad. Run the CLI from a source checkout to use them. The six
-  breadth formats are also optional dependencies, but they do resolve, so a default install has all
-  six; removing one degrades that format to the same value-free `CLI_PARSER_UNAVAILABLE`.
+- **Each cell needs its library installed.** The six breadth formats and `@cosyte/transform` are
+  optional dependencies, and `@cosyte/fhir` is the peer dependency of `@cosyte/transform`, so a
+  default install has all of them. A library that is still missing (a peer your package manager did
+  not install, or a package removed afterwards) turns its cells into a value-free
+  `CLI_PARSER_UNAVAILABLE` with exit `69`, and **`convert`** reports the same when `@cosyte/fhir` or
+  `@cosyte/transform` is missing. The commands do not guess, and they do not report your input as bad.
 
 - **Do not install with `--omit=optional`.** The install succeeds, but the `cosyte` command then does
   not run at all: it fails on a missing `@modelcontextprotocol/sdk` before reaching any command, even

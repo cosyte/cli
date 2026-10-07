@@ -46,10 +46,10 @@ rather than crashing, and it never falls back to a guess. Two different causes:
   named `@cosyte/<format>` package to get it back. Note that `--omit=optional` is **not** a supported
   way to slim the install: it also removes `@modelcontextprotocol/sdk`, and the `cosyte` command then
   fails to start at all rather than reaching this diagnostic. Known defect, tracked separately.
-- **FHIR is always unavailable from an npm install**, and no reinstall changes that: `@cosyte/fhir` is
-  not on the npm registry, so it is not a dependency of this package. This also takes out `convert`,
-  which additionally needs `@cosyte/transform` (itself skipped, because it requires `@cosyte/fhir`).
-  The diagnostic says so. To use the FHIR commands, run the CLI from a source checkout.
+- **FHIR** comes from `@cosyte/fhir`, the peer dependency of `@cosyte/transform`, so a default install
+  has it; you see this on FHIR input only if your package manager did not install that peer or it was
+  removed. `convert` reports the same when `@cosyte/fhir` or `@cosyte/transform` is missing. Install
+  the named package to get it back.
 
 ## `CLI_NO_INPUT` (exit 66)
 

@@ -33,8 +33,7 @@ Add the server to your MCP client's configuration (Claude Desktop, an IDE agent,
 > Naming `cosyte-mcp` explicitly is the supported form.
 >
 > This registration also requires a version that can be installed at all: `0.0.1` and `0.0.2` cannot
-> be. See [If you are on 0.0.1 or 0.0.2](./installation#if-you-are-on-001-or-002). FHIR tools are
-> unavailable from an npm install for a further reason described alongside it.
+> be. See [If you are on 0.0.1 or 0.0.2](./installation#if-you-are-on-001-or-002).
 
 `cosyte mcp` starts the stdio server; the standalone `cosyte-mcp` bin is equivalent.
 
@@ -110,6 +109,5 @@ error.
 ## Isolation
 
 The MCP SDK (`@modelcontextprotocol/sdk`) is the CLI's only third-party runtime dependency. It is
-declared **optional** and loaded **only** on the MCP path, so a plain `cosyte parse` never pulls it and
-the core works with the SDK absent (install with `--omit=optional` for a minimal footprint). The server
+declared **optional**, and the programmatic core (the `.` subpath) loads with the SDK absent. The server
 surface is also importable programmatically via the `@cosyte/cli/mcp` subpath.

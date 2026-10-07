@@ -8,8 +8,7 @@ sidebar_position: 1
 
 `cosyte` is a **PHI-safe developer CLI** over the `@cosyte/*` healthcare parsers. Pipe a raw message
 from a hospital feed into the terminal and get typed, structured JSON back in one line, without
-writing code, without reading the spec, and **without ever being handed a confident wrong value or a
-silent success on a malformed message**.
+writing code and without reading the spec.
 
 ```bash
 cat adt.hl7 | cosyte parse -

@@ -13,9 +13,7 @@ install is the simplest route; `npx` works too, with one flag noted under [Run i
 > npm is `0.0.2`, and `0.0.1` and `0.0.2` are both uninstallable: see
 > [If you are on 0.0.1 or 0.0.2](#if-you-are-on-001-or-002). The packaging defect is fixed in the
 > repository and proven by installing the packed tarball, but a published version is immutable, so the
-> fix arrives with the next release. Until then, run the CLI from a source checkout. FHIR support is
-> unavailable in an installed copy for a separate reason, described under
-> [What is not available from npm](#what-is-not-available-from-npm).
+> fix arrives with the next release. Until then, run the CLI from a source checkout.
 
 ## If you are on 0.0.1 or 0.0.2
 
@@ -36,36 +34,19 @@ package, so npm resolved the paths against a directory that is not there. A publ
 immutable, so both stay broken. **The fix ships as a later version, which does not exist yet**; run
 the CLI from a source checkout in the meantime.
 
-## What is not available from npm
+## What a default install includes
 
-The siblings the CLI wraps are now real npm ranges, with one exception that is worth stating plainly
-rather than discovering at runtime.
-
-**`@cosyte/fhir` is not on the npm registry.** It cannot be a dependency of this package, so an
-installed `@cosyte/cli` has no FHIR library and:
-
-- `parse`, `inspect`, `fmt` and `validate` on FHIR input report `CLI_PARSER_UNAVAILABLE` and exit
-  `69`. They do not guess, and they do not fail as though your input were bad.
-- `convert` reports the same, because it needs both `@cosyte/fhir` and `@cosyte/transform`, and
-  `@cosyte/transform` in turn requires `@cosyte/fhir`, so npm skips it as an unresolvable optional
-  dependency.
-
-Everything else works from a plain install: HL7 v2 (`@cosyte/hl7`), `map-codes`
-(`@cosyte/terminology`), and the six breadth formats X12, C-CDA, DICOM, NCPDP, ASTM and MLLP, which
-are optional dependencies that do resolve, so a default install has all six.
+The siblings the CLI wraps are real npm ranges. HL7 v2 (`@cosyte/hl7`) and `map-codes`
+(`@cosyte/terminology`) run on the two hard dependencies. The six breadth formats X12, C-CDA, DICOM,
+NCPDP, ASTM and MLLP, and `@cosyte/transform`, are optional dependencies, and `@cosyte/fhir` arrives
+as the peer dependency of `@cosyte/transform`, so a default install has every one of them. If one is
+still missing, for example a peer your package manager did not install, the commands that need it
+report `CLI_PARSER_UNAVAILABLE` and exit `69`. They do not guess, and they do not fail as though your
+input were bad.
 
 > **Do not install with `--omit=optional`.** It succeeds, but the `cosyte` command then fails to start
 > at all on a missing `@modelcontextprotocol/sdk`, before it reaches any command. Known defect,
 > tracked separately.
-
-**To use the FHIR commands today, run the CLI from source**, where the FHIR library is supplied
-locally:
-
-```bash
-git clone https://github.com/cosyte/cli && cd cli
-pnpm install && pnpm build
-node dist/bin/cosyte.mjs --help
-```
 
 ## Prerequisites
 
