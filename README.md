@@ -11,8 +11,7 @@
 
 `@cosyte/cli` is a **`bin` package**: its primary artifact is the `cosyte` command on your `PATH`. Pipe
 a raw message from a hospital feed into the terminal and get typed, structured JSON back in one line,
-without writing code, without reading the spec, and **without ever being handed a confident wrong value
-or a silent success on a malformed message**.
+without writing code and without reading the spec.
 
 ```bash
 cat adt.hl7 | cosyte parse -
@@ -51,10 +50,11 @@ outside this repository and exercised, which is the check a `npm publish --dry-r
 **FHIR support arrives through a peer, not a declared dependency.** `@cosyte/fhir` is not in this
 package's manifest. `npm install` brings it in as the peer dependency of `@cosyte/transform`, one of
 this package's optional dependencies, and the FHIR `parse` / `inspect` / `fmt` / `validate` commands
-and `convert` use that copy. If your package manager skips optional dependencies or does not install
-peers, a command whose library is missing reports a value-free `CLI_PARSER_UNAVAILABLE` and exits
-`69`: it never guesses, and it never blames your input. HL7 v2 and `map-codes` run on the two hard
-dependencies, `@cosyte/hl7` and `@cosyte/terminology`, and always work.
+and `convert` use that copy. Install with optional dependencies, as `npm install` does by default. If
+a library a command needs is still missing, for example a peer your package manager did not install,
+the command reports a value-free `CLI_PARSER_UNAVAILABLE` and exits `69`: it never guesses, and it
+never blames your input. HL7 v2 and `map-codes` run on the two hard dependencies, `@cosyte/hl7` and
+`@cosyte/terminology`.
 
 > **Status:** `0.1`. While the package is below 1.0, a breaking change ships in a minor version and is
 > called out in the changelog. `0.0.1` and `0.0.2` are on npm and **cannot be installed** (see above);
@@ -365,8 +365,7 @@ subprocess**, not a hosted endpoint. Register it in an MCP client's config:
 > **`--package` is required, and the shorter `["-y", "@cosyte/cli", "mcp"]` does not work**: it fails
 > with `could not determine executable to run`, for the `npx` executable-selection reason described
 > under [Run it](#run-it) above. This also needs a version that can be installed at all, so not
-> `0.0.1` or `0.0.2`. The `convert` tool reports `CLI_PARSER_UNAVAILABLE` from an npm install, because
-> the FHIR library is not on the registry.
+> `0.0.1` or `0.0.2`.
 
 `cosyte mcp` and the standalone `cosyte-mcp` bin both start the stdio server. It exposes four tools
 (`parse`, `validate`, `inspect`, `convert`), each calling the same command the terminal runs, so the CLI
@@ -382,8 +381,8 @@ text content block carries the serialized JSON of that same structured result. S
 per-tool payload shapes.
 
 The MCP SDK (`@modelcontextprotocol/sdk`) is the CLI's only third-party runtime dependency; it is
-declared **optional** and loaded only on the MCP path, so a `cosyte parse` invocation never pulls it and
-the core works with the SDK absent. The server surface is importable via the `@cosyte/cli/mcp` subpath
+declared **optional**, and the programmatic core (the `.` subpath) loads with the SDK absent. The server
+surface is importable via the `@cosyte/cli/mcp` subpath
 (`createMcpServer`, `startStdioServer`, `dispatchTool`, `TOOL_DEFS`).
 
 ## Programmatic API

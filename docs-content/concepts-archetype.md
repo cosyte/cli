@@ -27,8 +27,7 @@ leaked value is the CLI's.
 Detection sniffs content, never the file extension, and is **conservative**: a single confident
 signature match parses; zero or more than one match is a typed data error asking for `--format`,
 **never a guess**. A wrong sniff would route bytes to the wrong parser and yield confident garbage,
-so the CLI refuses to guess, mirroring the parsers' "never a confident wrong value" rule at the
-routing layer.
+so the CLI refuses to guess at the routing layer.
 
 ## The exit-code contract
 
