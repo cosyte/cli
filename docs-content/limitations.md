@@ -110,10 +110,9 @@ a tool _error_ carries only the value-free diagnostic, and a parsed-but-invalid 
 **successful** call reporting the verdict. `redact` and `map-codes` are deliberately **not** exposed as
 tools yet.
 
-## HIPAA posture
+## PHI handling
 
-`@cosyte/cli` is **HIPAA-capable, not HIPAA-compliant**: compliance is a property of a system, not a
-tool. Fixtures are **synthetic-only** (`# synthetic` enforced); diagnostics carry **positional context
+Fixtures are **synthetic-only** (`# synthetic` enforced); diagnostics carry **positional context
 only, never a value**; and a format-specific PHI scanner gates every change, including the golden
 stdout/stderr snapshots (the highest-risk artifact). The one deliberate value channel is **stdout** on
 `parse`/`convert`/`fmt`: the data you explicitly asked for, sent to the sink you chose. Never pipe

@@ -9,11 +9,10 @@ sidebar_position: 1
 `@cosyte/cli` ships the `cosyte` command as a Node.js executable, alongside `cosyte-mcp`. A global
 install is the simplest route; `npx` works too, with one flag noted under [Run it](#run-it).
 
-> **Status:** pre-alpha (`0.0.x`), and **there is no installable release yet.** The newest version on
-> npm is `0.0.2`, and `0.0.1` and `0.0.2` are both uninstallable: see
-> [If you are on 0.0.1 or 0.0.2](#if-you-are-on-001-or-002). The packaging defect is fixed in the
-> repository and proven by installing the packed tarball, but a published version is immutable, so the
-> fix arrives with the next release. Until then, run the CLI from a source checkout.
+> **Status:** `0.1`, published to npm, and the install commands below are live. While the package is
+> below 1.0, a breaking change ships in a minor version and is called out in the changelog. `0.0.1`
+> and `0.0.2` are on npm and cannot be installed: see
+> [If you are on 0.0.1 or 0.0.2](#if-you-are-on-001-or-002). Every later version installs.
 
 ## If you are on 0.0.1 or 0.0.2
 
@@ -31,8 +30,8 @@ wrong with your environment.
 Those manifests declared the ten `@cosyte/*` sibling packages as local file paths
 (`file:vendor/*.tgz`) instead of npm version ranges. The tarballs are not part of the published
 package, so npm resolved the paths against a directory that is not there. A published version is
-immutable, so both stay broken. **The fix ships as a later version, which does not exist yet**; run
-the CLI from a source checkout in the meantime.
+immutable, so both stay broken. **Every later version installs**: `npm install -g @cosyte/cli`
+installs the current one.
 
 ## What a default install includes
 
