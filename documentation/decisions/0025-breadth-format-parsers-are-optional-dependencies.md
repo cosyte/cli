@@ -16,7 +16,7 @@
 
 ## Context
 
-CLI-6 wires the remaining six cosyte parsers (`dicom`, `x12`, `ccda`, `ncpdp`, `astm`, `mllp`) into
+CLI-6 wires the remaining six Cosyte parsers (`dicom`, `x12`, `ccda`, `ncpdp`, `astm`, `mllp`) into
 the command surface. Two facts shape how they are taken as dependencies:
 
 1. **The umbrella hard-dep cap counts `dependencies` only, and is fixed at 4.** `scripts/verify-policy.json`

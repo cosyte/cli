@@ -9,9 +9,9 @@ sidebar_position: 1
 Task-oriented recipes for the `cosyte` command. Each is a short, copy-pasteable answer to one real
 question.
 
-> **Status:** pre-alpha (`0.0.x`), published to npm at `0.0.1`. **That release cannot be installed**
-> (a packaging defect: see [Installation](./installation)), so run the CLI from a source checkout for
-> now. The `cosyte` command wraps **all eight
+> **Status:** `0.1`, published to npm. While the package is below 1.0, a breaking change ships in a
+> minor version and is called out in the changelog. `0.0.1` and `0.0.2` cannot be installed; every
+> later version installs: see [Installation](./installation). The `cosyte` command wraps **all eight
 > Cosyte formats** (HL7 v2, FHIR R4, X12, ASTM, NCPDP SCRIPT, C-CDA, DICOM, MLLP) plus the
 > `@cosyte/transform` and `@cosyte/terminology` higher-layer libraries: `parse` (autodetect → typed JSON,
 > with NDJSON streaming for MLLP frames and `--ndjson`), `validate` (verdict in the exit code), `inspect`

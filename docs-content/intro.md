@@ -19,9 +19,9 @@ your `PATH`. It is a thin, honest skin over libraries that already own correctne
 shapes output, and owns two disciplines of its own: a documented **exit-code contract** and a
 **value-free diagnostic** posture (never a field value on stderr).
 
-> **Status:** pre-alpha (`0.0.x`), published to npm at `0.0.1`. **That release cannot be installed**
-> (a packaging defect: see [Installation](./installation)), so run the CLI from a source checkout for
-> now. `parse`, `validate`, `inspect`, and `fmt`
+> **Status:** `0.1`, published to npm. While the package is below 1.0, a breaking change ships in a
+> minor version and is called out in the changelog. `0.0.1` and `0.0.2` cannot be installed; every
+> later version installs: see [Installation](./installation). `parse`, `validate`, `inspect`, and `fmt`
 > are wired for **HL7 v2** and **FHIR R4**; `convert` and `map-codes` wrap the higher-layer libraries.
 > A **`cosyte-mcp` MCP server** exposes the same core to an LLM/agent. All eight Cosyte formats are
 > wired, with support honest per (format, operation) and NDJSON streaming for MLLP and `--ndjson`.
