@@ -542,7 +542,7 @@ RULE_COUNT=7
 # maintainer reads stays internal.
 #
 # REMOVING A DOC COMMENT TO SATISFY THIS PASS IS A REGRESSION, NOT A FIX. JSDoc with an
-# `@example` on every public export is a hard guardrail in CLAUDE.md and the JSDoc lint rule
+# `@example` on every public export is a hard guardrail: the JSDoc lint rule
 # is an error, but neither lint nor coverage notices prose deleted from the middle of a
 # block. Rewrite the sentence to say what the software does -- and in this package, when the
 # sentence being repaired states a LIMIT (a deferred (format, operation) cell, a gated stub,
