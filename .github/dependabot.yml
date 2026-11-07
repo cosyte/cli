@@ -29,7 +29,7 @@ updates:
   #     only as the peer of the optional `@cosyte/transform`, and without it the CLI reports
   #     `CLI_PARSER_UNAVAILABLE` rather than pretending. This config does not imply cover it does
   #     not give.
-  #   * `@modelcontextprotocol/sdk` (exact-pinned) is the one third-party RUNTIME dependency
+  #   * `@modelcontextprotocol/sdk` (a bounded `^1.32.2` range) is the one third-party RUNTIME dependency
   #     Dependabot can see and bump. It is kept OUT of the group below by an explicit
   #     `exclude-patterns`, so a runtime bump on the MCP agent surface lands as its own
   #     reviewable PR rather than being batched with build tooling. The exclusion is stated
