@@ -10,14 +10,10 @@ imperative that links back to its section here. That is the contract between the
 line there tells you not to do something and you do not understand why, the reason is here, and
 **"I did not read the reason" is not a licence to discount the rule.**
 
-Governed by the meta-repo's `documentation/decisions/0023-doc-budgets.md`, amendment of 2026-08-04,
-which bounds `<submodule>/CLAUDE.md` and names `<repo>/documentation/agent-notes.md` as the
-relocation target. **Read the bound off `REPO_CLAUDE` in `.claude/hooks/doc-budget.mjs`, never off a
-number written down here.** The mechanism is a per-repo ratchet that is LOWERED as relocations land,
-and the first number quoted for it went stale within a day, which is the same defect this whole
-audit exists to fix. That amendment's own warning is the one that binds here:
-_"These files are where the traps that cost a defect to learn are written down. Relocate the
-narrative; keep the cursor, the rule, and every trap."_
+The rule this split follows, in the words it was written down in on 2026-08-04: _"These files are
+where the traps that cost a defect to learn are written down. Relocate the narrative; keep the
+cursor, the rule, and every trap."_ Never copy a size bound for `CLAUDE.md` into this file: the
+first number quoted for one went stale within a day.
 
 ---
 
@@ -621,8 +617,9 @@ because it is its own item.
   One disclosed property of a red on those two fixtures: the hit echoes the matching _line_, and a
   CR-delimited frame is one line, so a whole message lands in a public CI log. Acceptable and
   deliberately un-truncated, because those fixtures are synthetic by policy and `pnpm phi-scan` gates
-  that policy over the same files. Remaining known limits (encoded-form matching is literal, so
-  `%e2%80%94`, `&#X2014;` and `&#x2014` pass; the scan reads contents and never file names) are in the
+  that policy over the same files. Remaining known limits (encoded-form matching is literal, so a
+  lowercase URL encoding, a hex entity with a capital X and a hex entity with no closing semicolon
+  pass; the scan reads contents and never file names) are in the
   script header and are **shared across every copy, so fix them there, not here**: a divergent copy is
   worse than a shared known limit.
   **▶ READ THIS BEFORE PORTING THIS GATE ANYWHERE ELSE. AN EM DASH IS SOMETIMES A VALUE, NOT
@@ -1222,7 +1219,7 @@ tier**: a thin, honest, PHI-safe skin over the `@cosyte/*` parsers (and, in late
 one byte of PHI on stderr**, without writing code, without reading the spec, and without ever being
 handed a confident wrong value or a silent success on a malformed message. The CLI borrows the
 parsers' _disciplines_ (fail-safe on ambiguity, stable diagnostics, value-free PHI posture) without
-being a byte parser. Full contract: the meta-repo `operations/roadmaps/cli.md`.
+being a byte parser.
 
 ### Shape, before the trim
 
@@ -1469,8 +1466,8 @@ Why: [agent-notes § The em-dash brand gate](documentation/agent-notes.md#the-em
 ### Tech Stack, before the trim
 
 This repo inherits the canonical toolchain by depending on the published `@cosyte/*` config packages,
-not by copying files. The source of truth is the meta-repo's `documentation/conventions.md`. This is
-a summary.
+not by copying files. The source of truth is those packages (cosyte/config) and the standards in the
+umbrella's `plans/standards.md`. This is a summary.
 
 - **Language:** TypeScript (strict, full rigor set incl. `noUncheckedIndexedAccess`) via
   `@cosyte/tsconfig`. **Target ES2023**, `NodeNext`. TypeScript 5.9.x, exact-pinned.
@@ -1580,24 +1577,23 @@ return 0`, so no `--profile`, `--ignore-rules` or config setting reaches that ea
 
 ### Standing disciplines, before the trim
 
-Mirrors the three disciplines in the meta-repo's `documentation/conventions.md`. They bind here too:
+These disciplines bind every change here:
 
 1. **Documentation follows code**: a change to the public surface/stack/status isn't done until the
-   docs are: this repo's docs content (`README.md`, `docs-content/`), the meta-repo
-   `documentation/repos/cli.md` (bump its "last verified" date), and the `ecosystem-map.md`
-   status table.
-2. **Version + changelog**: a Changeset (`patch` on the `0.0.x` ladder) + a `CHANGELOG.md`
-   `[Unreleased]` entry per meaningful change. Renaming a stable `CLI_*` diagnostic code or an exit
-   code is a **breaking change** (scripts branch on them).
+   docs are: this repo's docs content (`README.md`, `docs-content/`).
+2. **Version + changelog**: a Changeset per meaningful change (`.changeset/README.md` says which
+   bump). The changeset summary is the changelog entry: the release writes `CHANGELOG.md`, so it is
+   never hand-edited. Renaming a stable `CLI_*` diagnostic code or an exit code is a **breaking
+   change** (scripts branch on them).
 3. **Crew + knowledgebase loop**, if the command surface, `CLI_*` codes, or exit-code map change,
    flag/update the matching `crew` healthcare skill + the KB product doc.
 4. **No internal project bookkeeping on a public surface** (founder directive, 2026-07-27). What a
    consumer reads (`README.md`, `docs-content/`, the npm `description`, a release body, **the JSDoc
    their editor renders on hover, and the diagnostic their terminal prints**) says what the software
    does and what changed. Item identifiers (`CLI-6`), phase and wave language, ADR numbers, roadmap
-   citations (`cli roadmap §7`), meta-repo paths and "how this got built" commentary belong in the
+   citations (`cli roadmap §7`), private paths and "how this got built" commentary belong in the
    changeset,
-   `CHANGELOG.md`, the commit, the PR and the roadmap. It is a **translation** at the boundary, not a
+   `CHANGELOG.md`, the commit, the PR and the umbrella's plans. It is a **translation** at the boundary, not a
    deletion. Gated by `pnpm check:no-internal-refs`.
 
    Why, in full: [agent-notes § No internal project bookkeeping on a public
