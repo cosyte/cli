@@ -1,7 +1,7 @@
 <a href="https://cosyte.com">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="https://cosyte.com/tile/cosyte-lockup-tile-on-dark-1200x300.png">
-    <img alt="Cosyte: a plus mark set in two overlapping rounded squares, one solid and one outlined, beside the Cosyte wordmark" src="https://cosyte.com/tile/cosyte-lockup-tile-on-light-1200x300.png">
+    <img alt="The Cosyte logo on its own white ground: the icon beside the word Cosyte." src="https://cosyte.com/tile/cosyte-lockup-tile-on-light-1200x300.png">
   </picture>
 </a>
 
@@ -23,42 +23,8 @@ It is a thin, honest skin over libraries that already own correctness ([`@cosyte
 and owns two disciplines of its own: a documented **exit-code contract** and a **value-free
 diagnostic** posture.
 
-## Known issue: `0.0.1` and `0.0.2` are published but cannot be installed
-
-**`npm install @cosyte/cli@0.0.1` and `@0.0.2` both fail.** They end in an `ENOENT`, like this:
-
-```
-npm error code ENOENT
-npm error path node_modules/@cosyte/cli/vendor/cosyte-fhir-0.0.0.tgz
-npm error enoent ENOENT: no such file or directory
-```
-
-`npx` and `npm install -g` fail the same way on those two versions, and so does the `npx`-based MCP
-server registration below. There is no workaround from the consumer side. **Nothing is wrong with your
-setup, and re-running it will not help.**
-
-**Why.** Those manifests declared the ten `@cosyte/*` sibling packages as local file paths
-(`file:vendor/*.tgz`) rather than as npm version ranges. Those tarballs live in the git repository and
-are deliberately not part of the published package, so npm resolved the paths against a directory that
-does not exist in your `node_modules` and stopped at the first one. It was a packaging defect in those
-releases, not a fault in any command.
-
-**A published version is immutable, so `0.0.1` and `0.0.2` stay broken: install a later version.** The
-sibling packages are now declared as real npm ranges, and the resulting tarball has been installed from
-outside this repository and exercised, which is the check a `npm publish --dry-run` cannot perform.
-
-**FHIR support arrives through a peer, not a declared dependency.** `@cosyte/fhir` is not in this
-package's manifest. `npm install` brings it in as the peer dependency of `@cosyte/transform`, one of
-this package's optional dependencies, and the FHIR `parse` / `inspect` / `fmt` / `validate` commands
-and `convert` use that copy. Install with optional dependencies, as `npm install` does by default. If
-a library a command needs is still missing, for example a peer your package manager did not install,
-the command reports a value-free `CLI_PARSER_UNAVAILABLE` and exits `69`: it never guesses, and it
-never blames your input. HL7 v2 and `map-codes` run on the two hard dependencies, `@cosyte/hl7` and
-`@cosyte/terminology`.
-
-> **Status:** `0.1`. While the package is below 1.0, a breaking change ships in a minor version and is
-> called out in the changelog. `0.0.1` and `0.0.2` are on npm and **cannot be installed** (see above);
-> every later version installs. The `cosyte` command wraps **all eight
+> **Status:** the 0.1 line. While the package is below 1.0, a breaking change ships in a minor version
+> and is called out in the changelog. The `cosyte` command wraps **all eight
 > Cosyte formats** (**HL7 v2**, **FHIR R4**, **X12**, **ASTM**, **NCPDP SCRIPT**, **C-CDA**, **DICOM**,
 > and **MLLP**) plus the `@cosyte/transform` and `@cosyte/terminology` higher-layer libraries, with
 > conservative content-format autodetection and a documented exit-code contract:
@@ -88,18 +54,14 @@ never blames your input. HL7 v2 and `map-codes` run on the two hard dependencies
 > (`cosyte-mcp`) exposes the same core to an LLM/agent as callable tools.
 >
 > The CLI is **feature-complete**: an argv+stdin+MCP fuzz gate, an exit-code golden matrix, a
-> built-package smoke of both bins, and a clean `npm publish` dry-run. Those gates cover the code, and
-> the code was never what was broken. The one release step they do not cover is the dependency swap
-> described above, which is why `0.0.1` and `0.0.2` published green and still cannot be installed: a
-> dry-run builds the tarball but never resolves it from a registry. **That swap has now been made**,
-> and installing the packed tarball from outside the repository is a release step in its own right.
-> `@cosyte/fhir` reaches an installed copy as a peer of `@cosyte/transform` (see above). See
-> [RELEASING.md](./RELEASING.md).
+> built-package smoke of both bins, a clean `npm publish` dry-run, and a release step that installs
+> the packed tarball from outside the repository and runs both bins before anything publishes. See
+> [RELEASING.md](https://github.com/cosyte/cli/blob/main/RELEASING.md).
 
 ## Run it
 
-Requires Node `>=22.0.0 <26.0.0`. This block runs as-is in an empty directory: it installs the CLI,
-writes a short synthetic HL7 v2 message, and reads it back.
+Requires Node.js 22 to 25, tested on 22 and 24. This block runs as-is in an empty directory: it
+installs the CLI, writes a short synthetic HL7 v2 message, and reads it back.
 
 ```bash
 npm install -g @cosyte/cli          # put `cosyte` on your PATH
@@ -124,6 +86,18 @@ npx --package @cosyte/cli cosyte parse message.hl7
 > `--package` is the supported form, and it works. A `cli` executable is deliberately **not** added as
 > an alias: `npm install -g` would then put a command called `cli` on every user's `PATH`, which is far
 > too generic a name to claim.
+
+**FHIR support arrives through a peer, not a declared dependency.** `@cosyte/fhir` is not in this
+package's manifest. `npm install` brings it in as the peer dependency of `@cosyte/transform`, one of
+this package's optional dependencies, and the FHIR `parse` / `inspect` / `fmt` / `validate` commands
+and `convert` use that copy. Install with optional dependencies, as `npm install` does by default. If
+a library a command needs is still missing, for example a peer your package manager did not install,
+the command reports a value-free `CLI_PARSER_UNAVAILABLE` and exits `69`: it never guesses, and it
+never blames your input. HL7 v2 and `map-codes` run on the two hard dependencies, `@cosyte/hl7` and
+`@cosyte/terminology`.
+
+Versions `0.0.1` and `0.0.2` are on npm but cannot be installed, because of a packaging defect in
+those releases. Install the 0.1 line.
 
 ## `cosyte parse`
 
@@ -319,14 +293,14 @@ onto a text stdout). Anything else emits nothing at all:
 | `@cosyte/deid` not installed (an optional dependency)                                | `CLI_PARSER_UNAVAILABLE` | `69` |
 
 stderr carries the library's **own value-free manifest** (category, transform, the structural path,
-count, disposition and its stable code) and the library's **own published label and version**: the CLI
+count, disposition, and its stable code) and the library's **own published label and version**: the CLI
 asserts no de-identification standard of its own. An absent library is decided **before your input is
 read**.
 
 What the library's default policy does decides which of the first two rows you get, and the CLI
 passes it no policy of its own:
 
-- **Medical record, account and member numbers are removed**, not replaced by a surrogate: their
+- **Medical record, account, and member numbers are removed**, not replaced by a surrogate: their
   manifest lines read `removed DEID_CATEGORY_REMOVED`.
 - **A visit number or an order number is blocked, so the whole run is refused.** An HL7 visit number
   (`PV1-19`), and a placer or filler order number (`ORC-2`/`ORC-3`, `OBR-2`/`OBR-3`), fall to the
@@ -364,8 +338,7 @@ subprocess**, not a hosted endpoint. Register it in an MCP client's config:
 
 > **`--package` is required, and the shorter `["-y", "@cosyte/cli", "mcp"]` does not work**: it fails
 > with `could not determine executable to run`, for the `npx` executable-selection reason described
-> under [Run it](#run-it) above. This also needs a version that can be installed at all, so not
-> `0.0.1` or `0.0.2`.
+> under [Run it](#run-it) above.
 
 `cosyte mcp` and the standalone `cosyte-mcp` bin both start the stdio server. It exposes four tools
 (`parse`, `validate`, `inspect`, `convert`), each calling the same command the terminal runs, so the CLI
@@ -396,4 +369,4 @@ full surface.
 
 ## License
 
-MIT © Cosyte
+MIT, copyright Cosyte LLC. See [LICENSE](https://github.com/cosyte/cli/blob/main/LICENSE).

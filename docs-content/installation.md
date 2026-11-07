@@ -2,6 +2,7 @@
 id: installation
 title: Installation
 sidebar_position: 1
+description: "Install the cosyte command globally, with npx, or as a dependency, and see what a default install includes and which Node.js versions it supports."
 ---
 
 # Installation
@@ -37,7 +38,7 @@ installs the current one.
 
 The siblings the CLI wraps are real npm ranges. HL7 v2 (`@cosyte/hl7`) and `map-codes`
 (`@cosyte/terminology`) run on the two hard dependencies. The six breadth formats X12, C-CDA, DICOM,
-NCPDP, ASTM and MLLP, and `@cosyte/transform`, are optional dependencies, and `@cosyte/fhir` arrives
+NCPDP, ASTM, and MLLP, and `@cosyte/transform`, are optional dependencies, and `@cosyte/fhir` arrives
 as the peer dependency of `@cosyte/transform`, so a default install has every one of them. If one is
 still missing, for example a peer your package manager did not install, the commands that need it
 report `CLI_PARSER_UNAVAILABLE` and exit `69`. They do not guess, and they do not fail as though your

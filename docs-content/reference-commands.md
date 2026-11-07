@@ -2,6 +2,7 @@
 id: reference-commands
 title: Command reference
 sidebar_position: 3
+description: "Every cosyte command, option, and exit code."
 ---
 
 # `cosyte` command reference
@@ -33,7 +34,7 @@ cosyte-mcp                      # the stdio MCP server (also: cosyte mcp)
 | `--format <fmt>` | Override autodetection: `hl7 \| fhir \| dicom \| x12 \| ccda \| ncpdp \| astm \| mllp`. Support is per (format, operation): see [Limitations](./limitations). |
 | `--json`         | Machine-readable JSON output.                                                                                                                                  |
 | `--quiet`        | Suppress value-free notes on stderr (the exit code becomes the whole signal).                                                                                  |
-| `--no-color`     | Disable ANSI colour.                                                                                                                                           |
+| `--no-color`     | Disable ANSI color.                                                                                                                                            |
 
 ## Commands
 
@@ -101,12 +102,12 @@ is not PHI.
 ### `cosyte redact <file\|->` (alias: `deid`)
 
 De-identify a message. **The whole de-identification policy is `@cosyte/deid`'s**; the CLI adds no
-locus map, no transform and no fallback scrub, so it either delegates or refuses. The covered formats
+locus map, no transform, and no fallback scrub, so it either delegates or refuses. The covered formats
 are `ccda`, `fhir`, `hl7`, `x12`.
 
 stdout is the de-identified document, serialized exactly as `cosyte fmt` serializes that format.
 stderr carries the library's own **value-free manifest**, one line per locus it acted on (category,
-transform, the structural path, the count, the disposition and its stable code), plus the library's
+transform, the structural path, the count, the disposition, and its stable code), plus the library's
 own published output label and version. The CLI claims **no de-identification standard of its own**.
 
 Anything short of a clean, fully-handled pass emits **nothing** on stdout:
@@ -121,10 +122,10 @@ Anything short of a clean, fully-handled pass emits **nothing** on stdout:
 
 An absent library is decided **before the input is read**.
 
-What the library's **default policy** does, applied unmodified (the CLI passes it no policy, profile
+What the library's **default policy** does, applied unmodified (the CLI passes it no policy, profile,
 or retention set of its own):
 
-- **Medical record, account and member numbers are removed**, not replaced by a surrogate. Their
+- **Medical record, account, and member numbers are removed**, not replaced by a surrogate. Their
   manifest lines carry the disposition `removed` and the code `DEID_CATEGORY_REMOVED`.
 - **A visit or order number is blocked, and the run is refused.** An HL7 visit number (`PV1-19`) and
   a placer or filler order number (`ORC-2`/`ORC-3`, `OBR-2`/`OBR-3`) fall to the library's catch-all

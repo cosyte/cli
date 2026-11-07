@@ -2,6 +2,7 @@
 id: quickstart
 title: Quickstart
 sidebar_position: 1
+description: "Parse, validate, inspect, and format a message from a file or a pipeline, and read the exit code that says how the run ended."
 ---
 
 # Quickstart
@@ -74,5 +75,5 @@ EXIT.NOINPUT; // => 66
 
 ## Next
 
-- [Core Concepts](./concepts-archetype): the wrapper boundary, the exit-code contract, the PHI posture.
+- [Core concepts](./concepts-archetype): the wrapper boundary, the exit-code contract, the PHI posture.
 - **API Reference**: every programmatic export, generated from source.

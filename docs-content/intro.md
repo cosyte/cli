@@ -2,6 +2,7 @@
 id: intro
 title: Getting started
 sidebar_position: 1
+description: "What @cosyte/cli is: the cosyte command and the cosyte-mcp server over the Cosyte libraries, with typed JSON out and value-free diagnostics."
 ---
 
 # @cosyte/cli

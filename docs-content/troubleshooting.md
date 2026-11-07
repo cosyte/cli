@@ -2,6 +2,7 @@
 id: troubleshooting
 title: Troubleshooting
 sidebar_position: 1
+description: "What each CLI_* diagnostic code and exit code means, and what to do about it."
 ---
 
 # Troubleshooting
@@ -30,7 +31,7 @@ a silent mis-route.)
 
 ## `CLI_FORMAT_UNSUPPORTED` (exit 65)
 
-The format was recognised, but its parser does not support the operation you asked for. Support is
+The format was recognized, but its parser does not support the operation you asked for. Support is
 **per (format, operation)**: `x12`/`astm`/`ncpdp` support parse/inspect/fmt/validate; `ccda` supports
 inspect/fmt/validate (parse is deferred: XML is the canonical `fmt` form); `dicom` supports
 inspect/validate (parse/fmt deferred. The model is binary); `mllp` supports parse/inspect. The message
@@ -38,7 +39,7 @@ names which formats _do_ support the operation. The command is never faked to a 
 
 ## `CLI_PARSER_UNAVAILABLE` (exit 69)
 
-The library for a recognised format is not installed. The CLI degrades to this value-free signal
+The library for a recognized format is not installed. The CLI degrades to this value-free signal
 rather than crashing, and it never falls back to a guess. Two different causes:
 
 - **The six breadth parsers** (`dicom`/`x12`/`ccda`/`ncpdp`/`astm`/`mllp`) are `optionalDependencies`
@@ -66,7 +67,7 @@ echo it for you.
 
 The capability the command needs is not wired for this input, so the command is **unavailable**, never
 a fake success. From `redact`/`deid` it means `@cosyte/deid` ships no de-identification adapter for the
-format you gave it: `astm`, `mllp` and `ncpdp`. The covered formats are `ccda`, `fhir`, `hl7`, `x12`.
+format you gave it: `astm`, `mllp`, and `ncpdp`. The covered formats are `ccda`, `fhir`, `hl7`, `x12`.
 The CLI will not fall back to a partial scrub that looks de-identified while leaving PHI behind, so
 nothing is emitted. `validate --profile` reports the same code, for the same reason.
 
@@ -89,7 +90,7 @@ cosyte: redact: OTHER_UNIQUE_ID block PV1-19[0] x1 blocked DEID_LOCUS_BLOCKED
 ```
 
 The CLI passes the library no policy of its own and has no flag to change that, so there is no
-setting that turns the refusal into output. Medical record, account and member numbers are not a
+setting that turns the refusal into output. Medical record, account, and member numbers are not a
 cause: the default policy removes them (`DEID_CATEGORY_REMOVED`) and the run continues.
 
 ## `CLI_PARSER_UNAVAILABLE` from `redact` (exit 69)
@@ -142,7 +143,7 @@ a successful parse still keeps values on stdout alone.
   (`1`) with no output: under the library's default policy that includes any HL7 message carrying a
   visit number (`PV1-19`) or an order number. Its stderr manifest is the library's own; the CLI
   asserts no standard.
-- `redact` does **not** honour `--unsafe-show-values`. An excerpt of the input you asked to have
+- `redact` does **not** honor `--unsafe-show-values`. An excerpt of the input you asked to have
   stripped is exactly the leak that command exists to prevent, so its diagnostics stay value-free
   under every flag.
 

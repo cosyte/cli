@@ -1,7 +1,7 @@
 {
   "name": "@cosyte/cli",
   "version": "0.1.1",
-  "description": "The cosyte CLI: a PHI-safe developer front door over the @cosyte/* healthcare parsers. Parse HL7 v2 / FHIR from a file or stdin to typed JSON, with a documented exit-code contract.",
+  "description": "The Cosyte command line for Node.js and TypeScript: one command over HL7 v2, FHIR R4, X12, ASTM, NCPDP, C-CDA, DICOM, and MLLP, with HL7 v2 to FHIR conversion from transform, code mapping from terminology, and the cosyte-mcp MCP server for agents. Value-free diagnostics and a documented exit-code contract.",
   "keywords": [
     "cli",
     "command-line",
