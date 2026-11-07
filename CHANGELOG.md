@@ -217,6 +217,8 @@ it out.
 
 ### Changed
 
+- **Published through npm trusted publishing, with provenance.** The code is unchanged from 0.1.0:
+  the commands, flags, output, exit codes and diagnostic codes are the same. Only the README differs.
 - **The CLI now runs on the 0.1 releases of every `@cosyte` library it uses except `@cosyte/deid`.**
   The two required dependencies, `@cosyte/hl7` and `@cosyte/terminology`, and the optional
   `@cosyte/astm`, `@cosyte/ccda`, `@cosyte/dicom`, `@cosyte/mllp`, `@cosyte/ncpdp`,
