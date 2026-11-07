@@ -82,3 +82,12 @@ Two facts shape how the SDK is taken:
   (remote/Streamable-HTTP) is a separate, security-reviewed concern (roadmap §10 Q5), never smuggled into
   this local-stdio-only package. The parsers stay zero-dep; a third-party runtime dep on the MCP SDK must
   never leak back into a parser or a library tier.
+
+## Amendment (2026-11-07)
+
+Decision 1's exact pin is replaced by a bounded range, `^1.32.2`. Six advisories were published against
+the pinned `1.29.0` (GHSA-46jr-4wx8-v453, GHSA-22jm-h49p-29qw, GHSA-6qxp-vccf-f47h, GHSA-f897-62hf-6gxq,
+GHSA-rvq5-wwqv-78pq, and GHSA-6prh-2h8m-c8cw), all fixed by 1.32.0, and an exact pin keeps a fixed
+SDK out of every install until this package releases again. The range takes later 1.x fixes on install
+and stops before 2.0. Everything else in this record stands: the SDK is still an optional dependency,
+reachable only through the `./mcp` boundary.
