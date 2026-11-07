@@ -2,11 +2,10 @@ name: Public-surface gate
 
 # Founder directive 2026-07-27: no internal project bookkeeping on any surface a consumer
 # reads. Item identifiers (`CLI-6`), phase and wave language, ADR numbers, roadmap
-# citations, meta-repo paths and process commentary belong in the changeset, CHANGELOG.md,
-# the commit, the PR and the roadmap, never in README.md, docs-content/, the npm
+# citations, private paths and process commentary belong in the changeset, CHANGELOG.md,
+# the commit, the PR and the umbrella's plans, never in README.md, docs-content/, the npm
 # description, a JSDoc block a consumer's editor renders, or a diagnostic a consumer reads
-# in their terminal. The rule is written out in the meta-repo's
-# `documentation/conventions.md` ("No internal project bookkeeping on a public surface");
+# in their terminal. The rule is written out in this repository's CLAUDE.md;
 # `scripts/check-no-internal-refs.sh` is what enforces it.
 #
 # WHY A GATE AND NOT A NOTE, and in this repo the answer is not theoretical. `@cosyte/cli`

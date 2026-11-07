@@ -1,8 +1,8 @@
 # Releasing `@cosyte/cli`
 
 How the `cosyte` CLI (and its twin `cosyte-mcp` server, one package, two bins) gets to npm, and the
-gotchas worth not rediscovering. The suite-wide mechanics live in the umbrella
-`config/RELEASING.md`; this file is the CLI-specific overlay.
+gotchas worth not rediscovering. The suite-wide mechanics live in `RELEASING.md` in cosyte/config;
+this file is the CLI-specific overlay.
 
 ## The two founder stops (nothing crosses them unattended)
 
@@ -140,18 +140,18 @@ trade is ever revisited, it is a founder call, not a packaging tidy-up.
 
 Releases run on [Changesets](https://github.com/changesets/changesets):
 
-1. A change lands with a changeset (`pnpm changeset`): a `patch` on the **`0.0.x`-until-first-alpha**
-   ladder (a published version is never moved back). The parsers publish at `0.0.1`; the CLI begins its
-   public history at `0.0.1`.
+1. A change lands with a changeset (`pnpm changeset`; `.changeset/README.md` says which bump). A
+   published version is never moved back.
 2. On push to `main` with pending changesets, `.github/workflows/release.yml` (a thin caller of the
    shared `cosyte/.github` release pipeline) opens/updates a **"Version Packages"** PR that consumes
-   the changesets and bumps `version` + `CHANGELOG.md`.
+   the changesets, bumps `version` and writes the release's section into `CHANGELOG.md` from the
+   changeset summaries.
 3. Merging that PR runs the workflow again; with no pending changesets it runs `pnpm run release`
    (`changeset publish`) inside the **protected `release` environment**: the approval gate. Nothing
    reaches npm without a deliberate human ack.
 
-`NPM_TOKEN` **must be an npm _Automation_ token** (a classic _Publish_ token demands a 2FA OTP CI
-cannot supply, and the publish dies at the very last step with `EOTP`).
+The publish uses **npm trusted publishing**: the `release` job authenticates with GitHub's OIDC
+identity, so no npm token is stored or passed. See "Provenance & OIDC" below.
 
 ## The install gate
 
@@ -197,11 +197,11 @@ and `0.0.2` happened.
 ## Provenance & OIDC
 
 - `package.json#publishConfig` sets `"provenance": true`, and `release.yml` grants
-  `id-token: write`, so **provenance auto-attaches once the repo is public** (the shared pipeline
-  wires `NPM_CONFIG_PROVENANCE` to public visibility; no workflow edit needed at flip time).
-- **OIDC trusted publishing** (token-free) is the later step: configure the Trusted Publisher on npm
-  for `@cosyte/cli` (org `cosyte`, repo `cli`, workflow `release.yml`, environment `release`), then
-  drop `NPM_TOKEN`. Keep `id-token: write`.
+  `id-token: write`, so every release carries provenance (the repo is public).
+- **Every release publishes through OIDC trusted publishing**, since 0.1.1 on 2026-11-07. The Trusted
+  Publisher on npm for `@cosyte/cli` names org `cosyte`, repo `cli`, workflow `release.yml` and
+  environment `release`, so renaming the workflow file or the environment stops publishing. There is
+  no `NPM_TOKEN`; keep `id-token: write`, which is the credential.
 
 ## Proving the pipe without burning a version
 
@@ -220,8 +220,8 @@ node scripts/release-install-gate.mjs # packs, INSTALLS the tarball outside this
 `dist/` **in place**, so every path it walks is a path inside this repo; the gate installs the packed
 tarball somewhere else entirely, which is the only way the `file:vendor/*.tgz` shape ever surfaces.
 
-`scripts/verify.sh cli` runs `test:coverage` (per-dir ≥ 90 on `core` + `commands`), `build`, `attw`,
-and `smoke` as its gate. The nightly **Fuzz** workflow (`.github/workflows/fuzz.yml`, `pnpm test:fuzz`)
+The gate in `CLAUDE.md` runs `test:coverage` (per-dir ≥ 90 on `core` + `commands`), `build`, `attw`,
+and `smoke`. The nightly **Fuzz** workflow (`.github/workflows/fuzz.yml`, `pnpm test:fuzz`)
 scales the argv+stdin+MCP fuzz far past the per-PR count. A red in any of these means a real release
 would fail.
 

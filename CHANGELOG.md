@@ -1,19 +1,70 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
+## 0.1.1
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-Versions and publishing are managed with [Changesets](https://github.com/changesets/changesets);
-this file is maintained by hand (Changesets handles the version bump and publish only).
+### Patch Changes
+
+- Published through npm trusted publishing, with provenance.
+
+## 0.1.0
+
+### Minor Changes
+
+- The first release whose commands, output and exit codes we treat as settled: command names, flags, the JSON output shapes, the exit codes (`0`, `1`, `2`, `65`, `66`, `69`, `70`, `74`) and the diagnostic codes. While the package is below 1.0, a breaking change bumps the minor version and is called out here, and a fix that changes no output ships as a patch.
+
+### Patch Changes
+
+- **`redact` writes a real de-identified copy** for C-CDA, FHIR, HL7 v2 and X12, with the library's value-free manifest on stderr. Every other format is a typed refusal with nothing on stdout.
+- **`redact` runs on the 0.1 releases of `@cosyte/deid`, and refuses more HL7 messages.** A visit number (`PV1-19`) or a placer or filler order number now refuses the run with `CLI_DEID_INCOMPLETE`, exit `1`, and nothing on stdout. Medical record, account and member numbers are removed rather than replaced by a keyed surrogate, and `MSH-7` and `EVN-2` timestamps are generalized.
+- **The other @cosyte libraries move to their 0.1 releases**, each at `^0.1.0`, so an install takes their `0.1.x` patches and stops before `0.2.0`.
+- **Closing stdout early is a clean exit.** Piping into `head` or quitting a pager ends the run with exit `74` and `CLI_OUTPUT_WRITE_FAILED`: no stack trace, and no input bytes on stderr. `cosyte-mcp` ends the same way when its client goes away.
+- **`parse` states its input limit**: 64 MiB per invocation, refused with `CLI_INPUT_TOO_LARGE` and exit `65` instead of a crash reported as an internal error.
+- **Multi-record output streams.** `--ndjson` and MLLP input are written record by record as each one is parsed. A failure part way through keeps the lines already written and still exits non-zero.
+- **MCP tools publish an `outputSchema`**, every result conforms to it, and the text block is the serialized JSON of the structured result.
+- **The exit-code documentation no longer calls exit `2` `EX_USAGE`**, a name `sysexits.h` gives to `64`. No exit value moved.
+- The declared Node range now matches the release lines the package is tested on, and the release pipeline installs the packed tarball from outside the repository and runs both bins before anything can publish.
+
+## 0.0.6
+
+### Patch Changes
+
+- The PHI scanner refuses (exit 2) when a declared scan root was never observed, instead of printing `OK, no hits` and exiting 0 over a corpus it never opened.
+- The PHI scanner's all-mode walk now covers this package's whole authored corpus.
+
+## 0.0.5
+
+### Patch Changes
+
+- The README lockup now links to cosyte.com.
+
+## 0.0.4
+
+### Patch Changes
+
+- Close the pre-commit PHI gate's rename blind spot: `phi-scan --staged` never saw a `git mv` into a scan root.
+- Put the shipped documentation sidebar back on the canonical IA spine.
+
+## Released before this file was generated
+
+Every release section above this heading is written by
+[Changesets](https://github.com/changesets/changesets) from the changesets in `.changeset/`, newest
+release first. The release writes its own version heading, so nothing above this line is maintained
+by hand, and a change is recorded by adding a changeset rather than by editing this file.
+Generation was turned on after 0.1.1, and the sections for 0.0.4 to 0.1.1 above were written then
+from the GitHub release notes of those versions, because those releases wrote no section here.
+
+Everything below this heading was maintained by hand, while Changesets handled only the version bump
+and the publish. It is kept as it was written. Its first part sat under an `[Unreleased]` heading
+that no release ever rolled over, so it holds the detailed entries for 0.0.4 to 0.1.0 without saying
+which release each went out in. Only that heading and its link definition were dropped, and three
+spelled-out encodings of the em dash were reworded; no other entry was changed. The entries follow
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 The released sections below were reconstructed on 2026-08-04. Until then every entry sat under
 `Unreleased`, including entries describing releases that had already shipped, so each published
 tarball carried a changelog calling its own contents unreleased. Those tarballs are immutable and
 still do. Each entry was assigned to the release whose tag first contains it, read off `v0.0.1`,
 `v0.0.2` and `v0.0.3`; no entry text was rewritten to fit a section.
-
-## [Unreleased]
 
 **What 0.1 means for you.** This is the first release whose commands, output and exit codes we treat
 as settled: command names, flags, the JSON output shapes, the exit-code contract (`0`, `1`, `2`,
@@ -1006,9 +1057,9 @@ parse` invocation never loads it; the core works with the SDK absent (`--omit=op
     today, naming a compressed byte stream nobody wrote and offering no way to fix it.
   - **Disclosed limits, in the script header rather than left implicit.** A tracked _text_ file
     holding a NUL byte is exempt and its em dash would be missed (there is none today; the excluded
-    count on the OK line is the tell). Encoded-form matching is literal, so lowercase `%e2%80%94`, a
-    capital-X `&#X2014;`, and a semicolon-less `&#x2014` pass. The scan reads file contents, never
-    file names.
+    count on the OK line is the tell). Encoded-form matching is literal, so a lowercase URL
+    encoding, a hex entity written with a capital X, and a hex entity with no closing semicolon
+    pass. The scan reads file contents, never file names.
 
 - **The published type declarations no longer carry internal project bookkeeping.** `dist/index.d.ts`
   and `dist/mcp.d.ts` (and their `.d.cts` twins) are compiled from the JSDoc on every exported symbol,
@@ -1097,7 +1148,6 @@ parse` invocation never loads it; the core works with the SDK absent (`--omit=op
   nonexistent `test/fixtures/`; it now walks `test/__fixtures__/` (and the same path in the staged
   filter), so the PHI commit-gate actually covers the CLI's synthetic fixtures.
 
-[Unreleased]: https://github.com/cosyte/cli/compare/v0.0.3...HEAD
 [0.0.3]: https://github.com/cosyte/cli/compare/v0.0.2...v0.0.3
 [0.0.2]: https://github.com/cosyte/cli/compare/v0.0.1...v0.0.2
 [0.0.1]: https://github.com/cosyte/cli/releases/tag/v0.0.1
