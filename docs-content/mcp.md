@@ -2,6 +2,7 @@
 id: mcp
 title: MCP server (agent front door)
 sidebar_position: 5
+description: "Register the cosyte-mcp server with an MCP client, and see the tools it exposes, the result contract, and its PHI posture."
 ---
 
 # The Cosyte MCP server

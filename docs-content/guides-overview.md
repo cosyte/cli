@@ -2,6 +2,7 @@
 id: guides-overview
 title: Guides
 sidebar_position: 1
+description: "Task guides: parse from a pipeline, branch on the outcome in CI, force a format, debug a rejected message, convert HL7 v2 to FHIR, and map codes."
 ---
 
 # Guides

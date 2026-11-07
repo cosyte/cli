@@ -2,6 +2,7 @@
 id: limitations
 title: What it does, and does not do
 sidebar_position: 2
+description: "What the CLI promises, what it deliberately does not do, and how it handles PHI."
 ---
 
 # What `@cosyte/cli` does, and does not do
@@ -22,7 +23,7 @@ or a leaked value in a diagnostic.**
   exit-code contract, and the value-free PHI posture. A bug in a parsed _value_ is the library's; a
   mis-route, a wrong exit code, or a leaked value is the CLI's.
 - **Fail-safe routing.** Autodetection sniffs content, not the file extension. A confident single
-  match parses; an ambiguous or unrecognised input is a typed data error (exit `65`) asking for
+  match parses; an ambiguous or unrecognized input is a typed data error (exit `65`) asking for
   `--format`, **never a guessed parser** and never a confident wrong parse.
 - **The exit code is a designed surface.** `0` success / valid · `1` invalid verdict · `2` usage ·
   `65` data error · `66` no input · `69` unavailable · `70` internal. The load-bearing rule: the CLI
@@ -56,13 +57,13 @@ These are **non-goals**, not missing features: named so nothing over-trusts the 
   success:
   - **`redact` / `deid`** delegates every de-identification decision to `@cosyte/deid` and covers the
     formats that library covers and this CLI can serialize: `ccda`, `fhir`, `hl7`, `x12`. `astm`,
-    `mllp` and `ncpdp` have no adapter there (`CLI_NOT_IMPLEMENTED`, exit `69`); `dicom` is covered
+    `mllp`, and `ncpdp` have no adapter there (`CLI_NOT_IMPLEMENTED`, exit `69`); `dicom` is covered
     there but its de-identified form is a binary stream this text stdout cannot carry
     (`CLI_FORMAT_UNSUPPORTED`, exit `65`). If the library reports a locus it could not handle, the run
     exits `1` with **no output at all**. Under the library's default policy that is every HL7 message
     carrying a visit number (`PV1-19`) or a placer or filler order number: those are blocked
     (`DEID_LOCUS_BLOCKED`), and the CLI offers no setting that turns a block into a removal. Medical
-    record, account and member numbers are removed (`DEID_CATEGORY_REMOVED`), not replaced by a
+    record, account, and member numbers are removed (`DEID_CATEGORY_REMOVED`), not replaced by a
     surrogate. The CLI ships **no** built-in partial scrub that could give a
     false sense of safety, and asserts no de-identification standard of its own: it reports the
     library's own published label and version.

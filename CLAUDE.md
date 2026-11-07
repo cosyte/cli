@@ -5,6 +5,8 @@ tooling that wraps the `@cosyte/*` parsers and parses no wire format itself. A m
 file or stdin, typed JSON comes out on stdout, and stderr carries diagnostic codes and positions. The
 exit codes and `CLI_*` codes are the stable surface scripts branch on.
 
+@AGENTS.md
+
 ## Gate
 
 From the repo root, in the order CI runs them (`.github/workflows/ci.yml` calls the shared
@@ -50,7 +52,7 @@ downstream, and an input value on stderr copies it into a log nobody meant to ke
 - Run `pnpm attw`, never the bare `attw` CLI: it prints "does not contain types" and exits 0 over a pack with no declarations, and `scripts/attw.mjs` is the wrapper that reds it (#25).
 - `scripts/phi-scan.ts` exits `1` for hits only and `2` for anything it could not read, and `--staged` keeps `--no-renames`: a `git mv` into a scan root passed the pre-commit hook (#30), and the sweep printed `OK, no hits` over a root it never opened (#38).
 - A `test/scripts/` test that builds a git fixture asserts the fixture took before asserting the fix: a `git merge` with no git identity on CI left assertions passing over an empty index (#30).
-- Top-level entries in `docs-content/sidebars.json` stay on the docs.cosyte.com spine (`intro`, Installation, Quickstart, Core Concepts, Guides, Troubleshooting), with no hand-written `API Reference`: two off-spine labels here held up the site's deploy, and no check in this repo sees it (#32).
+- Top-level entries in `docs-content/sidebars.json` stay on the docs.cosyte.com spine (`intro`, Installation, Quickstart, Core concepts, Guides, Troubleshooting; the docs site's IA lint must list "Core concepts" before a release carrying that label deploys), with no hand-written `API Reference`: two off-spine labels here held up the site's deploy, and no check in this repo sees it (#32).
 - Keep item ids, phase or wave words, ADR numbers and roadmap paths out of `README.md`, `docs-content/`, `src/` JSDoc and string literals: two diagnostics and the published `.d.ts` carried them (#13, #19). `pnpm check:no-internal-refs` catches identifiers, not sentences about our process.
 - When trimming docs, cut a claim rather than soften it, and write a "not supported" cell as words: a dash sweep turned three support-matrix cells in `docs-content/limitations.md` into stray colons (#20).
 - Docs say `npx --package @cosyte/cli cosyte ...`: `npx @cosyte/cli` fails because no bin is named `cli`, and adding one is the owner's call (#27).

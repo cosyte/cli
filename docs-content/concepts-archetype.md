@@ -2,9 +2,10 @@
 id: concepts-archetype
 title: How the CLI works
 sidebar_position: 1
+description: "How the CLI works: the wrapper boundary, conservative format detection, the exit-code contract, and the PHI posture."
 ---
 
-# Core Concepts
+# Core concepts
 
 `@cosyte/cli` is a **thin, honest skin** over the `@cosyte/*` parsers. Understanding its three
 load-bearing disciplines (the wrapper boundary, the exit-code contract, and the PHI posture) tells
@@ -72,7 +73,7 @@ The one command whose job is to strip identifiers **owns no policy**. De-identif
 Safe-Harbor scrub, which would leave PHI behind while _looking_ de-identified (a false-safety
 impression). It delegates for the formats that library covers and this CLI can serialize, which are
 `ccda`, `fhir`, `hl7`, `x12`, and refuses everything else with a typed, value-free code: `astm`,
-`mllp` and `ncpdp` have no adapter there (`CLI_NOT_IMPLEMENTED`, `69`), and `dicom` is covered but its
+`mllp`, and `ncpdp` have no adapter there (`CLI_NOT_IMPLEMENTED`, `69`), and `dicom` is covered but its
 de-identified form is a binary stream this text stdout cannot carry (`CLI_FORMAT_UNSUPPORTED`, `65`,
 the CLI's own limit rather than the library's).
 
