@@ -230,8 +230,8 @@ node scripts/release-install-gate.mjs # packs, INSTALLS the tarball outside this
 tarball somewhere else entirely, which is the only way the `file:vendor/*.tgz` shape ever surfaces.
 
 The gate in `CLAUDE.md` runs `test:coverage` (per-dir ≥ 90 on `core` + `commands`), `build`, `attw`,
-and `smoke`. The nightly **Fuzz** workflow (`.github/workflows/fuzz.yml`, `pnpm test:fuzz`)
-scales the argv+stdin+MCP fuzz far past the per-PR count. A red in any of these means a real release
+and `smoke`. The **Nightly fuzz** workflow (`.github/workflows/nightly-fuzz.yml`, `pnpm fuzz`)
+runs the argv+stdin+MCP fuzz for a time budget per property, far past the per-PR count. A red in any of these means a real release
 would fail.
 
 > **`bin` name availability.** Confirm `@cosyte/cli` is publishable and that `cosyte` **and**

@@ -1,0 +1,41 @@
+name: Nightly fuzz
+
+# Continuous fuzzing of the CLI's two input boundaries: the terminal (`run`, over the argv and stdin
+# byte stream) and the agent surface (`dispatchTool`, over a tool name and arguments). Every night,
+# and on demand, this calls the shared nightly-fuzz.yml at the published reference the other callers
+# here name, and that workflow runs `pnpm fuzz`: test/property/fuzz.property.test.ts. Here each
+# property generates hostile inputs for a time budget instead of its committed run count, from a
+# seed that changes with every run, so each night explores a different slice of the input space.
+#
+# The pull-request smoke run is `pnpm test`: the shared CI job runs the same properties on every
+# pull request at their base counts. This run is the deep search that would make a pull request
+# slow.
+#
+# A crash, an unhandled throw, an undocumented exit code, or a stack frame on a user channel fails
+# the run. The log prints the counterexample, the seed, and the path. The seed is this run's id:
+# `CLI_FUZZ_SEED=<run id> pnpm fuzz` replays it, and test/property/_fuzz-config.ts says how to step
+# straight to the shrunk case.
+#
+# A job that calls a reusable workflow cannot set its own timeout. The shared job stops at 60
+# minutes; the command bounds itself tighter, and `timeout` fails a run that hangs.
+#
+# Schedule and dispatch only: never a required check.
+
+on:
+  schedule:
+    # 04:23 UTC daily. An odd minute: GitHub delays scheduled runs at the start of every hour.
+    - cron: "23 4 * * *"
+  workflow_dispatch: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  fuzz:
+    uses: cosyte/.github/.github/workflows/nightly-fuzz.yml@c0db8d8e5927269820de4401b3b5ad6141854b76 # workflows-2026-11-08-c0db8d8e5927
+    with:
+      fuzz-cmd: CLI_FUZZ_SEED="$GITHUB_RUN_ID" CLI_FUZZ_SECONDS=120 timeout --kill-after=1m 40m pnpm fuzz
