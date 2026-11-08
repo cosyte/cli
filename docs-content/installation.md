@@ -50,9 +50,9 @@ input were bad.
 
 ## Prerequisites
 
-- **Node.js >= 22 and < 26** (the whole `@cosyte/*` suite targets ES2023 / Node 22+). The upper
-  bound is deliberate: this package declares support only for the release lines its own test suite
-  runs on, so a line nobody has exercised is stated as unsupported rather than implied to work.
+- **Node.js 22 or later, tested on 22, 24, and 26** (the whole `@cosyte/*` suite targets ES2023).
+  We claim only the release lines our CI runs: those three are tested on every change, and a later
+  line is one nobody has exercised here yet.
 - A package manager: `pnpm`, `npm`, or `yarn`.
 
 ## Run it

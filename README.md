@@ -60,7 +60,7 @@ diagnostic** posture.
 
 ## Run it
 
-Requires Node.js 22 to 25, tested on 22 and 24. This block runs as-is in an empty directory: it
+Requires Node.js 22 or later, tested on 22, 24, and 26. This block runs as-is in an empty directory: it
 installs the CLI, writes a short synthetic HL7 v2 message, and reads it back.
 
 ```bash
