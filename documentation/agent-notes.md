@@ -17,6 +17,65 @@ first number quoted for one went stale within a day.
 
 ---
 
+## Rules in full
+
+The CLAUDE.md card states each rule in a line or two. This is each one in full, as the card carried
+it until 2026-11-07 (RD2), with the failure that put it there.
+
+### The gate's notes
+
+`pnpm smoke` covers locally what CI's inline ESM/CJS import check does on `dist/`. Only CI runs `ci
+/ prepublish` (the shared `prepublish-check.mjs`: every dependency specifier resolves from a
+registry, and the packed tarball installs into a clean directory), actionlint and CodeQL, and
+`no-emdash` there also reads the PR title, body and commit messages.
+
+### The rules
+
+- **Node:** **>= 22** (CI matrix 22 + 24 + 26). `test/node-support.test.ts` reds when this line,
+  `engines.node`, the `ci.yml` matrix and the README and docs support lines disagree; 22 and 24 are
+  required checks, and 26 waits for the owner to require it (#54, #35, ST15).
+- Every `dependencies` and `optionalDependencies` specifier resolves from the npm registry, never
+  `file:` or `link:`: 0.0.1 and 0.0.2 shipped `file:vendor/*.tgz` and stay uninstallable (#27).
+- `@cosyte/fhir` stays a devDependency only: declared beside `@cosyte/transform`, whose peer it is,
+  it failed the install with `ERESOLVE` (#27).
+- Load an optional `@cosyte/*` package only through the lazy loaders in `src/core/parsers.ts`, and
+  keep its `import type` of `@cosyte/fhir` type-only: an absent package must degrade to
+  `CLI_PARSER_UNAVAILABLE` (69), and `test/absent-sibling.test.ts` only catches a bare one-line
+  `import()` of fhir or transform (#27).
+- Diagnostics and MCP error results carry codes and positions, never caller-supplied text
+  (`--unsafe-show-values` is the one opt-in): an unknown MCP tool name was echoed back until #49.
+- A change to a command, flag, exit code or `CLI_*` code updates `README.md` and `docs-content/` in
+  the same PR: the docs stated a FHIR exit `69` that 0.1.0 no longer gives (#66).
+- The changeset summary is the changelog entry: the release writes `CHANGELOG.md`, so never
+  hand-edit it or bring back an `[Unreleased]` heading, and keep the hand-written history below `##
+  Released before this file was generated` as it is. Until generation was turned on, 0.0.4 to 0.1.1
+  wrote no section of their own.
+- Run `pnpm attw`, never the bare `attw` CLI: it prints "does not contain types" and exits 0 over a
+  pack with no declarations, and `scripts/attw.mjs` is the wrapper that reds it (#25).
+- `scripts/phi-scan.ts` exits `1` for hits only and `2` for anything it could not read, and
+  `--staged` keeps `--no-renames`: a `git mv` into a scan root passed the pre-commit hook (#30), and
+  the sweep printed `OK, no hits` over a root it never opened (#38).
+- A `test/scripts/` test that builds a git fixture asserts the fixture took before asserting the
+  fix: a `git merge` with no git identity on CI left assertions passing over an empty index (#30).
+- Top-level entries in `docs-content/sidebars.json` stay on the docs.cosyte.com spine (`intro`,
+  Installation, Quickstart, Core concepts, Guides, Troubleshooting; the docs site's IA lint must
+  list "Core concepts" before a release carrying that label deploys), with no hand-written `API
+  Reference`: two off-spine labels here held up the site's deploy, and no check in this repo sees it
+  (#32).
+- Keep item ids, phase or wave words, ADR numbers and roadmap paths out of `README.md`,
+  `docs-content/`, `src/` JSDoc and string literals: two diagnostics and the published `.d.ts`
+  carried them (#13, #19). `pnpm check:no-internal-refs` catches identifiers, not sentences about
+  our process.
+- When trimming docs, cut a claim rather than soften it, and write a "not supported" cell as words:
+  a dash sweep turned three support-matrix cells in `docs-content/limitations.md` into stray colons
+  (#20).
+- Docs say `npx --package @cosyte/cli cosyte ...`: `npx @cosyte/cli` fails because no bin is named
+  `cli`, and adding one is the owner's call (#27).
+- Required checks are context names (`gh api repos/cosyte/cli/rulesets` shows the ruleset): never
+  rename a workflow job, drop a matrix value, split a step out of `ci / verify` or add a `paths:`
+  filter. A context the ruleset does not name blocks nothing: `ci / prepublish` arrived from the
+  shared workflow unrequired (#35).
+
 ## The two-file contract gate
 
 The split above made a link load-bearing. A rule in `CLAUDE.md` now reads "never do X. Why:" followed
@@ -1156,8 +1215,8 @@ the current state. Flipping visibility is never waived and is not an agent's to 
 `origin/main` read `0.0.4`. The trap itself is live and unchanged and is stated in `CLAUDE.md`
 without a number: **`@cosyte/fhir` is still absent from the manifest because `fhir` cannot publish
 (`FHIR-NPM-NAME`), and an installed copy therefore has no FHIR support.** Only the version literal
-was dropped, for exactly the reason ADR 0023 deleted the umbrella's version list: a quoted version
-here is a number that goes stale between the write and the read.
+was dropped, for the reason the umbrella dropped its own version list: a quoted version here is a
+number that goes stale between the write and the read.
 
 **The redact key-context premise was corrected when the CLI moved to the `0.1` releases of
 `@cosyte/deid`.** `### The redact delegation and its refusals` below, and the matching line in `CLAUDE.md`,
@@ -1289,7 +1348,7 @@ Why: [agent-notes § The vendor to npm dependency swap](documentation/agent-note
   vendored tarball, so this repo's own FHIR tests run.
 - **Never quote the published version in this file.** Derive it: `npm view @cosyte/cli version`. A
   `0.0.3` pin was still being quoted elsewhere on 2026-08-04 after `0.0.4` had shipped, which is the
-  exact defect ADR 0023 deleted the umbrella's version list over.
+  exact defect the umbrella dropped its own version list over.
 - **`0.0.1` and `0.0.2` are permanently broken on npm** (`file:vendor/*.tgz` specifiers, `ENOENT` on
   every install route) and both printed `VERSION = "0.0.0"`. Never move a published version backwards.
 - **Fix the ASSERTION, not just the value.** The installation doc asserted `typeof VERSION`, true of

@@ -9,6 +9,15 @@
 
 > The **Cosyte CLI**: a PHI-safe developer front door over the `@cosyte/*` healthcare parsers.
 
+[![npm version](https://img.shields.io/npm/v/@cosyte/cli.svg)](https://www.npmjs.com/package/@cosyte/cli)
+[![CI](https://img.shields.io/github/actions/workflow/status/cosyte/cli/ci.yml?branch=main&label=CI)](https://github.com/cosyte/cli/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/cosyte/cli/blob/main/LICENSE)
+[![Node](https://img.shields.io/badge/node-%3E%3D22.0.0-brightgreen.svg)](https://nodejs.org)
+
+The Cosyte command line for Node.js and TypeScript: one command over HL7 v2, FHIR R4, X12, ASTM, NCPDP, C-CDA, DICOM, and MLLP, with HL7 v2 to FHIR conversion from transform, code mapping from terminology, and the cosyte-mcp MCP server for agents. Value-free diagnostics and a documented exit-code contract.
+
+## Why this exists
+
 `@cosyte/cli` is a **`bin` package**: its primary artifact is the `cosyte` command on your `PATH`. Pipe
 a raw message from a hospital feed into the terminal and get typed, structured JSON back in one line,
 without writing code and without reading the spec.
@@ -23,55 +32,53 @@ It is a thin, honest skin over libraries that already own correctness ([`@cosyte
 and owns two disciplines of its own: a documented **exit-code contract** and a **value-free
 diagnostic** posture.
 
-> **Status:** the 0.1 line. While the package is below 1.0, a breaking change ships in a minor version
-> and is called out in the changelog. The `cosyte` command wraps **all eight
-> Cosyte formats** (**HL7 v2**, **FHIR R4**, **X12**, **ASTM**, **NCPDP SCRIPT**, **C-CDA**, **DICOM**,
-> and **MLLP**) plus the `@cosyte/transform` and `@cosyte/terminology` higher-layer libraries, with
-> conservative content-format autodetection and a documented exit-code contract:
->
-> - **`parse`**: autodetect the format and print the parsed model as typed JSON on stdout. Multi-record
->   inputs (an **MLLP** stream, or any input under **`--ndjson`**) stream as **NDJSON** with per-record
->   isolation.
-> - **`validate`**: parse, then run the wrapped parser's own validation surface, with the **verdict in
->   the exit code** (`0` valid · `1` invalid · `65` unparseable); findings are value-free.
-> - **`inspect`**: a value-free structural summary (type/classification codes + structural counts).
-> - **`fmt`**: canonical re-serialization through the library's spec-clean serializer; no partial emit
->   on unparseable input.
-> - **`convert`**: HL7 v2 → FHIR R4 via `@cosyte/transform`; the converted `Bundle` on stdout, value-
->   free issues on stderr, and a non-zero exit on an error-severity conversion issue.
-> - **`map-codes`**: translate a code through a BYO FHIR ConceptMap via `@cosyte/terminology`; the
->   target coding(s) on stdout, or a value-free unmapped signal + exit `1`.
-> - **`redact` / `deid`**: a de-identified copy on stdout for `ccda`, `fhir`, `hl7`, `x12`, delegated
->   whole to `@cosyte/deid`, with that library's value-free manifest on stderr; every other format is a
->   typed refusal and it never emits a partial scrub dressed up as de-identified.
-> - **`completion <bash|zsh|fish>`**: print a static shell completion script.
->
-> **Support is honest per (format, operation)**: not every parser faithfully supports every command, so
-> the deferred cells (DICOM `parse`/`fmt`: binary model; C-CDA `parse`: XML is the canonical `fmt`
-> surface; MLLP `fmt`/`validate`) are a value-free `CLI_FORMAT_UNSUPPORTED`, never a fake. PHI discipline
-> runs throughout: value-free by default across every diagnostic, the loud opt-in `--unsafe-show-values`
-> as the single door to a value on a secondary surface, and never a temp file with PHI. An **MCP server**
-> (`cosyte-mcp`) exposes the same core to an LLM/agent as callable tools.
->
-> The CLI is **feature-complete**: an argv+stdin+MCP fuzz gate, an exit-code golden matrix, a
-> built-package smoke of both bins, a clean `npm publish` dry-run, and a release step that installs
-> the packed tarball from outside the repository and runs both bins before anything publishes. See
-> [RELEASING.md](https://github.com/cosyte/cli/blob/main/RELEASING.md).
+## Status
 
-## Run it
+The 0.1 line. While the package is below 1.0, a breaking change ships in a minor version
+and is called out in the changelog. The `cosyte` command wraps **all eight
+Cosyte formats** (**HL7 v2**, **FHIR R4**, **X12**, **ASTM**, **NCPDP SCRIPT**, **C-CDA**, **DICOM**,
+and **MLLP**) plus the `@cosyte/transform` and `@cosyte/terminology` higher-layer libraries, with
+conservative content-format autodetection and a documented exit-code contract:
 
-Requires Node.js 22 or later, tested on 22, 24, and 26. This block runs as-is in an empty directory: it
-installs the CLI, writes a short synthetic HL7 v2 message, and reads it back.
+- **`parse`**: autodetect the format and print the parsed model as typed JSON on stdout. Multi-record
+  inputs (an **MLLP** stream, or any input under **`--ndjson`**) stream as **NDJSON** with per-record
+  isolation.
+- **`validate`**: parse, then run the wrapped parser's own validation surface, with the **verdict in
+  the exit code** (`0` valid · `1` invalid · `65` unparseable); findings are value-free.
+- **`inspect`**: a value-free structural summary (type/classification codes + structural counts).
+- **`fmt`**: canonical re-serialization through the library's spec-clean serializer; no partial emit
+  on unparseable input.
+- **`convert`**: HL7 v2 → FHIR R4 via `@cosyte/transform`; the converted `Bundle` on stdout, value-
+  free issues on stderr, and a non-zero exit on an error-severity conversion issue.
+- **`map-codes`**: translate a code through a BYO FHIR ConceptMap via `@cosyte/terminology`; the
+  target coding(s) on stdout, or a value-free unmapped signal + exit `1`.
+- **`redact` / `deid`**: a de-identified copy on stdout for `ccda`, `fhir`, `hl7`, `x12`, delegated
+  whole to `@cosyte/deid`, with that library's value-free manifest on stderr; every other format is a
+  typed refusal and it never emits a partial scrub dressed up as de-identified.
+- **`completion <bash|zsh|fish>`**: print a static shell completion script.
+
+**Support is honest per (format, operation)**: not every parser faithfully supports every command, so
+the deferred cells (DICOM `parse`/`fmt`: binary model; C-CDA `parse`: XML is the canonical `fmt`
+surface; MLLP `fmt`/`validate`) are a value-free `CLI_FORMAT_UNSUPPORTED`, never a fake. PHI discipline
+runs throughout: value-free by default across every diagnostic, the loud opt-in `--unsafe-show-values`
+as the single door to a value on a secondary surface, and never a temp file with PHI. An **MCP server**
+(`cosyte-mcp`) exposes the same core to an LLM/agent as callable tools.
+
+The CLI is **feature-complete**: an argv+stdin+MCP fuzz gate, an exit-code golden matrix, a
+built-package smoke of both bins, a clean `npm publish` dry-run, and a release step that installs
+the packed tarball from outside the repository and runs both bins before anything publishes. See
+[RELEASING.md](https://github.com/cosyte/cli/blob/main/RELEASING.md).
+
+## Install
 
 ```bash
 npm install -g @cosyte/cli          # put `cosyte` on your PATH
-
-# A synthetic ADT^A01 admit. HL7 v2 ends every segment with a carriage return (\r).
-printf 'MSH|^~\\&|SENDINGAPP|SENDINGFAC|RECEIVINGAPP|RECEIVINGFAC|20240101120000||ADT^A01|MSG00001|P|2.5\rEVN|A01|20240101120000\rPID|1||MRN-000123^^^HOSP^MR||ZZSENTINELLAST^ZZSENTINELFIRST^M||19800101|M\rPV1|1|I|WARD^101^A\r' > message.hl7
-
-cosyte parse message.hl7            # format autodetected → HL7 v2, typed JSON on stdout
-cosyte inspect message.hl7          # a value-free summary: type, version, segment counts
 ```
+
+Requires Node.js 22 or later, tested on 22, 24, and 26.
+
+Versions `0.0.1` and `0.0.2` are on npm but cannot be installed, because of a packaging defect in
+those releases. Install the 0.1 line.
 
 Or without installing, using `npx`:
 
@@ -96,10 +103,21 @@ the command reports a value-free `CLI_PARSER_UNAVAILABLE` and exits `69`: it nev
 never blames your input. HL7 v2 and `map-codes` run on the two hard dependencies, `@cosyte/hl7` and
 `@cosyte/terminology`.
 
-Versions `0.0.1` and `0.0.2` are on npm but cannot be installed, because of a packaging defect in
-those releases. Install the 0.1 line.
+## Usage
 
-## `cosyte parse`
+This block runs as-is in an empty directory once the CLI is installed: it writes a short synthetic
+HL7 v2 message and reads it back. Every command, flag, and exit code is documented on
+[docs.cosyte.com/cli](https://docs.cosyte.com/cli).
+
+```bash
+# A synthetic ADT^A01 admit. HL7 v2 ends every segment with a carriage return (\r).
+printf 'MSH|^~\\&|SENDINGAPP|SENDINGFAC|RECEIVINGAPP|RECEIVINGFAC|20240101120000||ADT^A01|MSG00001|P|2.5\rEVN|A01|20240101120000\rPID|1||MRN-000123^^^HOSP^MR||ZZSENTINELLAST^ZZSENTINELFIRST^M||19800101|M\rPV1|1|I|WARD^101^A\r' > message.hl7
+
+cosyte parse message.hl7            # format autodetected → HL7 v2, typed JSON on stdout
+cosyte inspect message.hl7          # a value-free summary: type, version, segment counts
+```
+
+### `cosyte parse`
 
 Read a file (or stdin via `-`), autodetect the format by content, and print the parsed model as typed
 JSON on stdout:
@@ -136,7 +154,7 @@ validate; `ccda` supports inspect/fmt/validate (parse deferred); `dicom` support
 (parse/fmt deferred); `mllp` supports parse/inspect. A deferred cell is a value-free
 `CLI_FORMAT_UNSUPPORTED`, never a fake result.
 
-## `cosyte validate`
+### `cosyte validate`
 
 Parse the input and run the wrapped parser's own validation surface, with the **verdict in the exit
 code**, so it drops straight into a CI gate:
@@ -156,7 +174,7 @@ bundles no profiles yet, so it reports an honest "unavailable" (exit `69`) rathe
 The load-bearing rule: a validation failure is **never exit 0**, and "unparseable" (`65`) is a distinct
 signal from "parsed, but invalid" (`1`).
 
-## `cosyte inspect`
+### `cosyte inspect`
 
 A value-free structural summary, the "what shape is this?" answer, with no field value:
 
@@ -165,7 +183,7 @@ cosyte inspect message.hl7    # message type, version, per-segment counts, warni
 cosyte inspect bundle.json --json
 ```
 
-## `cosyte fmt`
+### `cosyte fmt`
 
 Canonically re-serialize through the wrapped library's spec-clean serializer (HL7 CR-separated;
 FHIR canonical JSON, decimals byte-exact). Its stdout **is** the data channel; an unparseable input is
@@ -176,7 +194,7 @@ cat messy.json | cosyte fmt -   # → canonical FHIR JSON on stdout
 cosyte fmt message.hl7          # → spec-clean HL7
 ```
 
-## `cosyte convert`
+### `cosyte convert`
 
 Convert an **HL7 v2** message to **FHIR R4** via [`@cosyte/transform`](https://github.com/cosyte/transform).
 The converted FHIR message `Bundle` is your explicit request, so it goes to **stdout**; the
@@ -195,7 +213,7 @@ cosyte convert adt.hl7 --to fhir --quiet    # bundle only; the exit code carries
 **error-severity** conversion issue exits **`1`**, never `0`. A non-HL7 input (e.g. a FHIR document) is
 a data error (`65`), never a fake conversion.
 
-## `cosyte map-codes`
+### `cosyte map-codes`
 
 Translate a single code through a **bring-your-own FHIR ConceptMap** via
 [`@cosyte/terminology`](https://github.com/cosyte/terminology) (`$translate`). A ConceptMap and a code
@@ -367,6 +385,65 @@ The same `core` is importable (the `.` subpath): `detectFormat`, the `EXIT` map 
 agent adapter (`createMcpServer`, `startStdioServer`, `dispatchTool`, `TOOL_DEFS`). See the docs for the
 full surface.
 
+## Documentation
+
+The full reference is on [docs.cosyte.com/cli](https://docs.cosyte.com/cli):
+
+- [Installation](https://docs.cosyte.com/cli/installation) and the [quickstart](https://docs.cosyte.com/cli/quickstart).
+- Core concepts: [the archetype](https://docs.cosyte.com/cli/concepts-archetype), the routing, the exit-code contract, and
+  the value-free posture.
+- Guides: [the overview](https://docs.cosyte.com/cli/guides-overview), [the MCP server](https://docs.cosyte.com/cli/mcp), and
+  [every command](https://docs.cosyte.com/cli/reference-commands).
+- [Troubleshooting](https://docs.cosyte.com/cli/troubleshooting) and the [known limitations](https://docs.cosyte.com/cli/limitations).
+- [`CHANGELOG.md`](https://github.com/cosyte/cli/blob/main/CHANGELOG.md): every release.
+
+## Support
+
+Questions, bug reports, and messages a command handled wrongly go in
+[GitHub issues](https://github.com/cosyte/cli/issues). Use synthetic data only, never a real
+patient's: reduce a message to a synthetic one that reproduces the problem, and include the command,
+the exit code, and the diagnostic codes you got back. For help with an integration, see our
+[integration services](https://cosyte.com/integration-services).
+
+## Security
+
+Report a vulnerability privately, never in a public issue, and with no real patient data in it. Our
+[security policy](https://github.com/cosyte/cli/security/policy) says how. An input value that
+reaches a diagnostic, a log, or an MCP error result without `--unsafe-show-values` is a
+vulnerability: report it that way.
+
+## Contributing
+
+**Where to ask:** open an issue at
+[https://github.com/cosyte/cli/issues](https://github.com/cosyte/cli/issues).
+
+**Unsolicited pull requests are accepted.** For anything that changes a command, a flag, an exit
+code, or a `CLI_*` code, open an issue first so the behavior can be agreed before you write it:
+those are the stable surface scripts branch on, and a change to one updates this README and the
+docs in the same pull request. Typo, link, and test fixes can go straight to a pull request.
+
+**What a contribution has to clear**, every one of them a script this package declares:
+
+| check                         | what it is                                         |
+| ----------------------------- | -------------------------------------------------- |
+| `pnpm typecheck`              | `tsc --noEmit`, strict                             |
+| `pnpm lint`                   | ESLint, at `--max-warnings=0`                      |
+| `pnpm format:check`           | Prettier                                           |
+| `pnpm phi-scan`               | no patient-shaped value anywhere in a tracked file |
+| `pnpm test`                   | Vitest, including the exit-code golden matrix      |
+| `pnpm test:coverage`          | the coverage gate                                  |
+| `pnpm build`                  | the dual ESM and CJS bundle and both executables   |
+| `pnpm attw`                   | per-condition type resolution for consumers        |
+| `pnpm smoke`                  | both executables run from the built package        |
+| `pnpm examples`               | the runnable examples, against the built package   |
+| `pnpm check:no-emdash`        | the house punctuation rule                         |
+| `pnpm check:no-internal-refs` | no internal bookkeeping on the public surface      |
+
+New behavior needs a test beside it, and a change a consumer would notice needs a changeset
+(`pnpm changeset`), whose summary becomes the changelog entry.
+
 ## License
 
-MIT, copyright Cosyte LLC. See [LICENSE](https://github.com/cosyte/cli/blob/main/LICENSE).
+MIT, copyright Cosyte LLC. See [LICENSE](https://github.com/cosyte/cli/blob/main/LICENSE). The
+standards this package names belong to their owners; see
+[TRADEMARKS.md](https://github.com/cosyte/cli/blob/main/TRADEMARKS.md).
