@@ -1,0 +1,196 @@
+{
+  "$comment": [
+    "The axes of the shared internal-reference gate (@cosyte/script-utils, `cosyte-internal-refs`, ST34) for this repository: no item identifiers, phase or wave words, ADR numbers, internal paths or traceability markers on what a consumer reads. That is the README, LICENSE, docs-content/, the npm description and keywords, the doc comments that compile into the shipped declarations, and the string literals in src/, which reach a consumer as a diagnostic a consumer reads in their terminal.",
+    "The samples are the ones this repository's own gate carried, so every self-test it ran still runs here.",
+    "slice-after-the-or-each and phase-before-a-prose-word keep what this repository's own gate caught and the shared rules let through since 0.1.5 and 0.1.6: `the` and `each` before `slice`, and `phase` before a prose word or after a hyphenated word.",
+    "internal-roadmap-citation: a named roadmap (`the cli roadmap`, `the deid roadmap`) or a section of one (`roadmap §7`) is our planning, not the product's. SYNTH stays a prefix here, so `SYNTH-MSG-0001` is a hit."
+  ],
+  "projectPrefixes": [
+    "PARSERS-PUBLIC",
+    "DOCS-CONTENT",
+    "KNOWLEDGEBASE",
+    "TERMINOLOGY",
+    "PATHWAYS",
+    "TRANSFORM",
+    "WEBSITE",
+    "STAGING",
+    "SUPPLY",
+    "NCPDP",
+    "ASSETS",
+    "EMDASH",
+    "README",
+    "CONFIG",
+    "DICOM",
+    "DEID",
+    "CCDA",
+    "ASTM",
+    "MLLP",
+    "FHIR",
+    "CREW",
+    "DOCS",
+    "PERF",
+    "SYNC",
+    "VERSION",
+    "PUBLIC",
+    "HL7",
+    "X12",
+    "IAC",
+    "CLI",
+    "KB",
+    "PW",
+    "PUB",
+    "CI",
+    "REAL",
+    "TERM",
+    "WF",
+    "VERIFY",
+    "SYNTH"
+  ],
+  "standardsDesignations": [
+    "NCPDP-(?:SCRIPT|TELECOM|D\\.\\d|F\\d)",
+    "HL7-(?:V2|V3|CDA|FHIR|OMG)",
+    "FHIR-R\\d[A-Z]?",
+    "DICOM-(?:SR|RT|SEG|DIR|PS\\d)",
+    "X12-\\d{3}[A-Z]?",
+    "X12-\\d{6}",
+    "CCDA-R\\d(?:\\.\\d)?",
+    "ASTM-E\\d+"
+  ],
+  "surfacePaths": [
+    "README.md",
+    "LICENSE",
+    "docs-content"
+  ],
+  "accountedTarballFiles": [
+    "CHANGELOG.md",
+    "dist"
+  ],
+  "sourceDocComments": {
+    "enabled": true,
+    "paths": [
+      "src/*.ts",
+      "src/**/*.ts"
+    ]
+  },
+  "sourceStringLiterals": {
+    "enabled": true,
+    "paths": [
+      "src/*.ts",
+      "src/**/*.ts"
+    ]
+  },
+  "extraSamples": {
+    "internal-identifier": {
+      "positives": [
+        "Item CLI-6 is done, and CCDA-P7 with it",
+        "redact is gated behind CLI-3 until the scrubber lands",
+        "The example message id SYNTH-MSG-0001"
+      ],
+      "negatives": [
+        "HL7-V2 and HL7-V3 and HL7-CDA and HL7-FHIR and HL7-OMG and HL7-defined tables, FHIR-R4 and FHIR-R5 and FHIR-R4B and FHIR-bridge, DICOM-SR and DICOM-RT and DICOM-SEG and DICOM-DIR and DICOM-PS3, NCPDP-SCRIPT and NCPDP-TELECOM and NCPDP-D.0 and NCPDP-F6, X12-837P and X12-270 and X12-005010, CCDA-R2 and CCDA-R2.1, ASTM-E1394 and ASTM-E1381, segment fields MSH-2 and PID-3 and PV1-19 and OBX-5, X12 elements NM1-03 and ST-01 and ISA-13, NCPDP field ids 439-E4 and 111-AM and 511-FB, code systems ICD-10-CM and ICD-9-CM, transaction codes B1 B2 B3 and E1, 835 remittance and 271 eligibility and 837 claims, ICD-10 P00-P96, docs-content/ layout, a CLI-safe wrapper and CLI-friendly output, UTF-8 input",
+        "HL7-V2 and HL7-V3 and HL7-CDA and HL7-FHIR and HL7-OMG, FHIR-R4 and FHIR-R5 and FHIR-R4B and FHIR-bridge, DICOM-SR and DICOM-RT and DICOM-SEG and DICOM-DIR and DICOM-PS3, NCPDP-SCRIPT and NCPDP-TELECOM and NCPDP-D.0 and NCPDP-F6, X12-837P and X12-270 and X12-005010, CCDA-R2 and CCDA-R2.1, ASTM-E1394 and ASTM-E1381, MSH-2 and PID-3 and OBX-5, NM1-03 and ST-01, 439-E4 and 111-AM, ICD-10-CM, B1 B2 B3 E1, UTF-8 and CRLF",
+        "CLI_NOT_IMPLEMENTED and CLI_PARSER_UNAVAILABLE and CLI_FORMAT_UNSUPPORTED and CLI_MAP_INVALID, ./core/run.js and ../commands/parse.js, hl7 fhir dicom x12 ccda ncpdp astm mllp, --unsafe-show-values and --ndjson, HL7-V2 and FHIR-R4 and NCPDP-SCRIPT and X12-837P, MSH-2 and PID-3, UTF-8"
+      ]
+    },
+    "phase-or-wave": {
+      "positives": [
+        "Phase 5b closes it (Phase W, Phase-L and the thirteenth slice landed earlier, in wave 2), and Phases 6 and 7 preceded it",
+        "Added in Phase 9 and reworked in phase 10b"
+      ],
+      "negatives": [
+        "A Phase III oncology trial and a Phase II study; the clinical phases of a drug programme; the acute phase reactant; luteal phase dosing and follicular phase dosing; the liquid phase of a preparation; the adapter stays in phase with the source system and is out of phase",
+        "A Phase III oncology trial and a Phase II study; the clinical phases of a drug programme; the acute phase reactant; luteal phase dosing; the liquid phase of a preparation; the adapter stays in phase with the source system and is out of phase",
+        "de-identification is not implemented; install @cosyte/deid to enable it. A Phase III trial and the acute phase reactant are out of scope, and the reader stays in phase with the source system."
+      ]
+    },
+    "adr-reference": {
+      "positives": [
+        "Decided in ADR 0025, restated in ADR-0021, and recorded in docs/adr/0001-x.md",
+        "parser unavailable; vendored as an optional dependency per ADR 0025",
+        "Ratified in docs/adr/0001-xml-parser.md"
+      ],
+      "negatives": [
+        "ADR is not a segment identifier, and 0025 alone is a value"
+      ]
+    },
+    "internal-jargon": {
+      "positives": [
+        "This slice adds the completion command and the final slice removes it",
+        "Added by the final slice of the command tree"
+      ],
+      "negatives": [
+        "The slice thickness and the number of slices are DICOM attributes, each slice location is too, and the phase of the clinical study, the phase of illness and each phase of the trial are the reader words this rule must not touch",
+        "The slice thickness and the number of slices are DICOM attributes, each slice location is too; bytes.slice(0, 512) and argv.slice(2) are TypeScript; and the phase of the clinical study, the phase of illness and each phase of the trial are the reader words this rule must not touch",
+        "the parser for this format is not installed. The slice thickness and the number of slices are DICOM attributes."
+      ]
+    },
+    "internal-repo-path": {
+      "positives": [
+        "Roadmap operations/roadmaps/cli.md and documentation/decisions/0025-x.md",
+        "See operations/roadmaps/cli.md",
+        "See documentation/decisions/0024-mcp-server-sdk.md"
+      ],
+      "negatives": [
+        "Parser operations are documented in the README, and documentation for the API is generated"
+      ]
+    },
+    "traceability-marker": {
+      "positives": [
+        "Repeating [S-EXIT], and Open-question #12 resolves the direction",
+        "Traced as [S-EXIT]"
+      ],
+      "negatives": [
+        "A character range like [S-Z], a value set written [SNOMED], and open questions about the feed"
+      ]
+    }
+  },
+  "extraRules": [
+    {
+      "id": "slice-after-the-or-each",
+      "name": "internal jargon (\"the slice\", \"each slice\")",
+      "pattern": {
+        "source": "\\b(?:the|each)\\s+(?:(?!(?:of|in|on|between|per|for|to|with|at)\\s)[\\w-]+\\s+){0,2}slices?\\b(?!\\s+(?:thickness|location|spacing|position|interval|order|number|index|gap|count|data|pixel|orientation|plane|direction|width|vector|sensitivity|progression|factor))",
+        "flags": "i"
+      },
+      "positives": [
+        "The last slice adds the helper, and each slice moves one module"
+      ],
+      "negatives": [
+        "The slice thickness and the number of slices are DICOM attributes, each slice location is too, and the phase of the clinical study, the phase of illness and each phase of the trial are the reader words this rule must not touch",
+        "The slice thickness and the number of slices are DICOM attributes, each slice location is too; bytes.slice(0, 512) and argv.slice(2) are TypeScript; and the phase of the clinical study, the phase of illness and each phase of the trial are the reader words this rule must not touch",
+        "the parser for this format is not installed. The slice thickness and the number of slices are DICOM attributes."
+      ]
+    },
+    {
+      "id": "phase-before-a-prose-word",
+      "name": "phase or wave language (before a prose word or in a compound)",
+      "pattern": {
+        "source": "\\b(?<!study )(?<!clinical )(?<!trial )(?<!acute )(?<!chronic )(?<!luteal )(?<!follicular )(?<!liquid )(?<!gas )(?<=[A-Za-z]-)phases?[ -](?!of\\b|with\\b|in\\b|out\\b|the\\b|and\\b|is\\b|for\\b|to\\b|(?:I{1,3}|IV)\\s+(?:trial|stud|clinical|oncolog))[A-Za-z0-9]+[a-z]?\\b|\\b(?<!study )(?<!clinical )(?<!trial )(?<!acute )(?<!chronic )(?<!luteal )(?<!follicular )(?<!liquid )(?<!gas )phases?[ -](?=(?:identifier|start|end|evaluability|number|where|are|was|were|during|at)\\b)[A-Za-z0-9]+[a-z]?\\b",
+        "flags": "i"
+      },
+      "positives": [
+        "The connect-phase socket shipped, and the phase was closed"
+      ],
+      "negatives": [
+        "A Phase III oncology trial and a Phase II study; the clinical phases of a drug programme; the acute phase reactant; luteal phase dosing and follicular phase dosing; the liquid phase of a preparation; the adapter stays in phase with the source system and is out of phase",
+        "A Phase III oncology trial and a Phase II study; the clinical phases of a drug programme; the acute phase reactant; luteal phase dosing; the liquid phase of a preparation; the adapter stays in phase with the source system and is out of phase",
+        "de-identification is not implemented; install @cosyte/deid to enable it. A Phase III trial and the acute phase reactant are out of scope, and the reader stays in phase with the source system."
+      ]
+    },
+    {
+      "id": "internal-roadmap-citation",
+      "name": "internal roadmap citation",
+      "pattern": {
+        "source": "\\b(?:cli|hl7|fhir|mllp|dicom|x12|ccda|ncpdp|astm|transform|terminology|synth|deid|pathways|docs|website|iac|crew|knowledgebase|config|the|this|our) roadmap(?:'s)?\\b|\\broadmaps?(?:'s)?[ ]?§",
+        "flags": "i"
+      },
+      "positives": [
+        "Grounded in the cli roadmap §7, refined from the roadmap sketch, and the deid roadmap forbids it",
+        "unsupported for this format; see the cli roadmap for when it lands"
+      ],
+      "negatives": [
+        "## Roadmap; a product roadmap and the vendor roadmap; roadmapping the migration; the roadmaps of other projects"
+      ]
+    }
+  ]
+}
