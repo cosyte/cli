@@ -18,6 +18,7 @@ pnpm typecheck && pnpm lint && pnpm format:check && pnpm phi-scan
 pnpm test && pnpm test:coverage && pnpm build && pnpm attw && pnpm smoke
 pnpm typecheck:examples && pnpm lint:examples && pnpm examples && pnpm phi-scan:examples
 pnpm check:no-emdash && pnpm check:no-internal-refs
+pnpm check:readme && pnpm check:claude-card && pnpm check:agent-notes
 ```
 
 `pnpm smoke` covers locally what CI's inline ESM/CJS check does on `dist/`. Only CI runs
@@ -47,14 +48,13 @@ Each in full, with the failure behind it: documentation/agent-notes.md#rules-in-
 - The changeset summary is the changelog entry: never hand-edit `CHANGELOG.md` or bring back
   `[Unreleased]`, and keep the history under its generated-file heading as it is (#73).
 - Run `pnpm attw`, never bare `attw`, which exits 0 over a pack with no declarations (#25).
-- `scripts/phi-scan.ts` exits 1 for hits only and 2 for anything it could not read, and `--staged`
-  keeps `--no-renames` (#30, #38).
+- `pnpm phi-scan` is script-utils' `cosyte-phi-scan` (the floor): exit 1 is hits only, 2 anything it
+  could not read, and `--staged` keeps `--no-renames` (#30, #38).
 - A `test/scripts/` test that builds a git fixture asserts the fixture took before the fix (#30).
 - `docs-content/sidebars.json` stays on the docs.cosyte.com spine, with no hand-written
   `API Reference` (#32).
 - Keep item ids, phase words, ADR numbers and roadmap paths out of the README, `docs-content/`,
   JSDoc and string literals (#13, #19), and cut a claim rather than soften it (#20).
-- Docs say `npx --package @cosyte/cli cosyte ...`: no bin is named `cli`, so `npx @cosyte/cli`
-  fails (#27).
+- Docs say `npx --package @cosyte/cli cosyte ...`; `npx @cosyte/cli` fails: no bin is `cli` (#27).
 - Required checks are context names: never rename a job, drop a matrix value, split a step out of
   `ci / verify`, or add a `paths:` filter (#35).

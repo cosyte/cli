@@ -1,0 +1,8 @@
+# What the shared em and en dash gate (@cosyte/script-utils, `cosyte-no-emdash`, ST34) leaves out of
+# this repository. One tracked path per line; an entry ending in `/` covers every path beneath it.
+#
+# vendor/ holds nine `pnpm pack` tarballs of sibling packages, wired to nothing since the siblings
+# came from npm and kept only for `pnpm vendor:refresh`. A gzip stream is not text: one of them
+# carries the three bytes of an em dash by coincidence inside its DEFLATE data, which no edit here
+# can change, and the gate reads it as a hit without a line.
+vendor/

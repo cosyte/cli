@@ -78,6 +78,9 @@ registry, and the packed tarball installs into a clean directory), actionlint an
 
 ## The two-file contract gate
 
+**Superseded 2026-11-07 (ST34): `pnpm check:agent-notes` now runs `cosyte-agent-notes` from `@cosyte/script-utils`,
+which resolves every pointer into these notes; `scripts/check-agent-notes.ts` and its tests are gone. What follows is this repository's own gate, kept as history.**
+
 The split above made a link load-bearing. A rule in `CLAUDE.md` now reads "never do X. Why:" followed
 by an anchor into this file, so if that anchor stops resolving the reader is left with an imperative
 and no grounding, which is the "prose no test can check" shape this repository's own text warns
@@ -315,6 +318,9 @@ exactly as it stood, including its leading `- ` bullet.
   reported at `info` and never gate. Do not try to fix history.
 
 ### The pre-commit PHI gate and git mv
+
+**Superseded 2026-11-07 (ST34): `pnpm phi-scan` now runs `cosyte-phi-scan` from `@cosyte/script-utils`, the shared
+floor over the whole repository, with the `--no-renames` staged route this section argues for; `scripts/phi-scan.ts` and its tests are gone. What follows is this repository's own gate, kept as history.**
 
 - **▶ THE PRE-COMMIT PHI GATE WAS BLIND TO `git mv`, AND THE HOLE WAS NOT LIMITED TO LINKS.**
   `scripts/phi-scan.ts --staged` is the `pre-commit` hook (`simple-git-hooks`). It listed the index
@@ -623,6 +629,9 @@ because it is its own item.
 
 ### The em-dash brand gate
 
+**Superseded 2026-11-07 (ST34): `pnpm check:no-emdash` now runs `cosyte-no-emdash` from `@cosyte/script-utils`, and
+`scripts/check-no-emdash.exclude` leaves out `vendor/`; `scripts/check-no-emdash.sh` is gone. What follows is this repository's own gate, kept as history.**
+
 - **Em-dash brand gate armed, and unlike most siblings this repo was NOT clean when it landed.**
   `scripts/check-no-emdash.sh` (`pnpm check:no-emdash`) plus `.github/workflows/no-emdash.yml` enforce
   the founder directive banning `U+2014` outright (`knowledgebase/06-brand/voice-and-tone.md`, "No em
@@ -696,8 +705,9 @@ because it is its own item.
   only executes ` ```ts runnable ` blocks, and `prettier`'s glob covers `src/**`, `test/**`, `scripts/**`
   and root `*.{json,md,yml}` but **NOT `docs-content/`**. Fixed by replacing the marker with the words
   `not supported`. **Before sweeping any repo, grep for an em dash used as a table cell or a list marker
-  first** (`\|\s*\x{2014}\s*[\|\(]` found exactly the three lines here) and convert those to a WORD,
-  by hand, before running any bulk transform. A marker that means "no" must survive as a word, never as
+  first** (a PCRE search for a table cell holding only the em dash, written as its braced hex
+  escape, found exactly the three lines here) and convert those to a WORD, by hand, before running
+  any bulk transform. A marker that means "no" must survive as a word, never as
   punctuation.
   **A second measurement lesson from the same review, because this item's history is wrong counts
   propagating through briefs:** the first draft of these notes said "37 of the 87 are not markdown",
@@ -1066,6 +1076,9 @@ first-time-contributor approval gate nor whether `codeql / analyze` can report o
 ## Engineering Guardrails
 
 ### The attw wrapper
+
+**Superseded 2026-11-07 (ST34): `pnpm attw` now runs `cosyte-attw` from `@cosyte/script-utils`, with
+`scripts/attw.exclude` selecting the node16 profile; `scripts/attw.mjs` and its test are gone. What follows is this repository's own gate, kept as history.**
 
 - **▶ `attw` SAYS "does not contain types" AND EXITS 0, SO THE `attw` SCRIPT IS A WRAPPER, NOT THE
   BARE CLI.** `getExitCode.js` in `@arethetypeswrong/cli@0.18.4` opens with
@@ -1495,7 +1508,8 @@ Why: [agent-notes § The em-dash brand gate](documentation/agent-notes.md#the-em
   meaning "not supported"**; the sweep rewrote it as punctuation and turned **"support absent" into
   "support unstated"**, on the one page whose whole job is honest capability disclosure.
   **Grep for a cell or list-marker em dash first**
-  (`\|\s*\x{2014}\s*[\|\(]`) and convert each to a **WORD**, by hand, before any bulk transform.
+  (the same PCRE search for a table cell holding only the em dash) and convert each to a **WORD**,
+  by hand, before any bulk transform.
 - **CUT, do not rewrite.** Softening a stated limit into an implied capability while tidying a
   sentence is a worse defect than the thing being removed. Revert a rewrite verbatim rather than
   repair it. (Same rule as the public-surface gate below.)

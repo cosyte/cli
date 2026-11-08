@@ -1,106 +1,32 @@
 name: Em-dash gate
 
-# The brand rule (founder directive 2026-07-24, written down in the knowledgebase
-# repo at 06-brand/voice-and-tone.md, and widened by the operator on 2026-11-07) bans
-# the em dash (U+2014) and the en dash (U+2013) outright across every Cosyte surface,
-# and names commit messages explicitly. This workflow is the CI half of that rule for
-# cli: the tracked files, and the text that is not a file.
+# The brand rule (ST8): no em dash (U+2014) and no en dash (U+2013) on any Cosyte surface, commit
+# messages included. cli was not clean when this landed (2026-07-28: 659 occurrences in 87 of 124
+# tracked files, the npm description among them), and the change that added the gate cleared them.
 #
-# cli was NOT clean when this landed, and the measurement behind that is the whole
-# tree rather than a sample: all 124 tracked files were read byte by byte on
-# 2026-07-28 and 87 of them carried U+2014, 659 occurrences in total, none in an
-# encoded form. 61 of the 87 are not markdown (26 are), and 37 of those 61 are
-# outside `test/` too. One is `package.json`, whose
-# `description` is published to npm and rendered on the package page, which is the
-# same npm-visible surface dicom was caught on and the reason a markdown-only count
-# is not an acceptable measurement. All 659 were rewritten in the commit that added
-# this gate, so it arrives green over a tree that was cleared rather than green over
-# a tree nobody looked at.
-#
-# A green run on a clean tree proves nothing on its own, which is why the script it
-# calls refuses to print OK from a scan that did not read everything it was handed,
-# and why every one of those refusals was checked red before this landed.
-#
-# cli tracks TEN binaries: the nine `vendor/cosyte-*.tgz` packed sibling
-# tarballs (once hard vendored deps under ADR 0021, now wired to nothing) and
-# `test/__fixtures__/sample.dcm`. That is why this repo runs
-# website's NUL-exclusion variant of the script rather than the text-only one
-# knowledgebase, hl7, fhir, pathways, x12, ncpdp and dicom run. The full reasoning is
-# in the script header, and unlike mllp it does not rest on a hypothetical: measured
-# on this tree, `vendor/cosyte-hl7-0.0.0.tgz` ALREADY CONTAINS the byte sequence
-# E2 80 94, by DEFLATE coincidence. A text-only port goes red on it today, naming a
-# compressed byte stream nobody wrote and offering no way to fix it.
-#
-# WHAT ACTUALLY SCANS, AND WHERE THE RULE LIVES. `pnpm check:no-emdash`, which is this
-# repository's own gate script. The jobs below delegate the plumbing (checkout, pnpm,
-# Node) to the shared gate workflow, and that workflow carries no pattern, no allow-list
-# and no file selection of its own: it prepares the tree, runs the command, and lets the
-# command's exit status decide the job. So the rule and every measurement above stay in
-# this repository, and only the machinery is shared.
+# The gate is the shared one (ST34): `pnpm check:no-emdash` runs `cosyte-no-emdash` from
+# @cosyte/script-utils, which matches the characters and every encoded form of them, in tracked
+# files and in their names. What this repository leaves out, and why, is in
+# `scripts/check-no-emdash.exclude`, which the gate reads for itself: the nine vendored tarballs,
+# one of which carries the dash's three bytes by DEFLATE coincidence.
 #
 # TWO CONTEXTS, NOT ONE, AND THE JOB ID IS LOAD-BEARING. A called job's check run is named
 # `<caller job id> / <inner job id>`, so the job id `no-emdash` below publishes
-# `no-emdash / tracked-files` and `no-emdash / messages`. A branch ruleset binds to those
-# exact strings: renaming the job detaches the requirement with no error anywhere, and a
-# required context nothing emits blocks every pull request. Do not rename it.
+# `no-emdash / tracked-files` and `no-emdash / messages`. The `ci-required-checks` ruleset requires
+# `no-emdash / tracked-files`, so never rename the job. `messages` reads the pull request's title,
+# body and commits and is deliberately NOT required: Dependabot composes some bodies from upstream
+# release notes, dashes included.
 #
-#   `no-emdash / tracked-files` is the half that is safe to require and the one that blocks
-#   a merge. `no-emdash / messages` runs, reds its own context, and is deliberately NOT
-#   required: Dependabot composes a pull request body out of upstream release notes, em
-#   dashes included, and a gate that fails on someone else's clock becomes a tax. The
-#   detection is unchanged either way; only what blocks is narrowed.
+# WHY A SEPARATE WORKFLOW, and not a job in ci.yml: the trigger. The message half needs the
+# `edited` activity type, because with squash merges the title and body ARE the commit message
+# that lands, and re-running the whole CI ladder for a retitled pull request costs far more.
 #
-# WHY A SEPARATE WORKFLOW, and not a job in ci.yml:
+# The installing form of the shared gate, because the gate lives in node_modules: it installs from
+# the committed lockfile before it scans, and the contexts are the same as the plain form's.
+# Nothing here may continue past a failure.
 #
-#   The shared ci pipeline is not an option. cli's `ci` job calls
-#   cosyte/.github's shared ci.yml, which runs a fixed ladder and no
-#   arbitrary repo script. Adding the gate there would also flip crew, config, iac,
-#   and assets red on their next run: all four violate the ban wholesale today, and
-#   remediating them is separate, founder-gated work. A shared pipeline is the wrong
-#   place to land a rule several of its callers cannot yet satisfy. The correct
-#   variant of the script also differs per repo (repos with no binaries take
-#   knowledgebase's text-only shape, repos tracking undeclared binaries take
-#   website's NUL-partition one, which is this repo), so the gate stays per-repo
-#   until every caller carries a script. cli declares no `.gitattributes` at all, so
-#   pathways' `git check-attr binary` partition has nothing to read here.
-#
-#   Within cli, the deciding factor is the trigger. The PR-text half below needs the
-#   `edited` activity type, which is not a default: without it, a title or body
-#   edited after the last push is never re-checked. But ci.yml's triggers drive the
-#   shared pipeline over the Node 22, 24 and 26 matrix (typecheck, lint, format, PHI scan,
-#   test, coverage, build, attw, dual ESM/CJS smoke). Re-running all of that every
-#   time someone fixes a typo in a PR description is a large cost for no extra
-#   safety. Same call hl7, fhir, mllp, pathways, website, x12, ncpdp and dicom made,
-#   for the same reason.
-#
-#   Both halves live here rather than splitting the file scan back into ci.yml (which
-#   is how website ended up): the file scan is a checkout and one grep, so it costs
-#   nothing to re-run on `edited`, and one file is one thing to read.
-#
-# WHAT ACTUALLY LANDS ON `main` HERE, read from the repo settings rather than assumed,
-# and stated carefully because the ncpdp copy of this workflow gets it wrong. That
-# copy says "the PR title and body are what lands". Neither half of that is true in
-# general, and the second half is not true anywhere: the PR BODY never lands under any
-# merge method GitHub offers. For cli specifically, all THREE merge methods are
-# enabled (`allow_squash_merge`, `allow_merge_commit` and `allow_rebase_merge` are all
-# true), which is a wider surface than mllp's squash-only configuration:
-#
-#   * squash (`squash_merge_commit_title: COMMIT_OR_PR_TITLE`,
-#     `squash_merge_commit_message: COMMIT_MESSAGES`): the subject comes from the PR
-#     title, or from the lone commit's subject when the branch has exactly one, and
-#     the body is the branch commit messages concatenated.
-#   * merge commit: the branch commit messages land verbatim, and the PR title reaches
-#     `main` only inside the generated merge-commit subject.
-#   * rebase: the branch commit messages land verbatim and the PR title does not land
-#     at all.
-#
-# So the one text that lands under EVERY enabled method is the branch COMMIT MESSAGES,
-# which is exactly what the brand rule names. The PR title lands under two of the
-# three. The PR body lands under none of them, and is scanned anyway as deliberate
-# over-strictness: it is a cosyte surface in its own right and it costs nothing to
-# cover. All three are checked below.
-#
-# Run the file half locally with `pnpm check:no-emdash`.
+# Run either half locally: `pnpm check:no-emdash`, and
+# `pnpm check:no-emdash --stdin pr < body.md` for a title, body or commit message.
 
 on:
   push:
@@ -114,13 +40,16 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   # The check-run context prefix. See the note above before touching this id.
   no-emdash:
     # A published reference (ST37): a `workflows-*` release of cosyte/.github. Those releases
     # are immutable, so the tag is locked to one commit, and every caller in this repository
-    # moves to the next reference together. The non-installing form: this repository's gate is a script that needs nothing installed.
-    uses: cosyte/.github/.github/workflows/gate-no-emdash.yml@workflows-2026-11-07-498c7c13c886
+    # moves to the next reference together. The installing form: the gate lives in node_modules.
+    uses: cosyte/.github/.github/workflows/gate-no-emdash-install.yml@workflows-2026-11-07-498c7c13c886
     # No more than the scan needs. A called workflow's GITHUB_TOKEN can only be
     # downgraded by its caller, and this gate reads the tree and nothing else.
     permissions:
