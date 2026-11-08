@@ -1474,10 +1474,11 @@ umbrella's `plans/standards.md`. This is a summary.
 - **Build:** dual ESM + CJS + `.d.ts` via `tsup` (`@cosyte/tsup-config`); `attw` is a publish gate
   (per-condition types: `.d.ts` for `import`, `.d.cts` for `require`). The `attw` script is
   **`node scripts/attw.mjs --profile node16`, not the bare CLI**: see the guardrail below.
-- **Node:** **>= 22, < 26** (CI matrix 22 + 24). The declared range is bounded above so it admits no
-  upstream-supported Node line the matrix does not exercise; `test/node-support.test.ts` reds when
-  the range, the matrix in `.github/workflows/ci.yml` and this line disagree. **Widen it only after
-  the required-context ruleset has the new cell**, never before: see that workflow's banner.
+- **Node:** **>= 22** (CI matrix 22 + 24 + 26). The range is open above, as the operator's Node
+  standard (ST15) sets for every library, and the claim is the support line, which names only the
+  lines CI runs; `test/node-support.test.ts` reds when the range, the matrix in
+  `.github/workflows/ci.yml`, CLAUDE.md and the README and docs support lines disagree. Node 26 joined
+  the matrix on 2026-11-07, before its context joined the ruleset: see that workflow's banner.
 - **Package manager:** `pnpm@10`.
 - **Lint/format:** **ESLint 10** + unified `typescript-eslint` (type-checked) via
   `@cosyte/eslint-config`; Prettier via `@cosyte/prettier-config`. Lint at `--max-warnings=0`.

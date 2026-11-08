@@ -3,7 +3,7 @@
 `@cosyte/cli` is the `cosyte` command and the `cosyte-mcp` stdio server, published to npm under MIT:
 developer tooling over the `@cosyte/*` healthcare libraries that parses no wire format itself. A
 message goes in on a file or stdin, typed JSON comes out on stdout, and stderr carries value-free
-diagnostic codes. It supports Node.js 22 to 25 and is tested on 22 and 24.
+diagnostic codes. It supports Node.js 22 or later, tested on 22, 24, and 26.
 
 ## Build and test
 
@@ -18,7 +18,7 @@ pnpm test
 
 ## The gate
 
-A pull request is ready when these pass, in this order. CI runs the first nine on Node 22 and 24.
+A pull request is ready when these pass, in this order. CI runs the first nine on Node 22, 24, and 26.
 
 ```sh
 pnpm install --frozen-lockfile

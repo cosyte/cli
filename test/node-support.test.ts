@@ -24,9 +24,9 @@ import { describe, expect, it } from "vitest";
  *      range silently strands a matrix cell.
  *   4. Every major the range admits is a major the committed schedule actually carries, so an
  *      unknown line is a failure rather than being read as "unsupported" by accident.
- *   5. Every surface that restates the range or the matrix in prose (this repo's contributor guide
- *      and the published installation page) states the same range and the same matrix as the two
- *      machine-readable declarations.
+ *   5. Every surface that restates the range or the matrix in prose (this repo's contributor guide,
+ *      the published installation page and the README's support line) states the same range and
+ *      the same matrix as the two machine-readable declarations.
  *
  * THE DIRECTION IS FIXED AND IT IS NOT SYMMETRIC. When the range and the matrix disagree, the
  * claim narrows; the matrix does not grow. Each matrix cell emits a required status-check context
@@ -35,6 +35,23 @@ import { describe, expect, it } from "vitest";
  * NOT REQUIRED, and removing one produces a required context nothing emits, which leaves every pull
  * request pending and unmergeable by anyone. Widening is therefore a three-step change starting
  * outside this repository: ruleset first, matrix second, range third.
+ *
+ * THE RANGE IS OPEN ABOVE SINCE 2026-11-07, BY POLICY. The operator's Node standard (ST15) sets
+ * `engines.node` to `>=22` for every library and makes the claim the support line, "Node.js 22 or
+ * later, tested on 22, 24, and 26", which names only the lines CI runs; this package's `<26` cap was
+ * lifted once its Node 26 leg passed. Two rules moved with it, and nothing else did:
+ *
+ *   - An open range is no longer a finding. It still cannot be enumerated, so the record check reads
+ *     the majors it admits up to the newest line the record carries.
+ *   - A line that started after the record was taken is not required in the matrix until the record
+ *     is refreshed. Without that, an open range turns this guard into a calendar: Node 27 starts on
+ *     2027-04-22 in the committed record, and main would go red that morning with no commit
+ *     anywhere. Refreshing the record is the act that brings a new line into the guard, and the
+ *     change that refreshes it adds the line to the matrix and to every support line together.
+ *
+ * Node 26 joined the matrix before its context joined the ruleset, because that ruleset is a GitHub
+ * setting no commit here can change: `ci / verify (26, ubuntu-latest)` runs on every pull request
+ * and is not yet required.
  *
  * ASSERT THE PREMISE, NOT ONLY THE REMEDY. Two vacuity traps have already sprung in this
  * repository's suite, so a green here is worth nothing unless a reader can see that the checker
@@ -54,6 +71,7 @@ const MANIFEST_PATH = "package.json";
 const WORKFLOW_PATH = ".github/workflows/ci.yml";
 const GUIDE_PATH = "CLAUDE.md";
 const INSTALL_PATH = "docs-content/installation.md";
+const README_PATH = "README.md";
 
 /** The upstream record this repository commits a copy of. */
 const SCHEDULE_SOURCE = "https://raw.githubusercontent.com/nodejs/Release/main/schedule.json";
@@ -77,8 +95,11 @@ const SEPARATOR_RE = /(?:\s|,|and\b)+/y;
 /** The Node support line of the contributor guide: a range in bold, then the matrix it pairs with. */
 const GUIDE_LINE_RE = /^- \*\*Node:\*\* \*\*([^*]+)\*\* \(CI matrix ([^)]*)\)/m;
 
-/** The Node prerequisite of the published installation page. */
-const INSTALL_LINE_RE = /- \*\*Node\.js ([^*]+)\*\*/;
+/**
+ * The support line ST15 sets, as the README and the installation page write it: "Node.js 22 or
+ * later, tested on 22, 24, and 26". The range is the first group and the tested lines the second.
+ */
+const SUPPORT_LINE_RE = /Node\.js (\d+ or later), tested on (\d+(?:, \d+)*(?:,? and \d+)?)/;
 
 /** A schedule key naming a whole major. `v0.8` and friends name a major this guard does not model. */
 const MAJOR_KEY_RE = /^v(\d+)$/;
@@ -153,11 +174,21 @@ function group(m: RegExpExecArray, i: number): string | undefined {
  * Only the comparator grammar this repository actually writes is accepted: `>=`, `>`, `<`, `<=`,
  * `=` and a bare version, conjoined. A caret, a tilde, an `x` wildcard or an `||` union throws
  * rather than being approximated, because a range this guard cannot read exactly is a range whose
- * agreement with the matrix it cannot decide, and guessing there is the whole defect class.
+ * agreement with the matrix it cannot decide, and guessing there is the whole defect class. The one
+ * other spelling is the support line's, `22 or later`, which is `>=22` written for a reader.
  */
 function parseRange(text: string): Interval {
   const source = text.trim();
   if (source === "") throw new Error("empty Node range");
+  const orLater = /^v?(\d+)(?:\.(\d+))?(?:\.(\d+))? or later$/.exec(source);
+  if (orLater) {
+    const lo = pack(
+      Number(group(orLater, 1)),
+      Number(group(orLater, 2) ?? "0"),
+      Number(group(orLater, 3) ?? "0"),
+    );
+    return { lo, hi: Number.POSITIVE_INFINITY };
+  }
   let lo = 0;
   let hi = Number.POSITIVE_INFINITY;
   let at = 0;
@@ -221,13 +252,31 @@ function admitsMajor(range: Interval, major: number): boolean {
  * Every major the range admits.
  *
  * A range with no upper bound admits infinitely many majors, so it cannot be enumerated and cannot
- * be checked against a finite schedule. That is not an accident of this function: an unbounded
- * range is exactly the claim this guard exists to refuse, so it throws and the caller reports it.
+ * be checked against a finite schedule: it throws, and `recordedAdmittedMajors` below is what reads
+ * an open range.
  */
 function admittedMajors(range: Interval): number[] {
   if (!Number.isFinite(range.hi)) throw new Error("Node range is unbounded above");
   const out: number[] = [];
   for (let major = majorOf(range.lo); major <= majorOf(range.hi - 1); major += 1) {
+    if (admitsMajor(range, major)) out.push(major);
+  }
+  return out;
+}
+
+/**
+ * The majors the range admits that the record can speak for: every admitted major of a range
+ * bounded above, and for an open range (ST15) every admitted major up to the newest line the record
+ * carries. A major past the record is admitted by policy and claimed by no surface here.
+ */
+function recordedAdmittedMajors(
+  range: Interval,
+  schedule: ReadonlyMap<number, ReleaseLine>,
+): number[] {
+  if (Number.isFinite(range.hi)) return admittedMajors(range);
+  const newest = Math.max(...schedule.keys());
+  const out: number[] = [];
+  for (let major = majorOf(range.lo); major <= newest; major += 1) {
     if (admitsMajor(range, major)) out.push(major);
   }
   return out;
@@ -292,6 +341,13 @@ function auditRecord(value: unknown): Finding[] {
     });
   }
   return findings;
+}
+
+/** The date the committed record was taken, which `auditRecord` has already checked is there. */
+function accessedOf(value: unknown): string {
+  const accessed = isObject(value) ? value["accessed"] : undefined;
+  if (!isDate(accessed)) throw new Error(`${RECORD_PATH}: records no accessed date`);
+  return accessed;
 }
 
 const list = (ns: readonly number[]): string => `[${ns.join(", ")}]`;
@@ -361,15 +417,19 @@ function audit(input: AuditInput): Finding[] {
   const rangeText = manifest.rangeText;
   const matrix = workflow.matrix;
   const range = parseRange(rangeText);
+  const accessed = accessedOf(input.record);
 
   for (const major of supportedMajors(schedule, input.runDate)) {
+    // A line that started after the record was taken waits for the record's refresh (the header,
+    // "THE RANGE IS OPEN ABOVE"), so a new upstream line cannot turn main red on a calendar date.
+    if ((schedule.get(major)?.start ?? "") > accessed) continue;
     if (admitsMajor(range, major) && !matrix.includes(major)) {
       findings.push({
         kind: "range-admits-untested-major",
         message:
           `Node ${String(major)} is supported upstream on ${input.runDate} and is admitted by the ` +
           `declared range "${rangeText}", but the declared CI matrix ${list(matrix)} does not ` +
-          `exercise it. Narrow the range; do not widen the matrix without the ruleset first.`,
+          `exercise it. Test it (the matrix and every support line together) or narrow the range.`,
       });
     }
   }
@@ -386,16 +446,7 @@ function audit(input: AuditInput): Finding[] {
     }
   }
 
-  if (!Number.isFinite(range.hi)) {
-    findings.push({
-      kind: "range-unbounded-above",
-      message:
-        `the declared range "${rangeText}" has no upper bound, so it admits every future Node ` +
-        `major, none of which the CI matrix ${list(matrix)} can exercise`,
-    });
-    return findings;
-  }
-  for (const major of admittedMajors(range)) {
+  for (const major of recordedAdmittedMajors(range, schedule)) {
     if (!schedule.has(major)) {
       findings.push({
         kind: "admitted-major-not-in-record",
@@ -466,11 +517,31 @@ function guideDeclaration(text: string): Declaration {
   return { surface: GUIDE_PATH, rangeText: (group(m, 1) ?? "").trim(), matrix };
 }
 
-/** The published installation page restates the range as a prerequisite, and no matrix. */
-function installDeclaration(text: string): Declaration {
-  const m = INSTALL_LINE_RE.exec(text);
-  if (!m) throw new Error(`${INSTALL_PATH}: has no "**Node.js ...**" prerequisite to read`);
-  return { surface: INSTALL_PATH, rangeText: (group(m, 1) ?? "").trim(), matrix: null };
+/** The lines a support line says CI tests: "22, 24, and 26", "22 and 24" or "22". */
+function testedOn(text: string, surface: string): number[] {
+  return text.split(/,\s*(?:and\s+)?|\s+and\s+/).map((cell) => {
+    const trimmed = cell.trim();
+    if (!/^\d+$/.test(trimmed)) throw new Error(`${surface}: unreadable tested line "${trimmed}"`);
+    return Number(trimmed);
+  });
+}
+
+/**
+ * A surface that carries the support line ST15 sets: the published installation page and the README.
+ * Each states the range and the tested lines, so each is held to both declarations.
+ */
+function supportLineDeclaration(surface: string, text: string): Declaration {
+  const m = SUPPORT_LINE_RE.exec(text);
+  if (!m) {
+    throw new Error(
+      `${surface}: has no "Node.js <n> or later, tested on ..." support line to read`,
+    );
+  }
+  return {
+    surface,
+    rangeText: (group(m, 1) ?? "").trim(),
+    matrix: testedOn(group(m, 2) ?? "", surface),
+  };
 }
 
 function todayISO(): string {
@@ -482,8 +553,9 @@ const SCHEDULE = scheduleOf(RECORD_VALUE);
 const MANIFEST = manifestDeclaration(readSurface(MANIFEST_PATH));
 const WORKFLOW = workflowDeclaration(readSurface(WORKFLOW_PATH));
 const GUIDE = guideDeclaration(readSurface(GUIDE_PATH));
-const INSTALL = installDeclaration(readSurface(INSTALL_PATH));
-const DECLARATIONS: readonly Declaration[] = [MANIFEST, WORKFLOW, GUIDE, INSTALL];
+const INSTALL = supportLineDeclaration(INSTALL_PATH, readSurface(INSTALL_PATH));
+const README = supportLineDeclaration(README_PATH, readSurface(README_PATH));
+const DECLARATIONS: readonly Declaration[] = [MANIFEST, WORKFLOW, GUIDE, INSTALL, README];
 
 /** The landed tree, with the run date left injectable so a boundary can be reached deliberately. */
 function auditTree(runDate: string = todayISO()): Finding[] {
@@ -534,7 +606,7 @@ describe("the extractors bound real values out of the real files", () => {
   it("reads engines.node out of the package manifest", () => {
     const parsed: unknown = JSON.parse(readSurface(MANIFEST_PATH));
     expect(isObject(parsed) ? parsed["name"] : null).toBe("@cosyte/cli");
-    expect(MANIFEST.rangeText).toBe(">=22.0.0 <26.0.0");
+    expect(MANIFEST.rangeText).toBe(">=22.0.0");
     expect(MANIFEST.matrix).toBeNull();
   });
 
@@ -542,7 +614,7 @@ describe("the extractors bound real values out of the real files", () => {
     const text = readSurface(WORKFLOW_PATH);
     expect(text).toContain("uses: cosyte/.github/.github/workflows/ci.yml@main");
     expect(text).toContain("node-versions:");
-    expect(WORKFLOW.matrix).toStrictEqual([22, 24]);
+    expect(WORKFLOW.matrix).toStrictEqual([22, 24, 26]);
     expect(WORKFLOW.rangeText).toBeNull();
   });
 
@@ -560,13 +632,30 @@ describe("the extractors bound real values out of the real files", () => {
   });
 
   it("reads both the range and the matrix off the contributor guide's support line", () => {
-    expect(GUIDE.rangeText).toBe(">= 22, < 26");
-    expect(GUIDE.matrix).toStrictEqual([22, 24]);
+    expect(GUIDE.rangeText).toBe(">= 22");
+    expect(GUIDE.matrix).toStrictEqual([22, 24, 26]);
   });
 
-  it("reads the range off the published installation prerequisite", () => {
-    expect(INSTALL.rangeText).toBe(">= 22 and < 26");
-    expect(INSTALL.matrix).toBeNull();
+  it("reads the range and the tested lines off the published installation page", () => {
+    expect(INSTALL.rangeText).toBe("22 or later");
+    expect(INSTALL.matrix).toStrictEqual([22, 24, 26]);
+  });
+
+  it("reads the range and the tested lines off the README's support line", () => {
+    expect(README.rangeText).toBe("22 or later");
+    expect(README.matrix).toStrictEqual([22, 24, 26]);
+  });
+
+  it("refuses a surface that carries no support line rather than skipping it", () => {
+    expect(() => supportLineDeclaration(README_PATH, "Requires Node.js 22 to 25.")).toThrow(
+      /has no "Node\.js <n> or later, tested on \.\.\." support line/,
+    );
+  });
+
+  it("reads each spelling of the tested lines", () => {
+    expect(testedOn("22, 24, and 26", README_PATH)).toStrictEqual([22, 24, 26]);
+    expect(testedOn("22 and 24", README_PATH)).toStrictEqual([22, 24]);
+    expect(testedOn("22", README_PATH)).toStrictEqual([22]);
   });
 });
 
@@ -575,6 +664,9 @@ describe("the range parser reads a range exactly or refuses it", () => {
     const manifest = parseRange(">=22.0.0 <26.0.0");
     expect(parseRange(">= 22, < 26")).toStrictEqual(manifest);
     expect(parseRange(">= 22 and < 26")).toStrictEqual(manifest);
+    // The support line's spelling is the open range the manifest writes as `>=22.0.0`.
+    expect(parseRange("22 or later")).toStrictEqual(parseRange(">=22.0.0"));
+    expect(parseRange(">= 22")).toStrictEqual(parseRange(">=22.0.0"));
   });
 
   it("admits exactly the majors between the bounds", () => {
@@ -609,12 +701,13 @@ describe("the tree as landed agrees with itself", () => {
     expect(auditTree()).toStrictEqual([]);
   });
 
-  it("declares a range bounded above that refuses Node 26, the line CI does not exercise", () => {
+  it("declares the open range ST15 sets, and tests Node 26, which it admits", () => {
     const range = parseRange(MANIFEST.rangeText ?? "");
-    expect(Number.isFinite(range.hi)).toBe(true);
-    expect(admitsMajor(range, 26)).toBe(false);
+    expect(Number.isFinite(range.hi)).toBe(false);
+    expect(admitsMajor(range, 21)).toBe(false);
+    expect(admitsMajor(range, 26)).toBe(true);
     expect(supportedMajors(SCHEDULE, todayISO())).toContain(26);
-    expect(WORKFLOW.matrix).not.toContain(26);
+    expect(WORKFLOW.matrix).toContain(26);
   });
 
   it("admits every major the matrix exercises", () => {
@@ -623,8 +716,10 @@ describe("the tree as landed agrees with itself", () => {
       expect(admitsMajor(range, major), `${String(major)}`).toBe(true);
   });
 
-  it("admits no major the committed schedule does not carry", () => {
-    for (const major of admittedMajors(parseRange(MANIFEST.rangeText ?? ""))) {
+  it("admits no major the committed schedule does not carry, up to the newest it does", () => {
+    const admitted = recordedAdmittedMajors(parseRange(MANIFEST.rangeText ?? ""), SCHEDULE);
+    expect(admitted).toContain(26);
+    for (const major of admitted) {
       expect(SCHEDULE.has(major), `Node ${String(major)}`).toBe(true);
     }
   });
@@ -639,8 +734,8 @@ describe("the tree as landed agrees with itself", () => {
 describe("the negative control: the guard reports each disagreement it exists to prevent", () => {
   const TODAY = "2026-09-02";
   const landed: readonly Declaration[] = [
-    { surface: MANIFEST_PATH, rangeText: ">=22.0.0 <26.0.0", matrix: null },
-    { surface: WORKFLOW_PATH, rangeText: null, matrix: [22, 24] },
+    { surface: MANIFEST_PATH, rangeText: ">=22.0.0", matrix: null },
+    { surface: WORKFLOW_PATH, rangeText: null, matrix: [22, 24, 26] },
   ];
 
   const withDeclarations = (declarations: readonly Declaration[], runDate = TODAY): Finding[] =>
@@ -686,55 +781,83 @@ describe("the negative control: the guard reports each disagreement it exists to
     expect(findings[0]?.message).toContain("unknown, not unsupported");
   });
 
-  it("reports an unbounded range, which is the claim this change replaced", () => {
+  it("accepts the open range ST15 sets, and still reports a supported line it does not test", () => {
     const findings = withDeclarations([
       { surface: MANIFEST_PATH, rangeText: ">=22.0.0", matrix: null },
       { surface: WORKFLOW_PATH, rangeText: null, matrix: [22, 24] },
     ]);
-    expect(findings.map((f) => f.kind)).toContain("range-unbounded-above");
-    // The exact defect this change closed is reported too: 26 supported, admitted, untested.
-    expect(findings.map((f) => f.kind)).toContain("range-admits-untested-major");
+    // The open range itself is not a finding; the untested line it admits is.
+    expect(findings.map((f) => f.kind)).toStrictEqual(["range-admits-untested-major"]);
+    expect(findings[0]?.message).toContain("Node 26");
+  });
+
+  it("does not turn red on a calendar date: a line that started after the record waits for it", () => {
+    // The premise: on this run date Node 27 has started upstream, after the record was taken.
+    expect(supportedMajors(SCHEDULE, "2027-05-01")).toContain(27);
+    expect(SCHEDULE.get(27)?.start).toBe("2027-04-22");
+    expect(withDeclarations(landed, "2027-05-01")).toStrictEqual([]);
+  });
+
+  it("requires that line once the record is refreshed past its start", () => {
+    const refreshed = isObject(RECORD_VALUE)
+      ? { ...RECORD_VALUE, accessed: "2027-05-01" }
+      : RECORD_VALUE;
+    const findings = audit({ record: refreshed, declarations: landed, runDate: "2027-05-01" });
+    expect(findings).toHaveLength(1);
+    expect(findings[0]?.kind).toBe("range-admits-untested-major");
+    expect(findings[0]?.message).toContain("Node 27");
   });
 
   it("reports a contributor-guide line whose range differs from the manifest", () => {
     const findings = withDeclarations([
       ...landed,
-      { surface: GUIDE_PATH, rangeText: ">= 22", matrix: [22, 24] },
+      { surface: GUIDE_PATH, rangeText: ">= 22, < 26", matrix: [22, 24, 26] },
     ]);
     expect(findings).toHaveLength(1);
     expect(findings[0]?.kind).toBe("range-restated-differently");
     expect(findings[0]?.message).toContain(GUIDE_PATH);
-    expect(findings[0]?.message).toContain(">= 22");
-    expect(findings[0]?.message).toContain(">=22.0.0 <26.0.0");
+    expect(findings[0]?.message).toContain(">= 22, < 26");
+    expect(findings[0]?.message).toContain('declares ">=22.0.0"');
   });
 
   it("reports a contributor-guide line whose matrix differs from the CI caller", () => {
     const findings = withDeclarations([
       ...landed,
-      { surface: GUIDE_PATH, rangeText: ">= 22, < 26", matrix: [22, 24, 26] },
+      { surface: GUIDE_PATH, rangeText: ">= 22", matrix: [22, 24] },
     ]);
     expect(findings).toHaveLength(1);
     expect(findings[0]?.kind).toBe("matrix-restated-differently");
-    expect(findings[0]?.message).toContain("[22, 24, 26]");
     expect(findings[0]?.message).toContain("[22, 24]");
+    expect(findings[0]?.message).toContain("[22, 24, 26]");
   });
 
   it("reports a published page restating a range the manifest does not declare", () => {
     const findings = withDeclarations([
       ...landed,
-      { surface: INSTALL_PATH, rangeText: ">= 22", matrix: null },
+      { surface: INSTALL_PATH, rangeText: ">= 22 and < 26", matrix: [22, 24, 26] },
     ]);
     expect(findings).toHaveLength(1);
     expect(findings[0]?.kind).toBe("range-restated-differently");
     expect(findings[0]?.message).toContain(INSTALL_PATH);
   });
 
+  it("reports a README support line naming lines the CI caller does not test", () => {
+    const findings = withDeclarations([
+      ...landed,
+      { surface: README_PATH, rangeText: "22 or later", matrix: [22, 24] },
+    ]);
+    expect(findings).toHaveLength(1);
+    expect(findings[0]?.kind).toBe("matrix-restated-differently");
+    expect(findings[0]?.message).toContain(README_PATH);
+  });
+
   it("stays silent when the same restatements agree, spelled the way each surface spells it", () => {
     expect(
       withDeclarations([
         ...landed,
-        { surface: GUIDE_PATH, rangeText: ">= 22, < 26", matrix: [22, 24] },
-        { surface: INSTALL_PATH, rangeText: ">= 22 and < 26", matrix: null },
+        { surface: GUIDE_PATH, rangeText: ">= 22", matrix: [22, 24, 26] },
+        { surface: INSTALL_PATH, rangeText: "22 or later", matrix: [22, 24, 26] },
+        { surface: README_PATH, rangeText: "22 or later", matrix: [22, 24, 26] },
       ]),
     ).toStrictEqual([]);
   });

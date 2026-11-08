@@ -42,7 +42,7 @@ downstream, and an input value on stderr copies it into a log nobody meant to ke
 
 ## Rules that bind here
 
-- **Node:** **>= 22, < 26** (CI matrix 22 + 24). `test/node-support.test.ts` reds when this line, `engines.node` and the `ci.yml` matrix disagree; each matrix value is a required check, so a new Node line waits for the owner to require it (#54, #35).
+- **Node:** **>= 22** (CI matrix 22 + 24 + 26). `test/node-support.test.ts` reds when this line, `engines.node`, the `ci.yml` matrix and the README and docs support lines disagree; 22 and 24 are required checks, and 26 waits for the owner to require it (#54, #35, ST15).
 - Every `dependencies` and `optionalDependencies` specifier resolves from the npm registry, never `file:` or `link:`: 0.0.1 and 0.0.2 shipped `file:vendor/*.tgz` and stay uninstallable (#27).
 - `@cosyte/fhir` stays a devDependency only: declared beside `@cosyte/transform`, whose peer it is, it failed the install with `ERESOLVE` (#27).
 - Load an optional `@cosyte/*` package only through the lazy loaders in `src/core/parsers.ts`, and keep its `import type` of `@cosyte/fhir` type-only: an absent package must degrade to `CLI_PARSER_UNAVAILABLE` (69), and `test/absent-sibling.test.ts` only catches a bare one-line `import()` of fhir or transform (#27).
