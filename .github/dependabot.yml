@@ -11,11 +11,11 @@ version: 2
 # prefix Dependabot guesses one from the history, and a guess is not a title rule.
 #
 # What the npm entry sees. The `@cosyte/*` siblings are registry ranges: the two hard
-# `dependencies` (`@cosyte/hl7`, `@cosyte/terminology`), the eight `optionalDependencies`, and
-# `@cosyte/fhir` as a development dependency (an installed copy gets it only as the peer of the
-# optional `@cosyte/transform`). `@modelcontextprotocol/sdk` is the one third-party RUNTIME
-# dependency, and it is kept OUT of both groups by an explicit `exclude-patterns`, so a bump on the
-# MCP agent surface lands as its own reviewable pull request rather than batched with anything else.
+# `dependencies` (`@cosyte/hl7`, `@cosyte/terminology`) and the nine `@cosyte/*`
+# `optionalDependencies`, `@cosyte/fhir` among them. `@modelcontextprotocol/sdk` is the one
+# third-party RUNTIME dependency, and it is kept OUT of both groups by an explicit
+# `exclude-patterns`, so a bump on the MCP agent surface lands as its own reviewable pull request
+# rather than batched with anything else.
 # The exclusion is stated rather than inferred: it must not depend on whether Dependabot classifies
 # an `optionalDependencies` entry as production or as development.
 #

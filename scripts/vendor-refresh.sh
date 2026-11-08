@@ -5,10 +5,9 @@
 # ▶ READ THIS FIRST: NONE OF THESE TARBALLS IS WIRED TO ANYTHING.
 #
 # The vendor -> npm dependency swap is complete. package.json declares a real registry range for
-# every sibling, @cosyte/fhir included: it is on the npm registry now, and it is a devDependency on
-# that range, NOT a runtime one. It exists so this repo's own FHIR + convert tests can run, and so
-# that @cosyte/transform's mandatory @cosyte/fhir peer resolves in the dev tree. No tarball here
-# supplies it any more.
+# every sibling, @cosyte/fhir included: it is on the npm registry now, and it is an optional
+# dependency on that range, beside @cosyte/transform, whose mandatory @cosyte/fhir peer it also
+# satisfies. No tarball here supplies it any more.
 #
 # The nine tarballs below are refreshed by this script but referenced by nothing. Removing them,
 # and this script with them, is a separate cleanup. See RELEASING.md.

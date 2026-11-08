@@ -19,9 +19,8 @@ Both are standing human gates. Everything up to them (the changeset, the version
 `pnpm pack` tarballs** (`file:vendor/*.tgz`, ADR 0021/0023). **A published package cannot ship a
 `file:vendor/…tgz` dependency**, and two releases went out doing exactly that.
 
-They are now real npm ranges. `@cosyte/fhir` is still not declared as a runtime dependency (see "The
-dependency swap, as actually done" below); this repo's own test run gets it as a `devDependency` on
-its registry range. No tarball under `vendor/` is wired to anything: `pnpm vendor:refresh` still
+They are now real npm ranges, `@cosyte/fhir` included: since `0.1.6` it is an optional dependency
+beside `@cosyte/transform` (see "The dependency swap, as actually done" below). No tarball under `vendor/` is wired to anything: `pnpm vendor:refresh` still
 refreshes the nine that remain, and removing them is a separate cleanup.
 
 ### ▶ THIS STEP WAS SKIPPED TWICE, AND `0.0.1` + `0.0.2` ARE BROKEN ON npm BECAUSE OF IT
@@ -65,13 +64,28 @@ directory, not assumed:
 version), which is what we want pre-alpha: the CLI is tested against exactly those sibling releases,
 and Dependabot now proposes each bump as its own reviewable PR.
 
-**Since then `@cosyte/fhir` has been published, and the rest of this section is the record of
-2026-08-03, not the current state.** As of 2026-11-08 a default `npm install @cosyte/cli` brings in
-`@cosyte/transform` and, as its peer, `@cosyte/fhir`, and FHIR parsing works from the installed copy;
-an npm install with `--legacy-peer-deps` keeps transform and leaves fhir out. A clean manifest that
-declares both `@cosyte/fhir` and `@cosyte/transform` as optional dependencies now installs with exit
-`0`, so the `ERESOLVE` measured below no longer reproduces. Whether to declare `@cosyte/fhir` here is
-a separate decision; until it is made, it stays a `devDependency`.
+**Since then `@cosyte/fhir` has been published and is declared, and the rest of this section is the
+record of 2026-08-03, not the current state.** Up to `0.1.5`, `@cosyte/fhir` reached an install only
+as the peer of `@cosyte/transform`, so an npm install with `--legacy-peer-deps` kept transform and left
+fhir out, and FHIR and `convert` exited `69` there. From `0.1.6` it is an optional dependency at
+`^0.1.0`, the same range transform is declared at, and the published fhir (`0.1.5`) satisfies
+transform's `^0.1.0` peer range. The `ERESOLVE` measured below no longer reproduces. Measured on
+2026-11-08 by packing the tarball and installing it in a clean directory outside this repository, then
+running the installed bins:
+
+| install                                   | exit | fhir / transform | FHIR `parse`       | `convert`          | MCP server         |
+| ----------------------------------------- | ---- | ---------------- | ------------------ | ------------------ | ------------------ |
+| `npm install`                             | `0`  | `0.1.5 / 0.1.4`  | `0`, `Patient`     | `0`, a `Bundle`    | starts             |
+| `pnpm add`                                | `0`  | `0.1.5 / 0.1.4`  | `0`, `Patient`     | `0`, a `Bundle`    | starts             |
+| `npm install --legacy-peer-deps`          | `0`  | `0.1.5 / 0.1.4`  | `0`, `Patient`     | `0`, a `Bundle`    | starts             |
+| `npm install --omit=optional`             | `0`  | absent           | `69`, value-free   | `69`, value-free   | `69`, value-free   |
+| `0.1.5`, `npm install --legacy-peer-deps` | `0`  | `- / 0.1.4`      | `69`               | `69`               | starts             |
+| `0.1.5`, `npm install --omit=optional`    | `0`  | absent           | `1`, a stack trace | `1`, a stack trace | `1`, a stack trace |
+
+The first four rows are the packed `0.1.6` tree; in each, `cosyte --version` and an HL7 v2 `parse`
+exit `0`, `--omit=optional` included. The last two rows are the published `0.1.5`, for comparison.
+"Starts" means the server answered an `initialize` request with its `serverInfo`, through both
+`cosyte-mcp` and `cosyte mcp`.
 
 **Why `@cosyte/fhir` was not declared, rather than declared optional.** It was not on the registry
 (`FHIR-NPM-NAME`, a persistent npm `E403`; the earlier "name similarity" reading was retracted
@@ -92,8 +106,9 @@ the suite, that flag does not decide the outcome (`synth` marks all seven peers 
 fails `ERESOLVE`; `deid` declares the same optional `@cosyte/fhir` peer and installs cleanly). The
 mechanism is not yet explained. Record measurements, not theories.
 
-`@cosyte/fhir` is kept as a **`devDependency`** on its registry range, so this repo's own FHIR and
-`convert` tests still run, and so it satisfies `@cosyte/transform`'s peer in the dev tree.
+`@cosyte/fhir` was kept as a **`devDependency`** on its registry range, so this repo's own FHIR and
+`convert` tests still ran, and so it satisfied `@cosyte/transform`'s peer in the dev tree. Since
+`0.1.6` the optional dependency does both.
 
 **Say this precisely, because the obvious shorter sentence is false.** `devDependencies` **are**
 published: they stay in the published `package.json` (`npm view @cosyte/hl7@0.0.7 devDependencies`
@@ -114,9 +129,8 @@ stack frame, which the CLI's value-free posture forbids.
 `loadOptional()` could not be reused as-is: its signature is `loadOptional<T>(format: CosyteFormat, …)`
 and `"transform"` is not a `CosyteFormat`, and its diagnostic hardcodes the word "parser", which is
 wrong for a conversion library. So `src/core/parsers.ts` now has `loadOptionalPackage(detail, load)`
-underneath it, plus a `loadFhir()` whose diagnostic says `@cosyte/fhir` arrives as transform's peer and
-to install it alongside `@cosyte/cli` (rather than `loadOptional`'s "it is an optional dependency",
-which would be false: it is not declared here). `@cosyte/hl7` and `@cosyte/terminology`
+underneath it, plus a `loadFhir()` whose diagnostic says that `@cosyte/fhir` is an optional dependency
+that `--omit=optional` leaves out, and to install it alongside `@cosyte/cli`. `@cosyte/hl7` and `@cosyte/terminology`
 stay hard deps and keep their bare imports, correctly. `test/absent-sibling.test.ts` holds this shut,
 including a static guard over `src/`.
 
@@ -129,6 +143,25 @@ matters: this repo now has its first static reference to that package (`src/core
 `import type`, which is erased at build time and emits no runtime load, verified in `dist/`). Dropping
 the word `type` would load it eagerly and break every command in an installed copy, and the guard
 would not see it.
+
+### An install without the MCP SDK runs every command but the server
+
+`@modelcontextprotocol/sdk` has always been an `optionalDependency`, yet up to `0.1.5` an install made
+with `--omit=optional` could not run `cosyte` at all, not even `--version`: it died on a raw
+`ERR_MODULE_NOT_FOUND` and a stack trace (the last row of the table above). The manifest was right;
+the build was not. The bins are bundled without code splitting, so the server module the `cosyte mcp`
+branch reached by a dynamic `import()` was inlined into the bin, and the bundler hoisted that module's
+static SDK imports to the top of the bin, where every command loaded them. `cosyte-mcp` imported the
+server statically as well.
+
+Since `0.1.6` both bins start the server through `src/mcp/launch.ts`, which imports the SDK with a
+dynamic `import()` of the package itself (that stays dynamic in the bundle) and maps an absent SDK to
+a value-free `CLI_PARSER_UNAVAILABLE` (exit `69`) naming the package to install. The server's request
+wiring (`src/mcp/wire.ts`) takes the SDK classes as arguments and imports the SDK for types only.
+`src/mcp/server.ts`, the `@cosyte/cli/mcp` subpath, keeps its static imports, so that library import
+still needs the SDK. Three guards: `test/absent-mcp-sdk.test.ts` walks every module either bin can
+reach, following dynamic imports too, and fails on a static SDK import; `pnpm smoke` runs both built
+bins with the SDK hidden from Node's resolver; and the clean-room table above.
 
 ### The `npx @cosyte/cli` short form does not work, and the swap does not fix it
 
@@ -250,8 +283,8 @@ make: the version string.
 1. ~~`PUB-FLIP` the repo public (founder stop 1).~~ Done; the repo is public.
 2. ~~Swap the vendored `file:` deps for real `@cosyte/*` npm ranges.~~ Done; see "The dependency swap,
    as actually done" above for what could and could not be swapped, and for the measurements behind
-   it. `@cosyte/fhir` is on the registry now, `@cosyte/transform` resolves, and fhir reaches an
-   install as transform's peer; declaring it here is a separate decision (see above).
+   it. `@cosyte/fhir` is on the registry now and declared as an optional dependency, and
+   `@cosyte/transform` resolves (see above).
 3. ~~Confirm the `cosyte` / `cosyte-mcp` bin names are free on npm.~~ Done; `0.0.1` owns both.
 4. Land the release changeset; approve the **"Version Packages"** PR.
 5. Approve the protected `release` environment to publish (founder stop 2). Provenance attaches

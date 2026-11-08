@@ -110,5 +110,8 @@ error.
 ## Isolation
 
 The MCP SDK (`@modelcontextprotocol/sdk`) is the CLI's only third-party runtime dependency. It is
-declared **optional**, and the programmatic core (the `.` subpath) loads with the SDK absent. The server
-surface is also importable programmatically via the `@cosyte/cli/mcp` subpath.
+declared **optional**: the programmatic core (the `.` subpath) and every `cosyte` command other than
+`cosyte mcp` run with the SDK absent, as after `npm install --omit=optional`. Without it, `cosyte-mcp`
+and `cosyte mcp` exit `69` with `CLI_PARSER_UNAVAILABLE`, naming the package to install, instead of
+starting. The server surface is also importable programmatically via the `@cosyte/cli/mcp` subpath,
+which needs the SDK installed.

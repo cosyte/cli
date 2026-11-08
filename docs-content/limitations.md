@@ -86,17 +86,16 @@ These are **non-goals**, not missing features: named so nothing over-trusts the 
 
   **The matrix says what the CLI implements. It is not a promise about what your install can reach**:
 
-- **Each cell needs its library installed.** The six breadth formats and `@cosyte/transform` are
-  optional dependencies, and `@cosyte/fhir` is the peer dependency of `@cosyte/transform`, so a
-  default install has all of them. A library that is still missing (a peer your package manager did
-  not install, or a package removed afterwards) turns its cells into a value-free
-  `CLI_PARSER_UNAVAILABLE` with exit `69`, and **`convert`** reports the same when `@cosyte/fhir` or
-  `@cosyte/transform` is missing. The commands do not guess, and they do not report your input as bad.
+- **Each cell needs its library installed.** The six breadth formats, `@cosyte/fhir` and
+  `@cosyte/transform` are optional dependencies, so a default install has all of them. A library that
+  is missing (an install with `--omit=optional`, or a package removed afterwards) turns its cells into
+  a value-free `CLI_PARSER_UNAVAILABLE` with exit `69`, and **`convert`** reports the same when
+  `@cosyte/fhir` or `@cosyte/transform` is missing. The commands do not guess, and they do not report
+  your input as bad.
 
-- **Do not install with `--omit=optional`.** The install succeeds, but the `cosyte` command then does
-  not run at all: it fails on a missing `@modelcontextprotocol/sdk` before reaching any command, even
-  `--version`. That is a known defect and is tracked separately; it is recorded here rather than left
-  for you to hit.
+- **The MCP server needs its SDK.** `@modelcontextprotocol/sdk` is an optional dependency too. Without
+  it every `cosyte` command still runs, and `cosyte-mcp` and `cosyte mcp` exit `69` with
+  `CLI_PARSER_UNAVAILABLE`, naming the package to install.
 
 - **No clinical interpretation, no unit conversion, no terminology content.** The CLI inherits these
   non-goals from the libraries it wraps. It never decides criticality, rescales a magnitude, or bundles

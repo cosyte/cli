@@ -28,9 +28,9 @@
  *      does not answer, a throw inside the gate, an install directory inside this repository) reds
  *      it too, each with its own reason string. Failing closed is the point: a transient fault costs
  *      a re-run, never a permanently dead version.
- *   6. An installed copy that does NOT carry `@cosyte/fhir` or `@cosyte/transform` passes. Those two
- *      are absent from a real consumer install by design, and a gate that red on their absence could
- *      never run here at all.
+ *   6. An installed copy that does NOT carry `@cosyte/fhir` or `@cosyte/transform` passes. Both are
+ *      optional dependencies an install can leave out, and the CLI reports their absence value-free
+ *      and keeps running, so a gate that red on their absence would red a working install.
  *   7. The publishing job cannot run without the gate: parsed out of the workflow file, since a
  *      job graph is the only place that fact lives.
  *
@@ -139,8 +139,8 @@ let brokenManifest: string;
 let brokenConsumer: string;
 
 /**
- * Stands in for a command whose optional siblings are absent from an installed copy, which is what
- * `@cosyte/fhir` and `@cosyte/transform` are in a real one. It reports them value-free and exits 0,
+ * Stands in for a command whose optional siblings are absent from an installed copy, which
+ * `@cosyte/fhir` and `@cosyte/transform` can be in a real one. It reports them value-free and exits 0,
  * exactly as the CLI's own unavailable path does.
  */
 const COMMAND_BIN = `#!/usr/bin/env node
@@ -505,11 +505,11 @@ describe("a local path a consumer never installs is not a release blocker", () =
       expect(run.report.phases.manifest?.ignoredLocalPathSpecifiers).toEqual([]);
 
       // And the premise, read off the manifest itself: the fixture for this criterion is the repo,
-      // and `@cosyte/fhir`, the devDependency this repo's FHIR tests run against, is a registry range.
+      // and `@cosyte/fhir`, an optional dependency a consumer's install resolves, is a registry range.
       const manifest = JSON.parse(readFileSync(join(REPO_ROOT, "package.json"), "utf8")) as {
-        devDependencies: Record<string, string>;
+        optionalDependencies: Record<string, string>;
       };
-      expect(manifest.devDependencies["@cosyte/fhir"]).toMatch(/^[\^~]?\d+\.\d+\.\d+$/);
+      expect(manifest.optionalDependencies["@cosyte/fhir"]).toMatch(/^[\^~]?\d+\.\d+\.\d+$/);
     },
     CASE_TIMEOUT,
   );

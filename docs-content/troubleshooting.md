@@ -42,17 +42,15 @@ names which formats _do_ support the operation. The command is never faked to a 
 The library for a recognized format is not installed. The CLI degrades to this value-free signal
 rather than crashing, and it never falls back to a guess. Two different causes:
 
-- **The six breadth parsers** (`dicom`/`x12`/`ccda`/`ncpdp`/`astm`/`mllp`) are `optionalDependencies`
-  that resolve, so a default install has all six; you see this only if one was removed. Install the
-  named `@cosyte/<format>` package to get it back. Note that `--omit=optional` is **not** a supported
-  way to slim the install: it also removes `@modelcontextprotocol/sdk`, and the `cosyte` command then
-  fails to start at all rather than reaching this diagnostic. Known defect, tracked separately.
-- **FHIR** comes from `@cosyte/fhir`, the peer dependency of `@cosyte/transform`, so a default install
-  has it; you see this on FHIR input only if your package manager did not install that peer or it was
-  removed (npm's `--legacy-peer-deps` is one install that leaves it out). `convert` reports the same
-  when `@cosyte/fhir` or `@cosyte/transform` is missing. Install the named package next to
-  `@cosyte/cli` to get it back; with `npx`, name it as a second package:
+- **The six breadth parsers** (`dicom`/`x12`/`ccda`/`ncpdp`/`astm`/`mllp`) and **FHIR**
+  (`@cosyte/fhir`) are `optionalDependencies`, so a default install has all of them, with or without
+  npm's `--legacy-peer-deps`; you see this only after `--omit=optional` or if one was removed. `convert`
+  reports the same when `@cosyte/fhir` or `@cosyte/transform` is missing. Install the named package
+  next to `@cosyte/cli` to get it back; with `npx`, name it as a second package:
   `npx --package @cosyte/cli --package @cosyte/fhir cosyte ...`.
+- **The MCP server** (`cosyte-mcp`, or `cosyte mcp`) needs `@modelcontextprotocol/sdk`, also an
+  optional dependency. Without it the server exits `69` with this code before it starts, and every
+  other command still runs. Install `@modelcontextprotocol/sdk` next to `@cosyte/cli`.
 
 ## `CLI_NO_INPUT` (exit 66)
 

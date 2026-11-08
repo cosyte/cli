@@ -16,7 +16,7 @@
  * | `2`  | `USAGE`    | usage error: unknown command, bad flag, missing argument (this CLI's own value) |
  * | `65` | `DATAERR`  | data error: input could not be parsed / format not detected (EX_DATAERR) |
  * | `66` | `NOINPUT`  | no input: the file does not exist or is unreadable (EX_NOINPUT)     |
- * | `69` | `UNAVAILABLE` | a required capability is not wired for this input: e.g. `redact` on a format `@cosyte/deid` has no adapter for (EX_UNAVAILABLE) |
+ * | `69` | `UNAVAILABLE` | a required capability is not wired for this input: e.g. `redact` on a format `@cosyte/deid` has no adapter for, or an optional library it needs is not installed (EX_UNAVAILABLE) |
  * | `70` | `SOFTWARE` | internal error: an unexpected exception, i.e. a bug (EX_SOFTWARE)   |
  * | `74` | `IOERR`    | output error: the output stream closed before the CLI had finished writing to it, the shape a downstream consumer that exits early produces (EX_IOERR) |
  *

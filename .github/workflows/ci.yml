@@ -46,19 +46,15 @@ jobs:
   # asked while the answer can still prevent a permanent publish: `@cosyte/cli@0.0.1` and `0.0.2` are
   # on the registry uninstallable forever, and this job is what would have refused them.
   #
-  # ONE DEFAULT IS PERMANENTLY STALE HERE, AND THE OBVIOUS "FIX" FOR IT IS FORBIDDEN. The upstream
-  # default for `expect-unpublished-deps` is `@cosyte/fhir=blocked`. Be precise about why that is
-  # stale, because the short version is false: `@cosyte/fhir` IS declared in this manifest, as
-  # `devDependencies: {"@cosyte/fhir": "^0.1.0"}`, a registry range, which is what lets this
-  # repo's own FHIR tests run. The operative fact is that `prepublish-check.mjs` does not read
-  # `devDependencies` at all (a `file:` specifier is fine there, since no consumer installs them), so
-  # the allowance names a package that is not a CONSUMER dependency of this one and is reported stale
-  # on every run. That notice never fails the job.
-  #
-  # It must NOT be silenced by promoting `@cosyte/fhir` into `dependencies` or `optionalDependencies`:
-  # declaring it in either, alongside `@cosyte/transform`, fails the whole install with `ERESOLVE`,
-  # which is the measured reason it is not there. See CLAUDE.md. If the notice is ever worth
-  # silencing, the way is to pass an empty `expect-unpublished-deps` from this caller.
+  # ONE DEFAULT IS STALE HERE. The upstream default for `expect-unpublished-deps` is
+  # `@cosyte/fhir=blocked`, from before `@cosyte/fhir` was on the registry. It is now published and
+  # declared in this manifest as an optional dependency on a registry range, beside
+  # `@cosyte/transform`, so nothing is absent, the install passes, and the allowance is reported stale
+  # ("is on the registry now") on every run. That notice never fails the job. Declaring both no longer
+  # fails the install with `ERESOLVE`: the clean-room proof (`npm install`, `pnpm add` and
+  # `npm install --legacy-peer-deps` of the packed tarball, each exit 0 with FHIR parse and `convert`
+  # working) is recorded in RELEASING.md. If the notice is ever worth silencing, the way is to pass an
+  # empty `expect-unpublished-deps` from this caller.
   #
   # Universal gates from the shared pipeline (typecheck, lint, format, test, coverage, build, attw,
   # dual ESM/CJS smoke, actionlint) on the standard Node matrix. Repo-specific extra jobs (e.g. an
