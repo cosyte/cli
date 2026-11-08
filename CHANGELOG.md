@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.4
+
+### Patch Changes
+
+- 9a6af2f: The npm description now fits on the package page: npm keeps 255 characters of a description, and the old one was cut off mid-word, so its last sentence is dropped.
+
 ## 0.1.3
 
 ### Patch Changes
