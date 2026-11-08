@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.7
+
+### Patch Changes
+
+- a515187: Built with tsup 9. The JavaScript is unchanged. In the published `.d.ts` files, type-only exports now sit in their own `export type {}` statement, and `mcp.d.ts` takes `CliCode` and `RunDeps` from the root entry instead of a shared chunk. The exported names and types are the same.
+
 ## 0.1.6
 
 ### Patch Changes
