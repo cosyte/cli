@@ -23,7 +23,7 @@ version: 2
 # overrides: when a bump makes one redundant, remove it by hand.
 #
 # The cosyte/.github callers name a published `workflows-*` reference, which moves by hand with every
-# caller here (ST37), not through this file. Majors wait for the toolchain-upgrade pass (EN10).
+# caller here (ST37), not through this file.
 updates:
   - package-ecosystem: npm
     directory: "/"
@@ -44,6 +44,15 @@ updates:
         dependency-type: production
         exclude-patterns:
           - "@modelcontextprotocol/sdk"
+    ignore:
+      # @types/node describes the oldest Node.js this package runs on (engines: >=22), so it stays
+      # on the 22 line. A newer major type-checks calls that Node 22 does not have.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+      # @cosyte/process owns the vitest version; this repository declares vitest directly only
+      # because test files import it, pinned to exactly the version process runs (`pnpm
+      # check:process` fails any other). It moves when process does, never on its own.
+      - dependency-name: "vitest"
   - package-ecosystem: github-actions
     directory: "/"
     schedule:

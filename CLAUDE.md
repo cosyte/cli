@@ -18,7 +18,7 @@ pnpm typecheck && pnpm lint && pnpm format:check && pnpm phi-scan
 pnpm test && pnpm test:coverage && pnpm build && pnpm attw && pnpm smoke
 pnpm typecheck:examples && pnpm lint:examples && pnpm examples && pnpm phi-scan:examples
 pnpm check:no-emdash && pnpm check:no-internal-refs
-pnpm check:readme && pnpm check:claude-card && pnpm check:catalog
+pnpm check:readme && pnpm check:claude-card && pnpm check:catalog && pnpm check:process
 ```
 
 `pnpm smoke` covers locally what CI's inline ESM/CJS check does on `dist/`. Only CI runs
