@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.3
+
+### Patch Changes
+
+- b1a2753: Node.js 26 is supported: `engines.node` is now `>=22.0.0`, and every change is tested on Node 22, 24, and 26.
+- d415780: The README follows the house layout, with install, usage, and documentation sections and sections for support, security, and contributing.
+
 ## 0.1.2
 
 ### Patch Changes
