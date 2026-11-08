@@ -18,7 +18,7 @@ pnpm typecheck && pnpm lint && pnpm format:check && pnpm phi-scan
 pnpm test && pnpm test:coverage && pnpm build && pnpm attw && pnpm smoke
 pnpm typecheck:examples && pnpm lint:examples && pnpm examples && pnpm phi-scan:examples
 pnpm check:no-emdash && pnpm check:no-internal-refs
-pnpm check:readme && pnpm check:claude-card && pnpm check:agent-notes && pnpm check:catalog
+pnpm check:readme && pnpm check:claude-card && pnpm check:catalog
 ```
 
 `pnpm smoke` covers locally what CI's inline ESM/CJS check does on `dist/`. Only CI runs
@@ -32,8 +32,6 @@ it, and in the scripts and CI logs that consume its output: a wrong exit `0` pas
 downstream, and an input value on stderr copies it into a log nobody meant to keep it in.
 
 ## Rules that bind here
-
-Each in full, with the failure behind it: documentation/agent-notes.md#rules-in-full.
 
 - **Node:** **>= 22** (CI matrix 22 + 24 + 26). `test/node-support.test.ts` reds when this line,
   `engines.node`, the matrix and the support lines disagree; 26 awaits the ruleset (#54, ST15).
@@ -50,9 +48,8 @@ Each in full, with the failure behind it: documentation/agent-notes.md#rules-in-
 - Run `pnpm attw`, never bare `attw`, which exits 0 over a pack with no declarations (#25).
 - `pnpm phi-scan` is script-utils' `cosyte-phi-scan` (the floor): exit 1 is hits only, 2 anything it
   could not read, and `--staged` keeps `--no-renames` (#30, #38).
-- A `test/scripts/` test that builds a git fixture asserts the fixture took before the fix (#30).
-- `docs-content/sidebars.json` stays on the docs.cosyte.com spine, with no hand-written
-  `API Reference` (#32).
+- `docs-content/sidebars.json` keeps the docs.cosyte.com spine (`intro`, Installation, Quickstart,
+  Core concepts, Guides, Troubleshooting), with no hand-written `API Reference` (#32).
 - Keep item ids, phase words, ADR numbers and roadmap paths out of the README, `docs-content/`,
   JSDoc and string literals (#13, #19), and cut a claim rather than soften it (#20).
 - Docs say `npx --package @cosyte/cli cosyte ...`; `npx @cosyte/cli` fails: no bin is `cli` (#27).
