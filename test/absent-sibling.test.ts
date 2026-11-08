@@ -205,4 +205,49 @@ describe("no sibling that can be absent is imported outside the optional-loader 
     expect(isComment(' *   import("@cosyte/transform"),')).toBe(true);
     expect(isComment('  await import("@cosyte/transform");')).toBe(false);
   });
+
+  /** The `@cosyte/*` packages an install can lack: the optional ones, and the devDependency fhir. */
+  function absentable(): string[] {
+    const manifest = JSON.parse(
+      readFileSync(join(import.meta.dirname, "..", "package.json"), "utf8"),
+    ) as { optionalDependencies: Record<string, string> };
+    const optional = Object.keys(manifest.optionalDependencies);
+    return ["@cosyte/fhir", ...optional.filter((name) => name.startsWith("@cosyte/"))];
+  }
+
+  /** The specifier of every top-level import in `source` that is not an `import type`. */
+  function valueImports(source: string): string[] {
+    const imports = source.matchAll(/^import\s+(?!type\s)[^;]*?["']([^"']+)["']/gm);
+    return [...imports].map((m) => m[1] ?? "");
+  }
+
+  it("a package an install can lack is imported statically only as `import type`", () => {
+    // A value import loads the package with the module, so an install without it breaks every
+    // command, and the dynamic-import guard above cannot see one. `import type` is erased at build.
+    const names = absentable();
+    expect(names).toContain("@cosyte/deid");
+    const parsers = readFileSync(join(SRC, "core", "parsers.ts"), "utf8");
+    expect(parsers).toContain('import type * as CosyteFhir from "@cosyte/fhir";');
+    expect(valueImports(parsers)).toContain("./diagnostics.js");
+    const offenders: string[] = [];
+    for (const file of sourceFiles(SRC)) {
+      for (const spec of valueImports(readFileSync(file, "utf8"))) {
+        if (names.some((name) => spec === name || spec.startsWith(`${name}/`))) {
+          offenders.push(`${file}: ${spec}`);
+        }
+      }
+    }
+    expect(offenders).toStrictEqual([]);
+  });
+
+  it("the value-import detector has teeth", () => {
+    expect(valueImports('import { parseResource } from "@cosyte/fhir";')).toStrictEqual([
+      "@cosyte/fhir",
+    ]);
+    expect(valueImports('import {\n  a,\n  b,\n} from "@cosyte/deid/hl7";')).toStrictEqual([
+      "@cosyte/deid/hl7",
+    ]);
+    expect(valueImports('import "@cosyte/x12";')).toStrictEqual(["@cosyte/x12"]);
+    expect(valueImports('import type * as CosyteFhir from "@cosyte/fhir";')).toStrictEqual([]);
+  });
 });

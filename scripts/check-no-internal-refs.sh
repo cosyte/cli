@@ -6,8 +6,7 @@
 # package description) describes what the software does and what changed. It must never
 # carry our internal bookkeeping: item identifiers (`CLI-6`, `CCDA-P7`), "Phase 8" /
 # "roadmap Phase K", sweep and programme names, ADR numbers, internal repo paths, or
-# process commentary about how the artifact came to exist. Source of truth: this repository's
-# `documentation/agent-notes.md`, "No internal project bookkeeping on a public surface".
+# process commentary about how the artifact came to exist.
 # The founder's words: "The releases should also not speak on anything regarding phases,
 # etc. That has no relevance to the user consuming it. This goes for readmes and
 # documentation as well."
@@ -845,8 +844,6 @@ fail_with_hits() {
   echo "       And when the sentence states a LIMIT, CUT the bookkeeping and leave the limit" >&2
   echo "       exactly as strong as it was. Softening it into an implied capability is the" >&2
   echo "       worse defect in this package." >&2
-  echo "       Rule: documentation/agent-notes.md, 'No internal project bookkeeping on a" >&2
-  echo "       public surface'." >&2
   exit 1
 }
 

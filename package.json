@@ -81,7 +81,6 @@
     "changeset": "changeset",
     "typecheck": "tsc --noEmit",
     "phi-scan": "cosyte-phi-scan",
-    "check:agent-notes": "cosyte-agent-notes",
     "check:no-emdash": "cosyte-no-emdash",
     "check:no-internal-refs": "bash scripts/check-no-internal-refs.sh",
     "check:readme": "cosyte-readme",
