@@ -53,7 +53,7 @@ name: Em-dash gate
 # WHY A SEPARATE WORKFLOW, and not a job in ci.yml:
 #
 #   The shared ci pipeline is not an option. cli's `ci` job calls
-#   cosyte/.github/.github/workflows/ci.yml@main, which runs a fixed ladder and no
+#   cosyte/.github's shared ci.yml, which runs a fixed ladder and no
 #   arbitrary repo script. Adding the gate there would also flip crew, config, iac,
 #   and assets red on their next run: all four violate the ban wholesale today, and
 #   remediating them is separate, founder-gated work. A shared pipeline is the wrong
@@ -67,7 +67,7 @@ name: Em-dash gate
 #   Within cli, the deciding factor is the trigger. The PR-text half below needs the
 #   `edited` activity type, which is not a default: without it, a title or body
 #   edited after the last push is never re-checked. But ci.yml's triggers drive the
-#   shared pipeline over the Node 22 + 24 matrix (typecheck, lint, format, PHI scan,
+#   shared pipeline over the Node 22, 24 and 26 matrix (typecheck, lint, format, PHI scan,
 #   test, coverage, build, attw, dual ESM/CJS smoke). Re-running all of that every
 #   time someone fixes a typo in a PR description is a large cost for no extra
 #   safety. Same call hl7, fhir, mllp, pathways, website, x12, ncpdp and dicom made,
@@ -117,12 +117,10 @@ concurrency:
 jobs:
   # The check-run context prefix. See the note above before touching this id.
   no-emdash:
-    # Pinned to the 40 character commit, not to the tag beside it: a tag can be moved
-    # or deleted by anyone who gains write access to the workflow's repository, so a
-    # tag is not an immutable reference and is not a pin. The trailing comment is the
-    # published reference that commit was released as, so the release note stays
-    # findable from here.
-    uses: cosyte/.github/.github/workflows/gate-no-emdash.yml@84ecccd771cbc9c1ece003a3f8ff61415360395b # workflows-2026-09-18-84ecccd771cb
+    # A published reference (ST37): a `workflows-*` release of cosyte/.github. Those releases
+    # are immutable, so the tag is locked to one commit, and every caller in this repository
+    # moves to the next reference together. The non-installing form: this repository's gate is a script that needs nothing installed.
+    uses: cosyte/.github/.github/workflows/gate-no-emdash.yml@workflows-2026-11-07-498c7c13c886
     # No more than the scan needs. A called workflow's GITHUB_TOKEN can only be
     # downgraded by its caller, and this gate reads the tree and nothing else.
     permissions:

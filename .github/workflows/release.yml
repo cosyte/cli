@@ -8,20 +8,12 @@ name: Release
 # npmjs.com names this repository, this file (`release.yml`) and the `release` environment, so
 # renaming the file or the environment stops every publish.
 #
-# ▶ KNOWN TRAP, documented rather than bypassed. The `ci-required-checks` ruleset on this repo
-# requires four contexts with `bypass_actors: []`. Changesets opens the "Version Packages" PR as
-# `github-actions[bot]` using the default `GITHUB_TOKEN`, and GitHub does not start workflow runs
-# for events raised by that token, so that PR arrives with ZERO check runs. Four required contexts
-# that never arrive are PENDING, not failing, and with no bypass actors nobody, including an admin,
-# can merge past them. The escape, done last and immediately before merging, is one commit onto
-# `changeset-release/main`, which raises a normal `pull_request` event and produces all four
-# contexts:
-#
-#   gh pr checkout <n> && git commit --allow-empty -m "chore: run CI on the version PR" && git push
-#
-# Adding a bypass actor would also clear it and is DELIBERATELY REJECTED: it would let a human merge
-# a red PR on a published healthcare package. The durable fix is to author the Version PR with a PAT
-# in the shared `cosyte/.github` release workflow, which is tracked upstream, not here.
+# ▶ THE "Version Packages" PR IS AUTHORED THROUGH RELEASE_PR_TOKEN, so its checks run as they do on
+# any pull request and the `ci-required-checks` ruleset (`bypass_actors: []`) gates it like one. It
+# used to be opened as `github-actions[bot]` with the default `GITHUB_TOKEN`, which starts no
+# workflow runs, so it arrived with ZERO check runs and needed a pushed commit before it could merge.
+# If one ever arrives with no checks, look at that token first. Adding a bypass actor stays
+# DELIBERATELY REJECTED: it would let a human merge a red PR on a published healthcare package.
 
 on:
   push:
@@ -33,9 +25,8 @@ jobs:
   # tarball FROM A DIRECTORY OUTSIDE THIS REPO. Until this job existed that check was a sentence in a
   # human checklist, and the shared pipeline's own install check runs AFTER `changesets/action` has
   # published, so it can only report a dead version, never prevent one. `ci / prepublish` does ask
-  # the same question early, but it is not in this workflow's dependency graph and the merge that
-  # publishes arrives with zero check runs (the GITHUB_TOKEN trap above), so it does not gate a
-  # publish either.
+  # the same question early, on the Version Packages pull request too, but it is not in this
+  # workflow's dependency graph, so on its own it does not gate a publish.
   #
   # It runs on every push to `main`, which includes the push that opens or updates the "Version
   # Packages" PR. That is deliberate. DO NOT make it skippable, and do not add an `if:` to `release`:
@@ -76,7 +67,7 @@ jobs:
       contents: write # create tags / the GitHub release
       id-token: write # npm provenance
       pull-requests: write # open the "Version Packages" PR
-    uses: cosyte/.github/.github/workflows/release.yml@main
+    uses: cosyte/.github/.github/workflows/release.yml@workflows-2026-11-07-498c7c13c886
     with:
       package-name: "@cosyte/cli"
     secrets: inherit

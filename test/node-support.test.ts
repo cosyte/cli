@@ -612,7 +612,10 @@ describe("the extractors bound real values out of the real files", () => {
 
   it("reads the matrix out of this repository's own CI caller, not an upstream default", () => {
     const text = readSurface(WORKFLOW_PATH);
-    expect(text).toContain("uses: cosyte/.github/.github/workflows/ci.yml@main");
+    // At a published reference, never `@main` (ST37): the reference moves, the caller stays.
+    expect(text).toMatch(
+      /^ {4}uses: cosyte\/\.github\/\.github\/workflows\/ci\.yml@workflows-\d{4}-\d{2}-\d{2}-[0-9a-f]{12}$/m,
+    );
     expect(text).toContain("node-versions:");
     expect(WORKFLOW.matrix).toStrictEqual([22, 24, 26]);
     expect(WORKFLOW.rangeText).toBeNull();
