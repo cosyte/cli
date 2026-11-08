@@ -19,6 +19,10 @@ on:
   push:
     branches: [main]
 
+# Read-only by default: the release job below grants itself the writes the shared pipeline needs.
+permissions:
+  contents: read
+
 jobs:
   # ▶ THE GATE THE PUBLISH DEPENDS ON. `@cosyte/cli@0.0.1` and `0.0.2` are on the registry
   # uninstallable forever, and the check that would have refused both is `npm install` of the packed
