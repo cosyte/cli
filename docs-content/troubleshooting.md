@@ -49,8 +49,10 @@ rather than crashing, and it never falls back to a guess. Two different causes:
   fails to start at all rather than reaching this diagnostic. Known defect, tracked separately.
 - **FHIR** comes from `@cosyte/fhir`, the peer dependency of `@cosyte/transform`, so a default install
   has it; you see this on FHIR input only if your package manager did not install that peer or it was
-  removed. `convert` reports the same when `@cosyte/fhir` or `@cosyte/transform` is missing. Install
-  the named package to get it back.
+  removed (npm's `--legacy-peer-deps` is one install that leaves it out). `convert` reports the same
+  when `@cosyte/fhir` or `@cosyte/transform` is missing. Install the named package next to
+  `@cosyte/cli` to get it back; with `npx`, name it as a second package:
+  `npx --package @cosyte/cli --package @cosyte/fhir cosyte ...`.
 
 ## `CLI_NO_INPUT` (exit 66)
 

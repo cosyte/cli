@@ -65,7 +65,15 @@ directory, not assumed:
 version), which is what we want pre-alpha: the CLI is tested against exactly those sibling releases,
 and Dependabot now proposes each bump as its own reviewable PR.
 
-**Why `@cosyte/fhir` is not declared, rather than declared optional.** It is not on the registry
+**Since then `@cosyte/fhir` has been published, and the rest of this section is the record of
+2026-08-03, not the current state.** As of 2026-11-08 a default `npm install @cosyte/cli` brings in
+`@cosyte/transform` and, as its peer, `@cosyte/fhir`, and FHIR parsing works from the installed copy;
+an npm install with `--legacy-peer-deps` keeps transform and leaves fhir out. A clean manifest that
+declares both `@cosyte/fhir` and `@cosyte/transform` as optional dependencies now installs with exit
+`0`, so the `ERESOLVE` measured below no longer reproduces. Whether to declare `@cosyte/fhir` here is
+a separate decision; until it is made, it stays a `devDependency`.
+
+**Why `@cosyte/fhir` was not declared, rather than declared optional.** It was not on the registry
 (`FHIR-NPM-NAME`, a persistent npm `E403`; the earlier "name similarity" reading was retracted
 ecosystem-wide on 2026-08-03, so treat the cause as **unexplained** and do not assert one). Declaring
 it at all breaks the install, which was measured here rather than reasoned about:
@@ -97,7 +105,7 @@ The runtime closure is what had to be clean, and it is.
 
 ### What an installed copy cannot do, and why that is not a crash
 
-With `@cosyte/fhir` and `@cosyte/transform` both absent, every code path that reaches for them
+With `@cosyte/fhir` or `@cosyte/transform` absent, every code path that reaches for them
 degrades to a value-free `CLI_PARSER_UNAVAILABLE` (exit `69`). That required a code change, and
 shipping the manifest swap without it would have been worse than the install break: both were
 imported with a bare `await import()`, so an install without them raised a raw resolver error and a
@@ -106,8 +114,9 @@ stack frame, which the CLI's value-free posture forbids.
 `loadOptional()` could not be reused as-is: its signature is `loadOptional<T>(format: CosyteFormat, …)`
 and `"transform"` is not a `CosyteFormat`, and its diagnostic hardcodes the word "parser", which is
 wrong for a conversion library. So `src/core/parsers.ts` now has `loadOptionalPackage(detail, load)`
-underneath it, plus a `loadFhir()` whose diagnostic says the package is not on the registry (rather
-than `loadOptional`'s "install it", which would be false). `@cosyte/hl7` and `@cosyte/terminology`
+underneath it, plus a `loadFhir()` whose diagnostic says `@cosyte/fhir` arrives as transform's peer and
+to install it alongside `@cosyte/cli` (rather than `loadOptional`'s "it is an optional dependency",
+which would be false: it is not declared here). `@cosyte/hl7` and `@cosyte/terminology`
 stay hard deps and keep their bare imports, correctly. `test/absent-sibling.test.ts` holds this shut,
 including a static guard over `src/`.
 
@@ -180,8 +189,8 @@ and `0.0.2` happened.
 
 - **`devDependencies`.** A consumer never installs them, so a local-path specifier there is reported
   and passed over. The gate names it in its report rather than ignoring the field silently.
-- **`@cosyte/fhir` and `@cosyte/transform` being absent from an installed copy.** That is the
-  designed state, not a defect; those paths degrade to a value-free `CLI_PARSER_UNAVAILABLE`
+- **`@cosyte/fhir` or `@cosyte/transform` being absent from an installed copy.** That is a
+  supported state, not a defect; those paths degrade to a value-free `CLI_PARSER_UNAVAILABLE`
   (exit `69`). The gate asserts the install exited zero and the bins ran, never that some named
   package is present.
 - **A real parse from the installed copy.** Each bin is invoked with `--version`, which is the load
@@ -241,8 +250,8 @@ make: the version string.
 1. ~~`PUB-FLIP` the repo public (founder stop 1).~~ Done; the repo is public.
 2. ~~Swap the vendored `file:` deps for real `@cosyte/*` npm ranges.~~ Done; see "The dependency swap,
    as actually done" above for what could and could not be swapped, and for the measurements behind
-   it. `@cosyte/fhir` stays undeclared until it is on the registry; when it publishes, declare it and
-   `@cosyte/transform` starts resolving too.
+   it. `@cosyte/fhir` is on the registry now, `@cosyte/transform` resolves, and fhir reaches an
+   install as transform's peer; declaring it here is a separate decision (see above).
 3. ~~Confirm the `cosyte` / `cosyte-mcp` bin names are free on npm.~~ Done; `0.0.1` owns both.
 4. Land the release changeset; approve the **"Version Packages"** PR.
 5. Approve the protected `release` environment to publish (founder stop 2). Provenance attaches

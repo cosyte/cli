@@ -167,17 +167,17 @@ type ConvertOutcome =
   | { readonly ok: false; readonly result: RunResult };
 
 /**
- * Why `@cosyte/transform` is absent, in words a user can act on. **It deliberately does not say
- * "install it"**: `npm install @cosyte/transform` fails too (`E404` on its own `@cosyte/fhir` peer),
- * so telling someone to install it would send them at a command that cannot succeed. That is the same
- * defect the `@cosyte/fhir` diagnostic exists to avoid, and it is why neither goes through
- * `loadOptional()`, whose stock wording is exactly "install it (it is an optional dependency)".
- * Value-free by construction: package names and a statement of fact, no input echoed.
+ * Why `convert` cannot load `@cosyte/transform`, in words a user can act on. The import fails either
+ * when `@cosyte/transform` itself is absent or when it is present but its own peer `@cosyte/fhir` is
+ * not (measured: an npm `--legacy-peer-deps` install keeps transform and leaves fhir out, and the
+ * resolver error then names fhir), so the message names both and does not claim which one is
+ * missing. It does not go through `loadOptional()`, whose stock wording calls the package a
+ * "parser". Value-free by construction: package names and a statement of fact, no input echoed.
  */
 const TRANSFORM_UNAVAILABLE =
-  "the @cosyte/transform conversion library is not installed, so convert is unavailable; it " +
-  "requires @cosyte/fhir, which is not currently on the npm registry, so npm skips transform as " +
-  "an unresolvable optional dependency and installing it directly fails for the same reason";
+  "convert is unavailable in this install: it needs the @cosyte/transform conversion library " +
+  "and its peer dependency @cosyte/fhir, and one of them is not installed; install both " +
+  "alongside @cosyte/cli";
 
 /**
  * Parse the HL7 v2 bytes and convert to FHIR: every library **lazy-loaded** so this code loads only
