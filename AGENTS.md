@@ -34,6 +34,7 @@ pnpm smoke
 pnpm typecheck:examples && pnpm lint:examples && pnpm examples && pnpm phi-scan:examples
 pnpm check:no-emdash
 pnpm check:no-internal-refs
+pnpm check:readme && pnpm check:claude-card && pnpm check:agent-notes
 ```
 
 A change that reaches the published package adds a changeset (`pnpm changeset`).
