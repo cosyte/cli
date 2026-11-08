@@ -8,17 +8,18 @@ import { EXIT } from "../src/core/exit-codes.js";
 import { loadFhir, loadOptionalPackage } from "../src/core/parsers.js";
 
 /**
- * The published manifest cannot declare `@cosyte/fhir` at all (it is not on the npm registry), and
- * `@cosyte/transform` is an `optionalDependency` npm skips today because its own `@cosyte/fhir` peer
- * cannot resolve. So in a real `npm install @cosyte/cli` **both are absent**, and every code path that
- * reaches for them has to degrade to a value-free `CLI_PARSER_UNAVAILABLE` (exit `69`) instead of
- * surfacing a raw module-resolution error and a stack frame.
+ * The published manifest does not declare `@cosyte/fhir`: it arrives as the peer dependency of
+ * `@cosyte/transform`, an `optionalDependency`. A default `npm install @cosyte/cli` has both, but an
+ * install that skips peers (npm's `--legacy-peer-deps`) keeps transform and leaves fhir out, and a
+ * removed copy leaves either out. Every code path that reaches for them has to degrade to a
+ * value-free `CLI_PARSER_UNAVAILABLE` (exit `69`) instead of surfacing a raw module-resolution error
+ * and a stack frame.
  *
  * Before this suite existed those two packages were loaded with a bare `await import(...)`, so an
  * install without them crashed. Two complementary guards, because neither alone is enough:
  *
  * 1. The **mapping**: a realistic resolver error becomes the value-free CLI error, with wording that
- *    tells the truth about *why* each package is missing.
+ *    tells the truth about *why* each package is missing and what installs it.
  * 2. The **static guard**: no bare `import("@cosyte/fhir")` or `import("@cosyte/transform")` survives
  *    anywhere in `src/` outside the one loader that catches it. This is the regression that matters,
  *    and it is the one a behavioural test cannot see: a newly added call site is simply a code path
@@ -60,12 +61,15 @@ describe("an absent @cosyte/fhir degrades to a value-free CLI_PARSER_UNAVAILABLE
     expect(r.stderr).not.toMatch(/\s+at\s+\S+:\d+/);
   });
 
-  it("says @cosyte/fhir is not on the registry, so the message is actionable", async () => {
-    // `loadOptional("fhir", ...)` would say "install it (it is an optional dependency)", which is
-    // false: it cannot be installed from npm at all. The dedicated wording is the point.
+  it("says how @cosyte/fhir reaches an install and what to install, so the message is actionable", async () => {
+    // `loadOptional("fhir", ...)` would say "it is an optional dependency", which is false: fhir is
+    // not declared here and arrives as transform's peer. It is on the registry, so the message must
+    // not claim otherwise (an earlier wording did), and it names the package to install.
     const err = (await loadFhirWithAbsentPackage().catch((e: unknown) => e)) as CliError;
-    expect(err.message).toContain("not currently on the npm registry");
+    expect(err.message).toContain("peer dependency of @cosyte/transform");
+    expect(err.message).toContain("install @cosyte/fhir alongside @cosyte/cli");
     expect(err.message).not.toContain("it is an optional dependency");
+    expect(err.message).not.toMatch(/registry/);
   });
 
   it("propagates an unrelated error unchanged (not every failure is 'unavailable')", async () => {
@@ -113,24 +117,26 @@ describe("an absent @cosyte/transform degrades, and is named as a conversion lib
   }
 
   it("does not call transform a 'parser': loadOptional's wording would be wrong for it", () => {
-    expect(transformDetail()).toContain("conversion library is not installed");
-    expect(transformDetail()).not.toContain("parser is not installed");
+    expect(transformDetail()).toContain("@cosyte/transform conversion library");
+    expect(transformDetail()).not.toContain("parser");
   });
 
-  it("does NOT tell the user to install it, because that command cannot succeed", () => {
-    // `npm install @cosyte/transform` fails E404 on its own @cosyte/fhir peer, so "install it to use
-    // convert (it is an optional dependency)" - loadOptional's stock wording, and what this
-    // diagnostic said in an earlier draft - sends a user at a command that always fails. A refuter
-    // caught exactly that. The message must name the real cause instead.
+  it("names both packages, because the import fails when either one is missing", () => {
+    // An npm `--legacy-peer-deps` install keeps transform and leaves its fhir peer out, and the
+    // resolver error then comes from transform's own import of fhir. So "transform is not installed"
+    // would be false there: the message names both and tells the user to install both.
     const detail = transformDetail();
-    expect(detail).not.toMatch(/install it to use/);
-    expect(detail).not.toContain("it is an optional dependency)");
-    expect(detail).toContain("not currently on the npm registry");
+    expect(detail).not.toContain("transform conversion library is not installed");
+    expect(detail).toContain("peer dependency @cosyte/fhir");
+    expect(detail).toContain("install both alongside @cosyte/cli");
   });
 
-  it("both unavailable-sibling diagnostics name the registry as the cause", () => {
+  it("neither unavailable-sibling diagnostic claims a package is missing from the registry", () => {
+    // Both are published; an earlier wording said they were not, which sent users away from an
+    // install that works.
     for (const detail of [transformDetail(), fhirDetailFromSource()]) {
-      expect(detail).toContain("not currently on the npm registry");
+      expect(detail).not.toMatch(/registry/);
+      expect(detail).toMatch(/alongside @cosyte\/cli$/);
     }
   });
 
@@ -139,8 +145,8 @@ describe("an absent @cosyte/transform degrades, and is named as a conversion lib
     // silently drops the final segment (the one ending `";`), which is where an appended sentence
     // would land, so a re-introduced "install it" tail would pass unnoticed. Pinned by the last
     // words of each shipped string, so a truncation of any length fails here.
-    expect(transformDetail()).toMatch(/installing it directly fails for the same reason$/);
-    expect(fhirDetailFromSource()).toMatch(/FHIR support is unavailable in this install$/);
+    expect(transformDetail()).toMatch(/install both alongside @cosyte\/cli$/);
+    expect(fhirDetailFromSource()).toMatch(/install @cosyte\/fhir alongside @cosyte\/cli$/);
   });
 });
 

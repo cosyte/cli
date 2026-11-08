@@ -283,12 +283,12 @@ export async function loadOptional<T>(format: CosyteFormat, load: () => Promise<
  * The same graceful-degradation path as {@link loadOptional}, keyed on a **package name** rather than
  * a {@link CosyteFormat}, with the diagnostic supplied by the caller.
  *
- * Two of the packages the CLI lazy-loads are not wire-format parsers and so cannot go through
- * {@link loadOptional}: `@cosyte/transform` (a conversion library, not one of the eight formats, so
- * calling it a "parser" in the diagnostic would be wrong) and `@cosyte/fhir` (a format, but absent for
- * a reason no reinstall fixes, which the message has to say). Both are reachable from a published
- * install only if the user already has them, so both must degrade to a value-free
- * `CLI_PARSER_UNAVAILABLE` (exit `69`) instead of surfacing a raw resolver error and a stack frame.
+ * Two of the packages the CLI lazy-loads cannot go through {@link loadOptional}: `@cosyte/transform`
+ * (a conversion library, not one of the eight formats, so calling it a "parser" in the diagnostic
+ * would be wrong) and `@cosyte/fhir` (a format, but not a declared dependency of this package: it
+ * arrives as the peer dependency of `@cosyte/transform`, so "it is an optional dependency" would be
+ * wrong). An install can lack either, so both must degrade to a value-free `CLI_PARSER_UNAVAILABLE`
+ * (exit `69`) instead of surfacing a raw resolver error and a stack frame.
  *
  * @template T - The imported module's type.
  * @param detail - The value-free diagnostic detail shown when the package is absent.
@@ -317,13 +317,17 @@ export async function loadOptionalPackage<T>(detail: string, load: () => Promise
 }
 
 /**
- * Why `@cosyte/fhir` is absent, in the words a user can act on. It is not on the npm registry, so it
- * cannot be a declared dependency of this package at all, and no reinstall of `@cosyte/cli` will
- * produce it. Value-free by construction: a package name and a statement of fact, no input echoed.
+ * Why `@cosyte/fhir` is absent, in the words a user can act on. It is on the npm registry but is not
+ * a declared dependency of this package: a default `npm install` or `pnpm add` brings it in as the
+ * peer dependency of the optional `@cosyte/transform`, and an install that skips peers (npm's
+ * `--legacy-peer-deps`, measured) or a removed copy leaves it out. Installing it next to
+ * `@cosyte/cli` fixes that. Value-free by construction: package names and a statement of fact, no
+ * input echoed.
  */
 const FHIR_UNAVAILABLE =
-  "the @cosyte/fhir parser is not installed, and it is not currently on the npm registry, " +
-  "so it cannot be installed from there; FHIR support is unavailable in this install";
+  "the @cosyte/fhir parser is not installed, so FHIR support is unavailable in this install; " +
+  "it arrives as the peer dependency of @cosyte/transform, which an install without peer " +
+  "dependencies leaves out: install @cosyte/fhir alongside @cosyte/cli";
 
 /**
  * Load `@cosyte/fhir`, degrading to a value-free `CLI_PARSER_UNAVAILABLE` when it is absent.
