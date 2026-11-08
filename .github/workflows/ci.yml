@@ -30,11 +30,12 @@ jobs:
   # │ context to the ruleset in the same change.                                                       │
   # │                                                                                                  │
   # │ AND THE HAZARD IS NOT ONLY A LOCAL SPLIT: THE CALLED WORKFLOW CAN GROW A JOB UPSTREAM. The       │
-  # │ `uses:` below is pinned to `@main`, so a job added over there starts emitting a new `ci / <job>` │
-  # │ context here with NO COMMIT IN THIS REPO, and it arrives NOT REQUIRED: a red X that does not     │
-  # │ block a merge. That is not hypothetical. `prepublish` arrived exactly that way on 2026-08-05 and │
-  # │ was unrequired here until it was measured off a real check run and added. A `ci / *` context you │
-  # │ do not see in the list above is that same event happening again. Decide it, and write the        │
+  # │ `uses:` below names a published reference, so a job added upstream reaches this repository only  │
+  # │ when that reference moves, in a commit here, and it then emits a new `ci / <job>` context that   │
+  # │ arrives NOT REQUIRED: a red X that does not block a merge. That is not hypothetical.             │
+  # │ `prepublish` arrived exactly that way on 2026-08-05, while this caller still tracked `@main`,    │
+  # │ and was unrequired here until it was measured off a real check run and added. A `ci / *` context │
+  # │ you do not see in the list above is that same event happening again. Decide it, and write the    │
   # │ decision down: require it, or record here why it must not be.                                    │
   # └──────────────────────────────────────────────────────────────────────────────────────────────────┘
   #
@@ -93,7 +94,7 @@ jobs:
   # That has happened here for real once (`prepublish`, 2026-08-05, see the banner above). Dropping
   # a line without removing its context first is the worse direction and bricks the branch.
   ci:
-    uses: cosyte/.github/.github/workflows/ci.yml@main
+    uses: cosyte/.github/.github/workflows/ci.yml@workflows-2026-11-07-498c7c13c886
     with:
       run-phi-scan: true
       node-versions: '["22", "24", "26"]'

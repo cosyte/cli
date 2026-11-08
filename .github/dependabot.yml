@@ -1,66 +1,63 @@
 version: 2
 
-# Nothing watched this repo's dependencies until CI-REQUIRED-CHECKS / DEPENDABOT-PR-QUEUE.
-# `@cosyte/cli` showing ZERO open Dependabot PRs meant "nothing is looking", not "nothing is
-# stale". This repo is public and, unlike the parsers, it ships an executable with a real
-# third-party runtime surface, so an unwatched dependency here is a shipped binary going stale.
+# Two ecosystems, because the repository has exactly two dependency surfaces: npm (`package.json`
+# and `pnpm-lock.yaml` at the root, the only manifest) and github-actions (`.github/workflows/`).
+# The shape is the parser template's in cosyte/config (EN5): weekly, one pull request per group, and
+# a release becomes eligible a day after it is published (`cooldown`), which keeps a release pulled
+# within hours out of this repository. Security updates are not delayed.
 #
-# Two ecosystems, because the repo has exactly two dependency surfaces. Swept, not assumed:
-#   npm             package.json + pnpm-lock.yaml at the root, the ONLY manifest in the repo
-#   github-actions  .github/workflows/*.yml
-# There is no third. No Dockerfile, no Terraform, no submodules of its own, no pnpm workspace,
-# no second package.json, no Python/Go/Rust manifest.
-
+# Every commit message, and so every pull request title, is `chore(deps): bump ...` or
+# `chore(deps-dev): bump ...`: Conventional Commits, which `pr-title.yml` checks (ST24). Without a
+# prefix Dependabot guesses one from the history, and a guess is not a title rule.
+#
+# What the npm entry sees. The `@cosyte/*` siblings are registry ranges: the two hard
+# `dependencies` (`@cosyte/hl7`, `@cosyte/terminology`), the eight `optionalDependencies`, and
+# `@cosyte/fhir` as a development dependency (an installed copy gets it only as the peer of the
+# optional `@cosyte/transform`). `@modelcontextprotocol/sdk` is the one third-party RUNTIME
+# dependency, and it is kept OUT of both groups by an explicit `exclude-patterns`, so a bump on the
+# MCP agent surface lands as its own reviewable pull request rather than batched with anything else.
+# The exclusion is stated rather than inferred: it must not depend on whether Dependabot classifies
+# an `optionalDependencies` entry as production or as development.
+#
+# `pnpm.overrides` pins esbuild and js-yaml above advisory ranges, and Dependabot does not manage
+# overrides: when a bump makes one redundant, remove it by hand.
+#
+# The cosyte/.github callers name a published `workflows-*` reference, which moves by hand with every
+# caller here (ST37), not through this file. Majors wait for the toolchain-upgrade pass (EN10).
 updates:
-  # npm. The `npm` ecosystem covers pnpm: Dependabot infers the package manager from the
-  # lockfile, which is `pnpm-lock.yaml`.
-  #
-  # WHAT DEPENDABOT CAN ACTUALLY SEE HERE, stated plainly so this entry is not mistaken for
-  # broader cover than it gives:
-  #
-  #   * The `@cosyte/*` siblings are now REAL npm ranges, not `file:vendor/*.tgz` tarballs, so
-  #     Dependabot resolves and bumps them like any other dependency. That is a change: it
-  #     previously could not see ANY of them. Covered now: the two hard `dependencies`
-  #     (`@cosyte/hl7`, `@cosyte/terminology`) and the eight `@cosyte/*` `optionalDependencies`
-  #     (`@cosyte/astm`, `ccda`, `deid`, `dicom`, `mllp`, `ncpdp`, `x12`, `transform`).
-  #   * `@cosyte/fhir` is visible too, as a DEV dependency on its registry range, which is what
-  #     this repo's own FHIR tests run against, so its bumps land in the grouped development
-  #     updates below. It is not a runtime dependency of this package: an installed copy gets it
-  #     only as the peer of the optional `@cosyte/transform`, and without it the CLI reports
-  #     `CLI_PARSER_UNAVAILABLE` rather than pretending. This config does not imply cover it does
-  #     not give.
-  #   * `@modelcontextprotocol/sdk` (a bounded `^1.32.2` range) is the one third-party RUNTIME dependency
-  #     Dependabot can see and bump. It is kept OUT of the group below by an explicit
-  #     `exclude-patterns`, so a runtime bump on the MCP agent surface lands as its own
-  #     reviewable PR rather than being batched with build tooling. The exclusion is stated
-  #     rather than inferred on purpose: it must not depend on whether Dependabot happens to
-  #     classify an `optionalDependencies` entry as production or as development, because if
-  #     that classification went the other way the intent would fail silently.
-  #   * Everything in `devDependencies` is a real registry range and is grouped.
-  #
-  # NOTE: package.json carries `pnpm.overrides` pinning esbuild and js-yaml above advisory
-  # ranges. Dependabot does not manage those overrides. If it proposes a bump that makes one
-  # redundant, the override is removed by hand, never silently left to pin a version backwards.
   - package-ecosystem: npm
     directory: "/"
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 1
     open-pull-requests-limit: 5
+    commit-message:
+      prefix: chore
+      include: scope
     groups:
       dev-dependencies:
         dependency-type: development
         exclude-patterns:
           - "@modelcontextprotocol/sdk"
-
-  # Keep GitHub Actions references current. Unlike the parser repos, this entry has work to do
-  # from day one: four of the five workflows (`ci`, `codeql`, `release`, `scorecard`) are thin
-  # callers of `cosyte/.github/.github/workflows/*.yml@main`, whose pinned action SHAs live
-  # upstream and are watched there, but `fuzz.yml` is a repo-LOCAL job that pins
-  # `actions/checkout`, `pnpm/action-setup` and `actions/setup-node` itself. Those are this
-  # repo's own to keep current, and a fuzz gate running on a deprecated runner action is the
-  # gate itself going stale.
+      dependencies:
+        dependency-type: production
+        exclude-patterns:
+          - "@modelcontextprotocol/sdk"
   - package-ecosystem: github-actions
     directory: "/"
     schedule:
       interval: weekly
-    open-pull-requests-limit: 5
+    cooldown:
+      default-days: 1
+    commit-message:
+      prefix: chore
+      include: scope
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+    ignore:
+      # From v1.75.0 this action installs actionlint by piping a script from a fork to bash. The
+      # shared CI runs the official rhysd/actionlint release, checked by its SHA-256, instead.
+      - dependency-name: "reviewdog/action-actionlint"
