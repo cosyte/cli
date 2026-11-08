@@ -36,7 +36,10 @@ downstream, and an input value on stderr copies it into a log nobody meant to ke
 - **Node:** **>= 22** (CI matrix 22 + 24 + 26). `test/node-support.test.ts` reds when this line,
   `engines.node`, the matrix and the support lines disagree; 26 awaits the ruleset (#54, ST15).
 - Every `dependencies` and `optionalDependencies` specifier resolves from npm, never `file:` or
-  `link:`, and `@cosyte/fhir` stays a devDependency, or the install fails `ERESOLVE` (#27).
+  `link:`. `@cosyte/fhir` is an optional dependency beside `@cosyte/transform`, at the same kind of
+  range, so `--legacy-peer-deps` keeps it; it no longer fails `ERESOLVE` (#27).
+- The bins never reach a static `@modelcontextprotocol/sdk` import: they start the server through
+  `src/mcp/launch.ts`, so `--omit=optional` runs every other command and the server exits `69`.
 - Load an optional `@cosyte/*` package only through the lazy loaders in `src/core/parsers.ts`, so
   an absent one degrades to `CLI_PARSER_UNAVAILABLE` (69) (#27).
 - Diagnostics and MCP error results carry codes and positions, never caller-supplied text;

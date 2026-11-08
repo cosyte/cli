@@ -169,9 +169,8 @@ type ConvertOutcome =
 /**
  * Why `convert` cannot load `@cosyte/transform`, in words a user can act on. The import fails either
  * when `@cosyte/transform` itself is absent or when it is present but its own peer `@cosyte/fhir` is
- * not (measured: an npm `--legacy-peer-deps` install keeps transform and leaves fhir out, and the
- * resolver error then names fhir), so the message names both and does not claim which one is
- * missing. It does not go through `loadOptional()`, whose stock wording calls the package a
+ * not (a removed fhir copy does that, and the resolver error then names fhir), so the message names
+ * both and does not claim which one is missing. It does not go through `loadOptional()`, whose stock wording calls the package a
  * "parser". Value-free by construction: package names and a statement of fact, no input echoed.
  */
 const TRANSFORM_UNAVAILABLE =

@@ -38,15 +38,14 @@ installs the current one.
 
 The siblings the CLI wraps are real npm ranges. HL7 v2 (`@cosyte/hl7`) and `map-codes`
 (`@cosyte/terminology`) run on the two hard dependencies. The six breadth formats X12, C-CDA, DICOM,
-NCPDP, ASTM, and MLLP, and `@cosyte/transform`, are optional dependencies, and `@cosyte/fhir` arrives
-as the peer dependency of `@cosyte/transform`, so a default install has every one of them. If one is
-still missing, for example a peer your package manager did not install, the commands that need it
-report `CLI_PARSER_UNAVAILABLE` and exit `69`. They do not guess, and they do not fail as though your
-input were bad.
+NCPDP, ASTM, and MLLP, FHIR (`@cosyte/fhir`), `@cosyte/transform`, `@cosyte/deid`, and the MCP SDK
+(`@modelcontextprotocol/sdk`) are optional dependencies, so a default install has every one of them,
+whether it is `npm install`, `pnpm add`, or `npm install --legacy-peer-deps`.
 
-> **Do not install with `--omit=optional`.** It succeeds, but the `cosyte` command then fails to start
-> at all on a missing `@modelcontextprotocol/sdk`, before it reaches any command. Known defect,
-> tracked separately.
+An install with `--omit=optional` leaves all of them out. It still works for HL7 v2 and `map-codes`,
+and the commands that need a missing library report `CLI_PARSER_UNAVAILABLE`, naming the package to
+install, and exit `69`; `cosyte-mcp` and `cosyte mcp` do the same without the MCP SDK. They do not
+guess, and they do not fail as though your input were bad.
 
 ## Prerequisites
 

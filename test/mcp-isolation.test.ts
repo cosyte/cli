@@ -45,10 +45,12 @@ describe("MCP SDK isolation: the fast path never loads the SDK", () => {
 
   it("the cosyte bin reaches the server only via a lazy dynamic import (not a static one)", () => {
     const bin = readFileSync(join(SRC, "bin", "cosyte.ts"), "utf8");
-    // No top-level static import of the mcp server…
-    expect(bin).not.toMatch(/^import[^\n]*mcp\/server/m);
-    // …only a dynamic import on the `mcp` branch.
-    expect(bin).toMatch(/import\(["']\.\.\/mcp\/server\.js["']\)/);
+    // No top-level static import of the mcp tree…
+    expect(bin).not.toMatch(/^import[^\n]*mcp\//m);
+    // …only a dynamic import of the launcher on the `mcp` branch. The launcher loads the SDK itself,
+    // lazily: a dynamic import of the server module is not enough, because the bundler inlines it
+    // and hoists its static SDK imports (absent-mcp-sdk.test.ts walks the whole graph).
+    expect(bin).toMatch(/import\(["']\.\.\/mcp\/launch\.js["']\)/);
   });
 
   it("only the mcp/ tree statically imports the SDK", () => {

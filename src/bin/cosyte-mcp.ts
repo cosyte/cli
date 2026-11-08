@@ -10,9 +10,9 @@
  */
 
 /* v8 ignore start -- process wiring: starts the stdio server on the real process streams, exercised by the packaged bin smoke, not unit-covered */
-import { CLI_CODES } from "../core/diagnostics.js";
+import { CLI_CODES, CliError } from "../core/diagnostics.js";
 import { EXIT } from "../core/exit-codes.js";
-import { startStdioServer } from "../mcp/server.js";
+import { launchStdioServer } from "../mcp/launch.js";
 
 // stdout is the only channel this server can answer on, and the client owns the other end of it. A
 // host that exits mid-reply closes the pipe, which Node reports as an 'error' event on the stream:
@@ -48,7 +48,15 @@ process.stdout.on("error", () => {
   process.stdin.destroy();
 });
 
-startStdioServer().catch(() => {
+// The launcher loads the optional @modelcontextprotocol/sdk here and nowhere earlier, so an install
+// without it reaches this handler instead of crashing on load: a value-free CLI_PARSER_UNAVAILABLE
+// (69) that says what to install.
+launchStdioServer().catch((e: unknown) => {
+  if (e instanceof CliError) {
+    note(`cosyte-mcp: ${e.code}: ${e.message}\n`);
+    process.exitCode = e.exit;
+    return;
+  }
   // A truly unexpected startup failure prints a value-free line and exits EX_SOFTWARE.
   note("cosyte-mcp: CLI_INTERNAL: the MCP server failed to start\n");
   process.exitCode = 70;

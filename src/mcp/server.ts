@@ -1,9 +1,11 @@
 /**
  * The **stdio MCP server**: the JSON-RPC/stdio adapter over the same shared `core`/`commands` the
- * `cosyte` terminal command drives. This is the **only** module that touches
- * `@modelcontextprotocol/sdk`, so the SDK (the CLI's single third-party runtime dependency) stays
- * **isolated behind the `./mcp` subpath and lazy-loaded**: a `cosyte parse` invocation never imports
- * this file and therefore never loads the SDK (proven by `mcp-isolation.test.ts`).
+ * `cosyte` terminal command drives, as the `@cosyte/cli/mcp` subpath exports it. This is the **only**
+ * module that imports `@modelcontextprotocol/sdk` statically, so the SDK (the CLI's single
+ * third-party runtime dependency) stays **isolated behind the `./mcp` subpath**. The two bins never
+ * reach this file: they start the same server through `./launch.ts`, which loads the SDK lazily, so a
+ * `cosyte parse` invocation never loads it and an install without it still runs every other command
+ * (proven by `mcp-isolation.test.ts` and `absent-mcp-sdk.test.ts`).
  *
  * The server is a **local stdio subprocess**, implicitly trusted by the user/agent that launched it,
  * not a hosted network endpoint. It is **stateless per call**: each tool request is one operation
@@ -17,18 +19,16 @@ import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 
-import { VERSION } from "../core/version.js";
-import { dispatchTool, TOOL_DEFS } from "./tools.js";
+import { wireMcpServer } from "./wire.js";
 
-/** The MCP server identity advertised to a client on connect. */
-export const SERVER_INFO = { name: "cosyte", version: VERSION } as const;
+export { SERVER_INFO } from "./wire.js";
 
 /**
  * Build the cosyte MCP {@link Server} with its two request handlers wired to the shared tool surface:
- * `tools/list` advertises {@link TOOL_DEFS}, and `tools/call` routes to {@link dispatchTool} (the same
- * command handlers the terminal uses). The returned server is **not yet connected** to a transport:
- * the caller connects it to stdio (in production) or to an in-memory transport (in tests), so the
- * handler wiring is drivable without a subprocess.
+ * `tools/list` advertises the tool definitions, and `tools/call` routes to the same command handlers
+ * the terminal uses. The returned server is **not yet connected** to a transport: the caller connects
+ * it to stdio (in production) or to an in-memory transport (in tests), so the handler wiring is
+ * drivable without a subprocess.
  *
  * Both handlers are **explicit about what reaches the wire**: `tools/list` copies each tool's title,
  * description, input schema and **output schema**, and `tools/call` passes the whole structured result
@@ -44,45 +44,7 @@ export const SERVER_INFO = { name: "cosyte", version: VERSION } as const;
  * ```
  */
 export function createMcpServer(): Server {
-  const server = new Server(SERVER_INFO, { capabilities: { tools: {} } });
-
-  server.setRequestHandler(ListToolsRequestSchema, () => ({
-    tools: TOOL_DEFS.map((t) => ({
-      name: t.name,
-      title: t.title,
-      description: t.description,
-      inputSchema: {
-        type: t.inputSchema.type,
-        properties: { ...t.inputSchema.properties },
-        ...(t.inputSchema.required !== undefined ? { required: [...t.inputSchema.required] } : {}),
-        ...(t.inputSchema.additionalProperties !== undefined
-          ? { additionalProperties: t.inputSchema.additionalProperties }
-          : {}),
-      },
-      // Every advertised tool publishes its result schema; a client validates a reply against it
-      // instead of pattern-matching the text block. Declared, so it is copied unconditionally.
-      outputSchema: {
-        type: t.outputSchema.type,
-        properties: { ...t.outputSchema.properties },
-        required: [...t.outputSchema.required],
-        additionalProperties: t.outputSchema.additionalProperties,
-      },
-    })),
-  }));
-
-  server.setRequestHandler(CallToolRequestSchema, async (request) => {
-    const { name, arguments: args } = request.params;
-    const result = await dispatchTool(name, args ?? {});
-    return {
-      content: result.content.map((c) => ({ type: c.type, text: c.text })),
-      isError: result.isError,
-      // The whole structured value reaches the wire. A field-by-field copy here would silently
-      // truncate the payload the called tool's own schema promises.
-      structuredContent: { ...result.structuredContent },
-    };
-  });
-
-  return server;
+  return wireMcpServer({ Server, CallToolRequestSchema, ListToolsRequestSchema });
 }
 
 /* v8 ignore start -- stdio transport wiring: connects the real process streams, exercised by the packaged bin smoke, not unit-covered */

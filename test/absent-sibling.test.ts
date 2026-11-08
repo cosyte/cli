@@ -8,10 +8,10 @@ import { EXIT } from "../src/core/exit-codes.js";
 import { loadFhir, loadOptionalPackage } from "../src/core/parsers.js";
 
 /**
- * The published manifest does not declare `@cosyte/fhir`: it arrives as the peer dependency of
- * `@cosyte/transform`, an `optionalDependency`. A default `npm install @cosyte/cli` has both, but an
- * install that skips peers (npm's `--legacy-peer-deps`) keeps transform and leaves fhir out, and a
- * removed copy leaves either out. Every code path that reaches for them has to degrade to a
+ * `@cosyte/fhir` and `@cosyte/transform` are both `optionalDependencies` (fhir is also transform's
+ * peer). A default `npm install @cosyte/cli` has both, and so does an npm install with
+ * `--legacy-peer-deps`, but an install with `--omit=optional` leaves both out, and a removed copy
+ * leaves either out. Every code path that reaches for them has to degrade to a
  * value-free `CLI_PARSER_UNAVAILABLE` (exit `69`) instead of surfacing a raw module-resolution error
  * and a stack frame.
  *
@@ -62,14 +62,29 @@ describe("an absent @cosyte/fhir degrades to a value-free CLI_PARSER_UNAVAILABLE
   });
 
   it("says how @cosyte/fhir reaches an install and what to install, so the message is actionable", async () => {
-    // `loadOptional("fhir", ...)` would say "it is an optional dependency", which is false: fhir is
-    // not declared here and arrives as transform's peer. It is on the registry, so the message must
-    // not claim otherwise (an earlier wording did), and it names the package to install.
+    // fhir is an optional dependency of this package, so the install that leaves it out is one made
+    // with --omit=optional. It is on the registry, so the message must not claim otherwise (an
+    // earlier wording did), and it names the package to install.
     const err = (await loadFhirWithAbsentPackage().catch((e: unknown) => e)) as CliError;
-    expect(err.message).toContain("peer dependency of @cosyte/transform");
+    expect(err.message).toContain("it is an optional dependency");
+    expect(err.message).toContain("--omit=optional");
     expect(err.message).toContain("install @cosyte/fhir alongside @cosyte/cli");
-    expect(err.message).not.toContain("it is an optional dependency");
+    expect(err.message).not.toContain("peer dependency of @cosyte/transform");
     expect(err.message).not.toMatch(/registry/);
+  });
+
+  it("is declared as an optional dependency, at the same kind of range as transform", () => {
+    // Declared, so an install that skips peers (npm's --legacy-peer-deps) no longer leaves it out.
+    const manifest = JSON.parse(
+      readFileSync(join(import.meta.dirname, "..", "package.json"), "utf8"),
+    ) as {
+      optionalDependencies: Record<string, string>;
+      devDependencies: Record<string, string>;
+    };
+    expect(manifest.optionalDependencies["@cosyte/fhir"]).toBe(
+      manifest.optionalDependencies["@cosyte/transform"],
+    );
+    expect(manifest.devDependencies["@cosyte/fhir"]).toBeUndefined();
   });
 
   it("propagates an unrelated error unchanged (not every failure is 'unavailable')", async () => {
@@ -122,9 +137,9 @@ describe("an absent @cosyte/transform degrades, and is named as a conversion lib
   });
 
   it("names both packages, because the import fails when either one is missing", () => {
-    // An npm `--legacy-peer-deps` install keeps transform and leaves its fhir peer out, and the
-    // resolver error then comes from transform's own import of fhir. So "transform is not installed"
-    // would be false there: the message names both and tells the user to install both.
+    // A removed fhir copy leaves transform installed without its peer, and the resolver error then
+    // comes from transform's own import of fhir. So "transform is not installed" would be false
+    // there: the message names both and tells the user to install both.
     const detail = transformDetail();
     expect(detail).not.toContain("transform conversion library is not installed");
     expect(detail).toContain("peer dependency @cosyte/fhir");
@@ -212,13 +227,13 @@ describe("no sibling that can be absent is imported outside the optional-loader 
     expect(isComment('  await import("@cosyte/transform");')).toBe(false);
   });
 
-  /** The `@cosyte/*` packages an install can lack: the optional ones, and the devDependency fhir. */
+  /** The `@cosyte/*` packages an install can lack: the optional ones, fhir among them. */
   function absentable(): string[] {
     const manifest = JSON.parse(
       readFileSync(join(import.meta.dirname, "..", "package.json"), "utf8"),
     ) as { optionalDependencies: Record<string, string> };
     const optional = Object.keys(manifest.optionalDependencies);
-    return ["@cosyte/fhir", ...optional.filter((name) => name.startsWith("@cosyte/"))];
+    return optional.filter((name) => name.startsWith("@cosyte/"));
   }
 
   /** The specifier of every top-level import in `source` that is not an `import type`. */
@@ -232,6 +247,7 @@ describe("no sibling that can be absent is imported outside the optional-loader 
     // command, and the dynamic-import guard above cannot see one. `import type` is erased at build.
     const names = absentable();
     expect(names).toContain("@cosyte/deid");
+    expect(names).toContain("@cosyte/fhir");
     const parsers = readFileSync(join(SRC, "core", "parsers.ts"), "utf8");
     expect(parsers).toContain('import type * as CosyteFhir from "@cosyte/fhir";');
     expect(valueImports(parsers)).toContain("./diagnostics.js");

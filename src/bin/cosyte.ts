@@ -10,7 +10,7 @@
  */
 
 /* v8 ignore start -- process wiring: argv/stdin/stdout/exit glue, exercised by the packaged bin smoke, not unit-covered */
-import { CLI_CODES } from "../core/diagnostics.js";
+import { CLI_CODES, CliError, formatDiagnostic } from "../core/diagnostics.js";
 import { EXIT } from "../core/exit-codes.js";
 import {
   fileChunks,
@@ -126,13 +126,19 @@ const deps: RunDeps = {
 };
 
 // The `cosyte mcp` subcommand starts the stdio MCP server (also reachable as the `cosyte-mcp` bin).
-// It is dispatched here, before `run`, and the server module is DYNAMICALLY imported so the
-// @modelcontextprotocol/sdk dependency loads only on this path: a plain `cosyte parse` never pulls it
-// (ADR 0021 isolation). A server invocation stays alive serving requests; it does not return a result.
+// It is dispatched here, before `run`, and the launcher loads the optional @modelcontextprotocol/sdk
+// dependency only on this path: a plain `cosyte parse` never pulls it, and an install without it runs
+// every other command. An absent SDK is the launcher's value-free CLI_PARSER_UNAVAILABLE (69), which
+// says what to install. A server invocation stays alive serving requests; it does not return a result.
 if (serverMode) {
-  import("../mcp/server.js")
-    .then(({ startStdioServer }) => startStdioServer())
-    .catch(() => {
+  import("../mcp/launch.js")
+    .then(({ launchStdioServer }) => launchStdioServer())
+    .catch((e: unknown) => {
+      if (e instanceof CliError) {
+        note(`${formatDiagnostic(e)}\n`);
+        process.exitCode = e.exit;
+        return;
+      }
       note("cosyte: CLI_INTERNAL: the MCP server failed to start\n");
       process.exitCode = 70;
     });

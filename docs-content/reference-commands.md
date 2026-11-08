@@ -149,7 +149,9 @@ Print a static, value-free shell-completion script generated from the command tr
 ### `cosyte mcp` / `cosyte-mcp`
 
 Start the stdio MCP server: the agent front door, exposing `parse`/`validate`/`inspect`/`convert` as
-tools over the same core. See [MCP server](./mcp).
+tools over the same core. See [MCP server](./mcp). The server needs `@modelcontextprotocol/sdk`, an
+optional dependency: without it, both forms exit `69` with `CLI_PARSER_UNAVAILABLE` instead of
+starting.
 
 ## Exit codes
 
@@ -160,7 +162,7 @@ tools over the same core. See [MCP server](./mcp).
 | `2`  | usage error: unknown command, bad flag, missing argument                               |
 | `65` | data error: input could not be parsed / format not detected / (format, op) unsupported / input larger than the size limit |
 | `66` | no input: the file does not exist or is unreadable                                     |
-| `69` | unavailable: a capability is not wired here (e.g. `redact` on a format `@cosyte/deid` has no adapter for, `--profile`) |
+| `69` | unavailable: a capability is not wired here (e.g. `redact` on a format `@cosyte/deid` has no adapter for, `--profile`), or an optional library it needs is not installed (`CLI_PARSER_UNAVAILABLE`, e.g. `cosyte-mcp` without `@modelcontextprotocol/sdk`) |
 | `70` | internal error: an unexpected exception (a bug)                                        |
 | `74` | output error: the output stream closed before the CLI had finished writing to it, the shape a downstream consumer that exits early produces (`cosyte parse bulk.ndjson --ndjson \| head -3`, a pager you quit). Never a bug in the CLI, and never a silent `0`: the answer did not reach the consumer |
 

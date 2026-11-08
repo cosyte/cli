@@ -14,6 +14,11 @@
 //      already enqueued when that report lands depends on how fast the process reaches its writes,
 //      and the packaged bin under plain `node` starts far faster than the sources under a loader.
 //      The measured window is wide enough that a defect invisible to the source suite ships here.
+//   5. Both bins with `@modelcontextprotocol/sdk` hidden from the resolver, the way an install made
+//      with `--omit=optional` lacks it: every non-MCP command still runs, and both ways of starting
+//      the server exit `69` with the value-free CLI_PARSER_UNAVAILABLE line. The bins are bundled
+//      without code splitting, so a static SDK import anywhere they reach is hoisted to the top of
+//      the bin; only the built output shows whether that happened.
 //
 // Run after `build`; it consumes `dist/`. Wired into `verify.sh` (the ladder runs `smoke` when present).
 
@@ -71,9 +76,9 @@ async function checkMcp(mod, label) {
 }
 
 // --- 3. the two bin executables under `node` ------------------------------------------------------
-function runBin(relPath, args, stdin) {
+function runBin(relPath, args, stdin, nodeArgs = []) {
   return new Promise((resolve) => {
-    const child = spawn(process.execPath, [join(root, relPath), ...args], {
+    const child = spawn(process.execPath, [...nodeArgs, join(root, relPath), ...args], {
       stdio: ["pipe", "pipe", "pipe"],
     });
     let stdout = "";
@@ -131,6 +136,41 @@ function startServerBin(relPath) {
   });
 }
 
+// --- 5. the bins without the optional MCP SDK -----------------------------------------------------
+// A resolve hook that answers every `@modelcontextprotocol/sdk` specifier the way Node does for a
+// package that is not installed, registered before the bin loads.
+const HIDE_SDK_HOOKS = `export async function resolve(specifier, context, next) {
+  if (specifier === "@modelcontextprotocol/sdk" || specifier.startsWith("@modelcontextprotocol/sdk/")) {
+    const e = new Error("Cannot find package '@modelcontextprotocol/sdk'");
+    e.code = "ERR_MODULE_NOT_FOUND";
+    throw e;
+  }
+  return next(specifier, context);
+}`;
+const HIDE_SDK = [
+  "--import",
+  `data:text/javascript,${encodeURIComponent(
+    `import { register } from "node:module"; register(${JSON.stringify(
+      `data:text/javascript,${encodeURIComponent(HIDE_SDK_HOOKS)}`,
+    )});`,
+  )}`,
+];
+
+/** Assert a server start without the SDK is the value-free unavailable signal, not a crash. */
+function checkMcpUnavailable(label, r, unavailable) {
+  ok(r.code === unavailable, `${label}: exit ${String(unavailable)} (got ${String(r.code)})`);
+  ok(r.stderr.includes("CLI_PARSER_UNAVAILABLE"), `${label}: the stable unavailable code`);
+  ok(
+    r.stderr.includes("install @modelcontextprotocol/sdk alongside @cosyte/cli"),
+    `${label}: says what to install`,
+  );
+  ok(
+    !r.stderr.includes("ERR_MODULE_NOT_FOUND") && !/\s+at\s+\S+:\d+/.test(r.stderr),
+    `${label}: no resolver error and no stack frame`,
+  );
+  ok(r.stdout === "", `${label}: nothing on the data channel`);
+}
+
 /** The packaged bin, its consumer gone before a byte was read: one code, one value-free line. */
 async function checkClosedConsumer(label, args, stdin, ioerr) {
   const r = await runBinClosedStdout("dist/bin/cosyte.mjs", args, stdin);
@@ -186,6 +226,36 @@ async function main() {
   ok(
     server.ok,
     `cosyte-mcp stdio server starts without a load crash${server.ok ? "" : `: ${server.stderr}`}`,
+  );
+
+  console.log("smoke: both bins with @modelcontextprotocol/sdk absent");
+  const unavailable = esm.EXIT.UNAVAILABLE;
+  // The negative control first: `dist/mcp.mjs` imports the SDK statically, so under the hook it must
+  // fail to load. If it loads, the hook hides nothing and every check below would pass vacuously.
+  const control = await runBin("dist/mcp.mjs", [], undefined, HIDE_SDK);
+  ok(
+    control.code !== 0 && control.stderr.includes("ERR_MODULE_NOT_FOUND"),
+    "the hook really hides the SDK: the static `./mcp` entry fails to load under it",
+  );
+  const noSdkVersion = await runBin("dist/bin/cosyte.mjs", ["--version"], undefined, HIDE_SDK);
+  ok(
+    noSdkVersion.code === 0 && noSdkVersion.stdout.trim().length > 0,
+    `cosyte --version → exit 0 without the SDK (got ${String(noSdkVersion.code)})`,
+  );
+  const noSdkParse = await runBin("dist/bin/cosyte.mjs", ["parse", "-"], HL7, HIDE_SDK);
+  ok(
+    noSdkParse.code === 0 && noSdkParse.stdout.length > 0,
+    `cosyte parse - → exit 0 + parsed model without the SDK (got ${String(noSdkParse.code)})`,
+  );
+  checkMcpUnavailable(
+    "cosyte mcp",
+    await runBin("dist/bin/cosyte.mjs", ["mcp"], undefined, HIDE_SDK),
+    unavailable,
+  );
+  checkMcpUnavailable(
+    "cosyte-mcp",
+    await runBin("dist/bin/cosyte-mcp.mjs", [], undefined, HIDE_SDK),
+    unavailable,
   );
 
   if (failures > 0) {

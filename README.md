@@ -94,14 +94,13 @@ npx --package @cosyte/cli cosyte parse message.hl7
 > an alias: `npm install -g` would then put a command called `cli` on every user's `PATH`, which is far
 > too generic a name to claim.
 
-**FHIR support arrives through a peer, not a declared dependency.** `@cosyte/fhir` is not in this
-package's manifest. `npm install` brings it in as the peer dependency of `@cosyte/transform`, one of
-this package's optional dependencies, and the FHIR `parse` / `inspect` / `fmt` / `validate` commands
-and `convert` use that copy. Install with optional dependencies, as `npm install` does by default. If
-a library a command needs is still missing, for example a peer your package manager did not install,
-the command reports a value-free `CLI_PARSER_UNAVAILABLE` and exits `69`: it never guesses, and it
-never blames your input. HL7 v2 and `map-codes` run on the two hard dependencies, `@cosyte/hl7` and
-`@cosyte/terminology`.
+**Install with optional dependencies, as `npm install` does by default.** The breadth parsers,
+`@cosyte/fhir`, `@cosyte/transform`, `@cosyte/deid` and the MCP SDK (`@modelcontextprotocol/sdk`) are
+optional dependencies, so `npm install`, `pnpm add` and `npm install --legacy-peer-deps` all bring them
+in. If a library a command needs is missing, for example after `npm install --omit=optional`, the
+command reports a value-free `CLI_PARSER_UNAVAILABLE` naming the package to install and exits `69`: it
+never guesses, and it never blames your input. Every other command still runs. HL7 v2 and `map-codes`
+run on the two hard dependencies, `@cosyte/hl7` and `@cosyte/terminology`.
 
 ## Usage
 
@@ -236,16 +235,16 @@ success status and the codes from `65` up are the values the Unix `sysexits.h` h
 conditions they name; `1` and `2` are this CLI's own values, because that header defines no constant
 for either:
 
-| Code | Meaning                                                                                                             |
-| ---- | ------------------------------------------------------------------------------------------------------------------- |
-| `0`  | success / **valid** (`validate`)                                                                                    |
-| `1`  | **invalid**: `validate` found a parseable-but-bad message, or `redact` could not de-identify every locus            |
-| `2`  | usage error (unknown flag, missing argument)                                                                        |
-| `65` | data error (unparseable input, format undetected, or input past the size limit)                                     |
-| `66` | no input (missing/unreadable file)                                                                                  |
-| `69` | unavailable (a capability is not wired for this input, e.g. `redact` on a format `@cosyte/deid` has no adapter for) |
-| `70` | internal error (a bug)                                                                                              |
-| `74` | output error: the output stream closed before the CLI finished writing (a consumer that exited early)               |
+| Code | Meaning                                                                                                                                                                                                      |
+| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `0`  | success / **valid** (`validate`)                                                                                                                                                                             |
+| `1`  | **invalid**: `validate` found a parseable-but-bad message, or `redact` could not de-identify every locus                                                                                                     |
+| `2`  | usage error (unknown flag, missing argument)                                                                                                                                                                 |
+| `65` | data error (unparseable input, format undetected, or input past the size limit)                                                                                                                              |
+| `66` | no input (missing/unreadable file)                                                                                                                                                                           |
+| `69` | unavailable (a capability is not wired for this input, e.g. `redact` on a format `@cosyte/deid` has no adapter for, or an optional library it needs, such as the MCP SDK for `cosyte-mcp`, is not installed) |
+| `70` | internal error (a bug)                                                                                                                                                                                       |
+| `74` | output error: the output stream closed before the CLI finished writing (a consumer that exited early)                                                                                                        |
 
 The load-bearing rule: the CLI **never prints a reassuring line and exits `0`** on input it could not
 handle, on an invalid message, or on output that never reached its consumer.
@@ -372,9 +371,11 @@ text content block carries the serialized JSON of that same structured result. S
 per-tool payload shapes.
 
 The MCP SDK (`@modelcontextprotocol/sdk`) is the CLI's only third-party runtime dependency; it is
-declared **optional**, and the programmatic core (the `.` subpath) loads with the SDK absent. The server
-surface is importable via the `@cosyte/cli/mcp` subpath
-(`createMcpServer`, `startStdioServer`, `dispatchTool`, `TOOL_DEFS`).
+declared **optional**. The programmatic core (the `.` subpath) and every `cosyte` command other than
+`cosyte mcp` run with the SDK absent; `cosyte-mcp` and `cosyte mcp` then exit `69` with
+`CLI_PARSER_UNAVAILABLE`, naming the package to install. The server surface is importable via the
+`@cosyte/cli/mcp` subpath (`createMcpServer`, `startStdioServer`, `dispatchTool`, `TOOL_DEFS`), which
+needs the SDK installed.
 
 ## Programmatic API
 
