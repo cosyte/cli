@@ -1,0 +1,11 @@
+{
+  "format": {
+    "globs": [
+      "src/**/*.{ts,md}",
+      "test/**/*.ts",
+      "scripts/**/*.{ts,mjs}",
+      "examples/**/*.{ts,js,json,md}",
+      "*.{json,md,yml}"
+    ]
+  }
+}

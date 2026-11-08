@@ -7,8 +7,10 @@ diagnostic codes. It supports Node.js 22 or later, tested on 22, 24, and 26.
 
 ## Build and test
 
-Use the pnpm version that `packageManager` in `package.json` pins: run
-`corepack enable pnpm --install-directory <dir>` and put `<dir>` first on `PATH`.
+Use Node.js 22.22.2 or later to build and test (the floor of the tools `@cosyte/process` runs; the
+published package itself runs on any Node.js 22) and the pnpm version that `packageManager` in
+`package.json` pins: run `corepack enable pnpm --install-directory <dir>` and put `<dir>` first on
+`PATH`.
 
 ```sh
 pnpm install --frozen-lockfile
@@ -34,7 +36,7 @@ pnpm smoke
 pnpm typecheck:examples && pnpm lint:examples && pnpm examples && pnpm phi-scan:examples
 pnpm check:no-emdash
 pnpm check:no-internal-refs
-pnpm check:readme && pnpm check:claude-card && pnpm check:catalog
+pnpm check:readme && pnpm check:claude-card && pnpm check:catalog && pnpm check:process
 ```
 
 A change that reaches the published package adds a changeset (`pnpm changeset`).

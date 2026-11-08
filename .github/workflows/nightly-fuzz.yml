@@ -36,6 +36,6 @@ permissions:
 
 jobs:
   fuzz:
-    uses: cosyte/.github/.github/workflows/nightly-fuzz.yml@c0db8d8e5927269820de4401b3b5ad6141854b76 # workflows-2026-11-08-c0db8d8e5927
+    uses: cosyte/.github/.github/workflows/nightly-fuzz.yml@810a8affe9de69ef8f788dc96ae15cf042874dc3 # workflows-2026-11-08-810a8affe9de
     with:
       fuzz-cmd: CLI_FUZZ_SEED="$GITHUB_RUN_ID" CLI_FUZZ_SECONDS=120 timeout --kill-after=1m 40m pnpm fuzz
