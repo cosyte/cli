@@ -403,8 +403,8 @@ The full reference is on [docs.cosyte.com/cli](https://docs.cosyte.com/cli):
 Questions, bug reports, and messages a command handled wrongly go in
 [GitHub issues](https://github.com/cosyte/cli/issues). Use synthetic data only, never a real
 patient's: reduce a message to a synthetic one that reproduces the problem, and include the command,
-the exit code, and the diagnostic codes you got back. For help with an integration, see our
-[integration services](https://cosyte.com/integration-services).
+the exit code, and the diagnostic codes you got back. Need an integration built, or hosted and
+run for you? See our [integration services](https://cosyte.com/integration-services).
 
 ## Security
 
