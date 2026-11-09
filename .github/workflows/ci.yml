@@ -19,15 +19,16 @@ permissions:
 
 jobs:
   # ┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
-  # │ A REQUIRED JOB GATES ALL OF ITS STEPS. The `ci-required-checks` ruleset on this repo requires    │
-  # │ four of the five contexts this caller emits: `ci / verify (22, ubuntu-latest)`, `ci / verify     │
-  # │ (24, ubuntu-latest)`, `ci / prepublish` and `ci / actionlint`; `ci / verify (26, ubuntu-latest)` │
-  # │ is the fifth, not yet required (the matrix note below). Every gate the shared pipeline runs      │
-  # │ (typecheck, lint, format:check, PHI scan, test, gating coverage, build, attw, dual ESM/CJS       │
-  # │ smoke) is a STEP inside `verify`, and is required only because that job is. Promote any one of   │
-  # │ them to its own job and it is silently NO LONGER REQUIRED: the ruleset names contexts, the new   │
-  # │ context is not in it, and nothing anywhere errors or warns. If you split a step out, add its     │
-  # │ context to the ruleset in the same change.                                                       │
+  # │ A REQUIRED JOB GATES ALL OF ITS STEPS. Two rulesets name this repo's required contexts, both     │
+  # │ with `bypass_actors: []`. The organization's `library-required-checks` requires all five         │
+  # │ contexts this caller emits: `ci / verify (22, ubuntu-latest)`, `ci / verify (24,                 │
+  # │ ubuntu-latest)`, `ci / verify (26, ubuntu-latest)`, `ci / prepublish` and `ci / actionlint`.     │
+  # │ This repository's `ci-required-checks` requires `documents` and `examples`, the two jobs below.  │
+  # │ Every gate the shared pipeline runs (typecheck, lint, format:check, PHI scan, test, gating       │
+  # │ coverage, build, attw, dual ESM/CJS smoke) is a STEP inside `verify`, and is required only       │
+  # │ because that job is. Promote any one of them to its own job and it is silently NO LONGER         │
+  # │ REQUIRED: the rulesets name contexts, the new context is not in them, and nothing anywhere       │
+  # │ errors or warns. If you split a step out, add its context to a ruleset in the same change.       │
   # │                                                                                                  │
   # │ AND THE HAZARD IS NOT ONLY A LOCAL SPLIT: THE CALLED WORKFLOW CAN GROW A JOB UPSTREAM. The       │
   # │ `uses:` below names a published reference, so a job added upstream reaches this repository only  │
@@ -71,16 +72,15 @@ jobs:
   # list, and `test/node-support.test.ts` fails the build when any of them disagree.
   #
   # EACH VALUE IS A STATUS-CHECK CONTEXT. The matrix cell `22` produces
-  # `ci / verify (22, ubuntu-latest)` and `24` produces `ci / verify (24, ubuntu-latest)`; both are
-  # named in the `ci-required-checks` ruleset with `bypass_actors: []`. `26` was added on 2026-11-07
-  # under the operator's Node standard (ST15), with `engines.node` opened to `>=22.0.0` in the same
-  # change, once the suite passed on Node 26. Its context, `ci / verify (26, ubuntu-latest)`, runs on
-  # every pull request and is NOT required yet: until the ruleset names it, a red Node 26 leg blocks
-  # nothing, so read it on every pull request. Removing or renaming a value
+  # `ci / verify (22, ubuntu-latest)`, and so on for `24` and `26`; all three are named in the
+  # organization's `library-required-checks` ruleset with `bypass_actors: []`. `26` was added on
+  # 2026-11-07 under the operator's Node standard (ST15), with `engines.node` opened to `>=22.0.0` in
+  # the same change, once the suite passed on Node 26, and its context,
+  # `ci / verify (26, ubuntu-latest)`, is required now too. Removing or renaming a value
   # stops its context being emitted, and a required context nothing emits is PENDING rather than
   # failing: every pull request, including the one that would undo it, becomes unmergeable by
   # anyone, admin included. Nothing in this repository can edit that ruleset; it is a GitHub setting
-  # a human with repo admin changes.
+  # a human with organization admin changes.
   #
   # SO THE ORDER IS RULESET FIRST, MATRIX SECOND, RANGE THIRD, and Node 26 is the one recorded
   # exception. Adding a line without adding its context to the ruleset first gets a context that
@@ -97,8 +97,8 @@ jobs:
   # The runnable examples under examples/: each one runs the built `cosyte` executable, found
   # through `@cosyte/cli/package.json` resolved by this package's own `exports`, on the synthetic
   # fixtures under test/__fixtures__, and checks the exit code and the output. `pnpm examples` fails
-  # if any example does, or if it finds none to run. This job is not one of the required contexts
-  # in the banner above. Actions are pinned to a commit.
+  # if any example does, or if it finds none to run. `examples` is a required context: the
+  # `ci-required-checks` ruleset in the banner above names it. Actions are pinned to a commit.
   examples:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -121,7 +121,8 @@ jobs:
   # (`pnpm check:readme`), the CLAUDE.md card against its spec (`pnpm check:claude-card`), and the
   # package description against the catalog that ships in script-utils (`pnpm check:catalog`), and
   # the process wiring against @cosyte/process (`pnpm check:process`: the script bodies, the override
-  # file and the exact vitest pin). This job is not one of the required contexts in the banner above.
+  # file and the exact vitest pin). `documents` is a required context: the `ci-required-checks`
+  # ruleset in the banner above names it.
   documents:
     runs-on: ubuntu-latest
     timeout-minutes: 10
