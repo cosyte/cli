@@ -258,6 +258,7 @@ async function parseMulti(
       new CliError(
         CLI_CODES.CLI_PARSE_FAILED,
         EXIT.DATAERR,
+        /* v8 ignore next -- an MLLP stream never gets here: the reader rejects any first byte but VT, and a VT either completes a frame or leaves an open one that mllpFrames refuses as truncated */
         `no ${format === "mllp" ? "MLLP frame" : "record"} found in the input`,
       ),
     );
@@ -268,7 +269,8 @@ async function parseMulti(
     ? ""
     : `cosyte: parsed ${String(total)} ${recordFormat} record(s)` +
       ` (${String(warnings)} warning(s), ${String(failed)} failed)` +
-      (ndjson ? " [ndjson]" : format === "mllp" ? " [mllp]" : "") +
+      // Only MLLP and --ndjson input reach this function, so a stream that is not --ndjson is MLLP.
+      (ndjson ? " [ndjson]" : " [mllp]") +
       "\n";
   return { stdout: written(), stderr, exit };
 }

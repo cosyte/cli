@@ -38,6 +38,12 @@ describe("detectFormat: confident matches route right", () => {
   it("strips a UTF-8 BOM before sniffing", () => {
     expect(detectFormat(enc('﻿{"resourceType":"Patient"}')).format).toBe("fhir");
   });
+
+  it("strips the BOM the decoder leaves when a file carries two of them", () => {
+    // The decoder consumes one leading BOM itself; a doubled one leaves the second in the text.
+    expect(detectFormat(enc('﻿﻿{"resourceType":"Patient"}')).format).toBe("fhir");
+    expect(detectFormat(enc("﻿﻿MSH|^~\\&|A|B|C|D|20240101||ADT^A01|1|P|2.5\r")).format).toBe("hl7");
+  });
 });
 
 describe("detectFormat: the six CLI-6 breadth formats (conservative, disjoint)", () => {

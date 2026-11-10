@@ -345,6 +345,16 @@ function inlineDeps(content: string): RunDeps {
   };
 }
 
+/**
+ * The caller's {@link RunDeps} without its `writeStdout` sink. A command given a sink streams its
+ * records there and returns an empty `stdout`, and an empty `stdout` is the failed-call signal here:
+ * the records would be lost to the result and a successful call reported as failed.
+ */
+function withoutSink(deps: RunDeps): RunDeps {
+  const { writeStdout: _sink, ...rest } = deps;
+  return rest;
+}
+
 /** Read a required string argument from a tool-call arguments object, or `null` when absent/mistyped. */
 function stringArg(args: Readonly<Record<string, unknown>>, key: string): string | null {
   const v = args[key];
@@ -433,6 +443,7 @@ function toToolResult(result: RunResult): McpToolResult {
     ok: true,
     status: result.exit === EXIT.OK ? "success" : "verdict",
     exit: result.exit,
+    /* v8 ignore next -- parsePayload returns undefined only from its defensive catch above: every dispatch runs its command under --json, so the data channel is JSON */
     ...(data !== undefined ? { data } : {}),
   });
 }
@@ -480,8 +491,9 @@ function internalError(e: unknown): McpToolResult {
  * @param name - The tool name (one of {@link TOOL_DEFS}).
  * @param args - The tool-call arguments object.
  * @param deps - Optional {@link RunDeps} override (tests inject fakes); defaults to feeding `content` as
- *   stdin. An unexpected throw from a command is mapped to a value-free `CLI_INTERNAL` result, never
- *   propagated to the SDK (which would surface the raw message).
+ *   stdin. Its `writeStdout` sink, if any, is not used: the tool result is the only data channel, so a
+ *   record stream comes back in it. An unexpected throw from a command is mapped to a value-free
+ *   `CLI_INTERNAL` result, never propagated to the SDK (which would surface the raw message).
  * @returns A value-free {@link McpToolResult}; this function never throws.
  * @example
  * ```ts
@@ -499,7 +511,7 @@ export async function dispatchTool(
 ): Promise<McpToolResult> {
   const content = stringArg(args, "content");
   if (content === null) return usageError();
-  const runDeps = deps ?? inlineDeps(content);
+  const runDeps = deps === undefined ? inlineDeps(content) : withoutSink(deps);
   const format = stringArg(args, "format");
   const fmtFlag = format !== null ? ["--format", format] : [];
 
