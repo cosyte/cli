@@ -443,6 +443,7 @@ function toToolResult(result: RunResult): McpToolResult {
     ok: true,
     status: result.exit === EXIT.OK ? "success" : "verdict",
     exit: result.exit,
+    /* v8 ignore next -- parsePayload returns undefined only from its defensive catch above: every dispatch runs its command under --json, so the data channel is JSON */
     ...(data !== undefined ? { data } : {}),
   });
 }

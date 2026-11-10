@@ -79,7 +79,12 @@ describe("deframeMllp: transport de-framing", () => {
     const truncated = new Uint8Array([...f("MSH|^~\\&|A"), 0x0b, ...enc.encode("MSH|^~\\&|B")]);
     await expect(deframeMllp(truncated)).rejects.toMatchObject({ code: "CLI_PARSE_FAILED" });
     // a final frame closed by FS whose CR never arrives is delivered by no callback: also truncated
-    const unclosed = new Uint8Array([...f("MSH|^~\\&|A"), 0x0b, ...enc.encode("MSH|^~\\&|B"), 0x1c]);
+    const unclosed = new Uint8Array([
+      ...f("MSH|^~\\&|A"),
+      0x0b,
+      ...enc.encode("MSH|^~\\&|B"),
+      0x1c,
+    ]);
     await expect(deframeMllp(unclosed)).rejects.toMatchObject({ code: "CLI_PARSE_FAILED" });
     // a lone unterminated frame likewise
     await expect(deframeMllp(new Uint8Array([0x0b, 0x4d, 0x53, 0x48]))).rejects.toBeInstanceOf(

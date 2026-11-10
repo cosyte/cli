@@ -214,10 +214,7 @@ export async function* mllpFrames(chunks: ByteChunks): AsyncGenerator<Uint8Array
     if (buf.length > 0) finalByte = buf[buf.length - 1];
 
     reader.push(buf);
-    while (ready.length > 0) {
-      const frame = ready.shift();
-      if (frame !== undefined) yield frame;
-    }
+    for (let frame = ready.shift(); frame !== undefined; frame = ready.shift()) yield frame;
   }
 
   if (lastStart > lastEnd || finalByte === FILE_SEPARATOR) throw truncatedMllpError();

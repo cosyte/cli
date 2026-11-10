@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { RunDeps } from "../src/core/io.js";
-import { CLI_CODES } from "../src/core/diagnostics.js";
+import { CLI_CODES, CliError, type CliCode } from "../src/core/diagnostics.js";
 import { EXIT } from "../src/core/exit-codes.js";
 import { dispatchTool, TOOL_DEFS, type McpToolResult } from "../src/mcp/tools.js";
 import { assertConforms, schemaViolations } from "./helpers/schema-conformance.js";
@@ -343,6 +343,21 @@ describe("dispatchTool: value-free error paths", () => {
     expect(r.structuredContent.status).toBe("failed");
     expect(r.structuredContent.code).toBe(CLI_CODES.CLI_FORMAT_UNSUPPORTED);
     assertPublishedContract("parse", r, "parse/unsupported-op");
+  });
+
+  it("a failure whose code is not in the registry carries no code at all", async () => {
+    // Injected deps can reject with a CliError built by hand around any code. Only a registry code
+    // may reach the structured result, so an unknown one is left out rather than copied across.
+    const forged = new CliError("ZZ_NOT_A_REGISTRY_CODE" as CliCode, EXIT.IOERR, "forged");
+    const deps: RunDeps = {
+      readStdin: () => Promise.reject(forged),
+      readFile: () => Promise.reject(forged),
+    };
+    const r = await dispatchTool("parse", { content: "" }, deps);
+    expect(r.isError).toBe(true);
+    expect(r.structuredContent).toStrictEqual({ ok: false, status: "failed", exit: EXIT.IOERR });
+    expect(JSON.stringify(r)).not.toContain("ZZ_NOT_A_REGISTRY_CODE");
+    assertPublishedContract("parse", r, "parse/unregistered-code");
   });
 
   it("convert with an unsupported --to target is a hard tool error (usage), never a fake conversion", async () => {

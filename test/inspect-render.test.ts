@@ -52,6 +52,17 @@ describe("renderSummary: every variant, present + (unknown) fallbacks, always va
       needles: ["bundle type:   (unknown)", "entries:", "Patient: 1"],
     },
     {
+      name: "fhir bundle with no entry types",
+      summary: {
+        format: "fhir",
+        resourceType: "Bundle",
+        bundleType: "collection",
+        entryCount: 0,
+        issueCount: 0,
+      },
+      needles: ["bundle type:   collection", "entries:       0\nissues:"],
+    },
+    {
       name: "fhir resourceType null",
       summary: { format: "fhir", resourceType: null, issueCount: 2 },
       needles: ["resource type: (unknown)"],

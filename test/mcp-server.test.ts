@@ -3,7 +3,9 @@ import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { createMcpServer, SERVER_INFO } from "../src/mcp/server.js";
-import { TOOL_DEFS } from "../src/mcp/tools.js";
+import { CLI_CODES } from "../src/core/diagnostics.js";
+import { EXIT } from "../src/core/exit-codes.js";
+import { TOOL_DEFS, type McpToolDef } from "../src/mcp/tools.js";
 import { assertConforms } from "./helpers/schema-conformance.js";
 
 /**
@@ -134,6 +136,42 @@ describe("cosyte MCP server, in-process client/server", () => {
       expect(JSON.parse(content[0]?.text ?? ""), `${c.tool}/${c.label}`).toStrictEqual(
         res.structuredContent,
       );
+    }
+  });
+
+  it("a tools/call with no arguments object is a value-free usage error, not a crash", async () => {
+    const res = await client.callTool({ name: "parse" });
+    expect(res.isError).toBe(true);
+    expect(res.structuredContent).toStrictEqual({
+      ok: false,
+      status: "failed",
+      exit: EXIT.USAGE,
+      code: CLI_CODES.CLI_USAGE,
+    });
+  });
+
+  it("an input schema that leaves out `required` and `additionalProperties` is advertised without them", async () => {
+    // TOOL_DEFS is an exported array, and the input schema's type declares both keys optional. A
+    // definition without them must reach the wire without them, never as keys set to undefined.
+    const parse = TOOL_DEFS.find((t) => t.name === "parse");
+    if (parse === undefined) throw new Error("no advertised parse tool");
+    const bare: McpToolDef = {
+      ...parse,
+      name: "bare",
+      inputSchema: { type: "object", properties: { content: { type: "string" } } },
+    };
+    const defs = TOOL_DEFS as McpToolDef[];
+    defs.push(bare);
+    try {
+      const { tools } = await client.listTools();
+      const wire = tools.find((t) => t.name === "bare");
+      expect(wire?.inputSchema).toStrictEqual({
+        type: "object",
+        properties: { content: { type: "string" } },
+      });
+      expect(Object.keys(wire?.inputSchema ?? {})).not.toContain("required");
+    } finally {
+      defs.splice(defs.indexOf(bare), 1);
     }
   });
 

@@ -275,7 +275,10 @@ describe("a fatal condition part way through never resolves to OK", () => {
       yield new Uint8Array([0x0b, ...enc.encode(HL7_MSG), 0x1c]);
       yield new Uint8Array(); // an empty chunk at the end does not hide where the stream stopped
     }
-    const r = await run(["parse", "-"], chunkDeps(source, (chunk) => lines.push(chunk)));
+    const r = await run(
+      ["parse", "-"],
+      chunkDeps(source, (chunk) => lines.push(chunk)),
+    );
 
     expect(lines).toHaveLength(1);
     expect(r.exit).toBe(EXIT.DATAERR);
@@ -289,7 +292,10 @@ describe("a fatal condition part way through never resolves to OK", () => {
       yield new Uint8Array([0x0b, ...enc.encode(HL7_MSG), 0x1c]);
       yield new Uint8Array([0x0d]);
     }
-    const r = await run(["parse", "-"], chunkDeps(source, (chunk) => lines.push(chunk)));
+    const r = await run(
+      ["parse", "-"],
+      chunkDeps(source, (chunk) => lines.push(chunk)),
+    );
 
     expect(r.exit).toBe(EXIT.OK);
     expect(lines).toHaveLength(1);
@@ -393,5 +399,56 @@ describe("an input that frames no record at all is a data error, never a silent 
     expect(r.exit).toBe(EXIT.DATAERR);
     expect(r.exit).not.toBe(EXIT.OK);
     expect(r.stderr).toContain("CLI_PARSE_FAILED");
+  });
+});
+
+describe("record boundaries and chunk readers", () => {
+  it("a CRLF line ending belongs to the terminator, not to the --ndjson record", async () => {
+    const lines: string[] = [];
+    async function* source(): AsyncGenerator<Uint8Array> {
+      await Promise.resolve();
+      yield enc.encode(`${FHIR_RECORD}\r\n${FHIR_RECORD}\r\n`);
+    }
+    const r = await run(
+      ["parse", "-", "--ndjson", "--format", "fhir"],
+      chunkDeps(source, (chunk) => lines.push(chunk)),
+    );
+    expect(r.exit).toBe(EXIT.OK);
+    expect(r.stderr).toContain("(0 warning(s), 0 failed)");
+    expect(lines.map((l) => (JSON.parse(l) as { model: { id: string } }).model.id)).toStrictEqual([
+      "ZZSENTINELBULK",
+      "ZZSENTINELBULK",
+    ]);
+  });
+
+  it("a file path is read through the injected file chunk reader when one is given", async () => {
+    const opened: string[] = [];
+    const deps: RunDeps = {
+      readFile: () => Promise.reject(new Error("the whole-file reader must not be used here")),
+      readStdin: () => Promise.reject(new Error("stdin must not be read here")),
+      openFile: (path) => {
+        opened.push(path);
+        return oneChunk(enc.encode(FHIR_RECORD));
+      },
+    };
+    const r = await run(["parse", "records.json"], deps);
+    expect(r.exit).toBe(EXIT.OK);
+    expect(opened).toStrictEqual(["records.json"]);
+    expect(JSON.parse(r.stdout)).toMatchObject({ format: "fhir", model: { id: "ZZSENTINELBULK" } });
+  });
+
+  it("a read failure after the format is known is a value-free internal error", async () => {
+    // The first chunk decides the format; the reader then fails with a platform error whose
+    // message must not reach stderr.
+    async function* source(): AsyncGenerator<Uint8Array> {
+      await Promise.resolve();
+      yield enc.encode(HL7_HEAD);
+      throw new Error("ZZSENTINELREAD device went away");
+    }
+    const r = await run(["parse", "-", "--format", "hl7"], chunkDeps(source));
+    expect(r.exit).toBe(EXIT.SOFTWARE);
+    expect(r.stdout).toBe("");
+    expect(r.stderr).toContain("CLI_INTERNAL");
+    expect(r.stderr).not.toContain("ZZSENTINELREAD");
   });
 });

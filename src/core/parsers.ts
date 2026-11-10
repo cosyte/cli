@@ -551,6 +551,7 @@ export async function inspectFormat(
       return {
         format: "dicom",
         sopClassUid: ds.fileMeta?.mediaStorageSOPClassUID ?? null,
+        /* v8 ignore next -- parseDicom refuses an input with no File Meta Transfer Syntax UID (INVALID_FILE_META or NOT_DICOM_PART_10), so a parsed file always carries one */
         transferSyntaxUid: ds.fileMeta?.transferSyntaxUID ?? null,
         elementCount: ds.elements().length,
         warningCount,
@@ -562,6 +563,7 @@ export async function inspectFormat(
       return {
         format: "ncpdp",
         standard: "SCRIPT",
+        /* v8 ignore next -- every @cosyte/ncpdp body variant declares `kind` as a required string, "unsupported" included */
         messageType: msg.body.kind ?? null,
         version: msg.header.version ?? null,
         warningCount: msg.warnings.length,

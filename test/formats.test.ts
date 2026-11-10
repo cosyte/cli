@@ -327,7 +327,10 @@ describe("streaming, per-record isolation + quiet on multi-record", () => {
   });
 
   it("a lone frame closed by FS with no CR is reported as truncated, not as no frame at all", async () => {
-    const r = await run(["parse", "-", "--format", "mllp"], bytesDeps(new Uint8Array(), new Uint8Array([0x0b, 0x1c])));
+    const r = await run(
+      ["parse", "-", "--format", "mllp"],
+      bytesDeps(new Uint8Array(), new Uint8Array([0x0b, 0x1c])),
+    );
     expect(r.exit).toBe(EXIT.DATAERR);
     expect(r.stderr).toContain("truncated MLLP stream");
   });
