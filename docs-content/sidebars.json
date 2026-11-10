@@ -13,19 +13,39 @@
     },
     {
       "type": "category",
-      "label": "Core concepts",
-      "collapsed": false,
-      "items": ["concepts-archetype"]
+      "label": "Tutorials",
+      "items": ["check-messages-in-ci"]
     },
     {
       "type": "category",
-      "label": "Guides",
-      "items": ["guides-overview", "mcp", "reference-commands"]
+      "label": "How-to guides",
+      "items": [
+        "guides-overview",
+        "branch-on-exit-codes",
+        "debug-a-rejected-message",
+        "convert-hl7-to-fhir",
+        "translate-codes",
+        "de-identify-a-message",
+        "mcp",
+        "use-the-programmatic-api"
+      ]
+    },
+    {
+      "type": "category",
+      "label": "Explanation",
+      "items": ["concepts-archetype", "limitations"]
+    },
+    {
+      "type": "category",
+      "label": "Reference",
+      "items": ["reference-commands", "diagnostic-codes", "format-support", "mcp-tools"]
     },
     {
       "type": "category",
       "label": "Troubleshooting",
-      "items": ["troubleshooting", "limitations"]
-    }
+      "items": ["troubleshooting"]
+    },
+    "testing-and-quality",
+    "performance"
   ]
 }

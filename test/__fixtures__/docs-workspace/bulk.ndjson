@@ -1,0 +1,3 @@
+{"resourceType":"Patient","id":"p1","gender":"female"}
+{"resourceType":"Patient","id":"p2"
+{"resourceType":"Observation","id":"o1","status":"final","code":{"text":"Synthetic test"}}

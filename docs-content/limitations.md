@@ -1,119 +1,73 @@
 ---
 id: limitations
-title: What it does, and does not do
-sidebar_position: 2
-description: "What the CLI promises, what it deliberately does not do, and how it handles PHI."
+title: What the CLI does and does not do
+sidebar_label: Scope and limits
+description: "What the cosyte command promises, what it leaves to the libraries it wraps, and what it does not do at all."
 ---
 
-# What `@cosyte/cli` does, and does not do
+# What the CLI does and does not do
 
-The `cosyte` CLI touches **real files a developer points at**: the moment Cosyte code meets
-un-synthetic PHI on a real disk. So this page is deliberately blunt about the promise and its edges.
-Read it before you rely on the tool: the **API Reference** and `cosyte --help` are always the exact
-truth of what a given release ships; this page is the honest shape of the whole.
+`cosyte` runs on files a developer points it at, which can hold real patient data. This page states
+what it promises, what it leaves to others, and what it does not do, so nobody trusts it for more
+than it does. For what the current release ships, `cosyte --help` and the
+[API reference](./api/src.md) are exact.
 
-## The promise (narrow, on purpose)
+## What it promises
 
-`@cosyte/cli` is a **thin, PHI-safe, correct-exit-code terminal-and-agent front door over libraries
-that already own correctness**, and **never a mis-routed parse, a green exit on an invalid message,
-or a leaked value in a diagnostic.**
+- **The libraries' results, unchanged.** Every parsed model, finding, conversion, and translation is
+  the wrapped library's. A wrong value is a defect in that library; see
+  [How the CLI works](./concepts-archetype.md#the-wrapper-boundary).
+- **No guessed format.** A format is detected from the content or named with `--format`; anything
+  else is refused.
+- **An exit code that tells the truth.** No run that failed to handle its input, or failed to deliver
+  its output, exits `0`.
+- **No message values on stderr** unless you pass `--unsafe-show-values`, and then only the start of
+  the input on a parse failure.
 
-- **It wraps; it does not re-implement.** Every wire-format guarantee is the wrapped `@cosyte/*`
-  library's, graded by _its_ own conformance gate. The CLI owns only routing, I/O, output shaping, the
-  exit-code contract, and the value-free PHI posture. A bug in a parsed _value_ is the library's; a
-  mis-route, a wrong exit code, or a leaked value is the CLI's.
-- **Fail-safe routing.** Autodetection sniffs content, not the file extension. A confident single
-  match parses; an ambiguous or unrecognized input is a typed data error (exit `65`) asking for
-  `--format`, **never a guessed parser** and never a confident wrong parse.
-- **The exit code is a designed surface.** `0` success / valid · `1` invalid verdict · `2` usage ·
-  `65` data error · `66` no input · `69` unavailable · `70` internal. The load-bearing rule: the CLI
-  **never prints a reassuring line and exits `0` on input it could not handle.** A `validate` failure
-  is exit `1`, never `0`. That is the property the CI use case rests on.
-- **Value-free by default.** `parse`/`convert`/`fmt` emit the requested data to **stdout** (the sink
-  you chose: that is the tool doing its job). **Every other surface** (stderr, warnings, errors,
-  `inspect`'s summary) carries only positional context (a segment/field index, a code, a file path),
-  **never** a name, DOB, MRN, or result value. `--unsafe-show-values` is the single, loud, opt-in door
-  to a value in a failure diagnostic.
+## What it leaves to the libraries
 
-## What it does **not** do
+- **What a format means.** Parsing rules, tolerance of malformed input, warnings, and validation are
+  each library's, as documented on [docs.cosyte.com](https://docs.cosyte.com).
+- **Conversion.** `convert` covers HL7 v2 to FHIR R4 only, as far as `@cosyte/transform` maps it.
+- **Terminology.** `map-codes` translates one code through a `ConceptMap` you supply. No code system
+  or map ships with the package, and it does not look for codes inside a message.
+- **De-identification.** `redact` applies `@cosyte/deid`'s default policy and offers no setting of
+  its own; it covers `ccda`, `fhir`, `hl7`, `x12`. Under that policy, an HL7 v2 message with a visit
+  number (PV1-19) or an order number is refused, and record, account, and member numbers are removed
+  rather than replaced. See [De-identify a message](./de-identify-a-message.md).
 
-These are **non-goals**, not missing features: named so nothing over-trusts the tool.
+## What it does not do
 
-- **Not an integration engine.** No channels, listeners, routing, scheduling, or running state: that
-  is **`pathways`**. The CLI runs one operation on one input and exits. (The MCP server is a long-lived
-  stdio subprocess, but it is **stateless per call**: a request/response tool host, not an
-  integration.)
-- **No GUI and no web playground.** Terminal + local stdio MCP only. An online
-  inspector/validator/de-id is a separate, later, differently-stacked concern with its own hosted-PHI
-  threat model.
-- **No data storage, no persistence, no PHI cache.** The CLI reads the file you point at, operates in
-  memory, writes the output you asked for, and exits. It **never writes a temp file** and **never logs
-  to a file**. No telemetry, no crash-report upload.
-- **No hosted network service.** The MCP server is a **local subprocess over stdio**, implicitly
-  trusted by the user who launched it, not a remote HTTP endpoint accepting untrusted PHI. A
-  remote/Streamable-HTTP MCP deployment is a future, separately-security-reviewed concern.
-- **No capability its ground layer lacks, and never a faked one.** Where a wrapped library is not yet
-  built, the command is **unavailable** (a distinct, value-free exit `69`), never stubbed to a fake
-  success:
-  - **`redact` / `deid`** delegates every de-identification decision to `@cosyte/deid` and covers the
-    formats that library covers and this CLI can serialize: `ccda`, `fhir`, `hl7`, `x12`. `astm`,
-    `mllp`, and `ncpdp` have no adapter there (`CLI_NOT_IMPLEMENTED`, exit `69`); `dicom` is covered
-    there but its de-identified form is a binary stream this text stdout cannot carry
-    (`CLI_FORMAT_UNSUPPORTED`, exit `65`). If the library reports a locus it could not handle, the run
-    exits `1` with **no output at all**. Under the library's default policy that is every HL7 message
-    carrying a visit number (`PV1-19`) or a placer or filler order number: those are blocked
-    (`DEID_LOCUS_BLOCKED`), and the CLI offers no setting that turns a block into a removal. Medical
-    record, account, and member numbers are removed (`DEID_CATEGORY_REMOVED`), not replaced by a
-    surrogate. The CLI ships **no** built-in partial scrub that could give a
-    false sense of safety, and asserts no de-identification standard of its own: it reports the
-    library's own published label and version.
-  - **`validate --profile`** is reserved but gated (`CLI_NOT_IMPLEMENTED`) until the CLI can load a
-    profile; **no profiles are bundled**.
-  - **`convert`** covers **HL7 v2 → FHIR R4** only (via `@cosyte/transform`); **`map-codes`** requires
-    a **bring-your-own** FHIR ConceptMap (via `@cosyte/terminology`), no terminology content is
-    bundled.
-- **Per-(format, operation) support is honest, not uniform.** All eight Cosyte formats are wired, but
-  a parser only advertises the operations it can actually back. An unsupported (format, op) is a
-  value-free `CLI_FORMAT_UNSUPPORTED`, never a fake:
+- **Integration.** No listeners, channels, routing, schedules, or stored state. Each run reads one
+  input and exits. The MCP server stays running, but keeps nothing between calls.
+- **Storage.** It writes no file of its own, keeps no cache, and sends nothing over the network: no
+  telemetry, no crash reports. Its output goes where you send stdout and stderr.
+- **A hosted service.** The MCP server talks over stdio to the client that started it. There is no
+  web interface and no network endpoint.
+- **Profiles.** `validate --profile` is reserved and answers `CLI_NOT_IMPLEMENTED` (exit `69`): no
+  profile ships, and none can be loaded yet.
+- **Every format for every command.** Some commands do not support some formats, and say so with
+  `CLI_FORMAT_UNSUPPORTED`; [Format support](./format-support.md) has the table.
+- **Clinical judgment.** It does not decide what a result means, convert units, or ship clinical
+  code systems.
+- **The MCP tools `redact` and `map-codes`.** The server offers `parse`, `validate`, `inspect`, and
+  `convert` only.
 
-  | Format                 | parse                                     | inspect | fmt           | validate      |
-  | ---------------------- | ----------------------------------------- | ------- | ------------- | ------------- |
-  | `hl7`, `fhir`          | ✓                                         | ✓       | ✓             | ✓             |
-  | `x12`, `astm`, `ncpdp` | ✓                                         | ✓       | ✓             | ✓             |
-  | `ccda`                 | not supported (XML is the canonical form) | ✓       | ✓ (XML)       | ✓             |
-  | `dicom`                | not supported (binary model)              | ✓       | not supported | ✓             |
-  | `mllp`                 | ✓ (de-framed to HL7)                      | ✓       | not supported | not supported |
+## What depends on your install
 
-  **The matrix says what the CLI implements. It is not a promise about what your install can reach**:
+The format parsers other than HL7 v2, `@cosyte/fhir`, `@cosyte/transform`, `@cosyte/deid`, and the MCP
+SDK are optional dependencies. A default install has them all. Without one, the commands that need
+it answer `CLI_PARSER_UNAVAILABLE` (exit `69`) and the rest still run. See
+[Installation](./installation.md#what-a-default-install-includes).
 
-- **Each cell needs its library installed.** The six breadth formats, `@cosyte/fhir` and
-  `@cosyte/transform` are optional dependencies, so a default install has all of them. A library that
-  is missing (an install with `--omit=optional`, or a package removed afterwards) turns its cells into
-  a value-free `CLI_PARSER_UNAVAILABLE` with exit `69`, and **`convert`** reports the same when
-  `@cosyte/fhir` or `@cosyte/transform` is missing. The commands do not guess, and they do not report
-  your input as bad.
+## Handling patient data
 
-- **The MCP server needs its SDK.** `@modelcontextprotocol/sdk` is an optional dependency too. Without
-  it every `cosyte` command still runs, and `cosyte-mcp` and `cosyte mcp` exit `69` with
-  `CLI_PARSER_UNAVAILABLE`, naming the package to install.
+Run it on synthetic data where you can. On real data, treat stdout as you would the input: `parse`,
+`fmt`, `convert`, and `redact` write the message, or a form of it, there. stderr carries no values
+by default, so it is safe to keep in a log, unless `--unsafe-show-values` was passed.
 
-- **No clinical interpretation, no unit conversion, no terminology content.** The CLI inherits these
-  non-goals from the libraries it wraps. It never decides criticality, rescales a magnitude, or bundles
-  SNOMED/LOINC/CPT.
+## Guides that apply this
 
-## The agent surface (MCP)
-
-The `cosyte-mcp` server exposes `parse`/`validate`/`inspect`/`convert` as agent-callable tools over the
-**same core** the terminal drives, so `cosyte parse` and the MCP `parse` tool agree by construction.
-It runs **value-free with no `--unsafe-show-values` door**: a tool _result_ carries the requested data,
-a tool _error_ carries only the value-free diagnostic, and a parsed-but-invalid `validate` verdict is a
-**successful** call reporting the verdict. `redact` and `map-codes` are deliberately **not** exposed as
-tools yet.
-
-## PHI handling
-
-Fixtures are **synthetic-only** (`# synthetic` enforced); diagnostics carry **positional context
-only, never a value**; and a format-specific PHI scanner gates every change, including the golden
-stdout/stderr snapshots (the highest-risk artifact). The one deliberate value channel is **stdout** on
-`parse`/`convert`/`fmt`: the data you explicitly asked for, sent to the sink you chose. Never pipe
-that channel somewhere you would not put PHI.
+- [Debug a rejected message](./debug-a-rejected-message.md)
+- [De-identify a message](./de-identify-a-message.md)
+- [Branch on the exit code in a script](./branch-on-exit-codes.md)

@@ -81,7 +81,8 @@ export function extractPhiPosture(argv: readonly string[]): {
  *
  * const bytes = new TextEncoder().encode("bad message");
  * unsafeInputSuffix(bytes, VALUE_FREE); // => ""
- * unsafeInputSuffix(bytes, SHOW_VALUES); // => " [unsafe-show-values] offending input …: bad message"
+ * unsafeInputSuffix(bytes, SHOW_VALUES);
+ * // => " [unsafe-show-values] offending input (first 200 bytes): bad message"
  * ```
  */
 export function unsafeInputSuffix(bytes: Uint8Array, posture: PhiPosture): string {

@@ -78,7 +78,7 @@ export const CLI_CODES = {
 export type CliCode = (typeof CLI_CODES)[keyof typeof CLI_CODES];
 
 /**
- * A typed, PHI-safe CLI error. Its {@link CliError.message | message} is **value-free by
+ * A typed, PHI-safe CLI error. Its `message` is **value-free by
  * construction**: callers must build it from codes, indices, offsets, format names, and file paths,
  * never from an input value. It carries the {@link ExitCode} the invocation resolves to.
  *
