@@ -545,6 +545,17 @@ describe("the MCP tools page", () => {
       }
     }
   });
+
+  it("says the schema declares no other input property and the server ignores one it is sent", () => {
+    // The server-side half (an undeclared property is ignored, not refused) is held over the wire
+    // in mcp-server.test.ts.
+    for (const tool of TOOL_DEFS)
+      expect(tool.inputSchema.additionalProperties, tool.name).toBe(false);
+    const tools = section(page("mcp-tools.md"), "Tools").replace(/\s+/g, " ");
+    expect(tools).toContain(
+      "The input schema declares no other property (`additionalProperties: false`); the server ignores any other property it is sent.",
+    );
+  });
 });
 
 describe("the size limit", () => {

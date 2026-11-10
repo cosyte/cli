@@ -25,7 +25,8 @@ schema, and every reply conforms to its tool's output schema. To register the se
   to detect the format from the content. A format whose parser does not support the tool's
   operation answers `CLI_FORMAT_UNSUPPORTED` (see [Format support](./format-support.md)).
 - `to` is `fhir`, the only target, and the default.
-- No other input property is accepted.
+- The input schema declares no other property (`additionalProperties: false`); the server ignores
+  any other property it is sent.
 
 ## Result properties
 

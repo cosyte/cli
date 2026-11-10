@@ -139,6 +139,30 @@ describe("cosyte MCP server, in-process client/server", () => {
     }
   });
 
+  it("ignores an input property the tool's schema does not declare (the server does not enforce it)", async () => {
+    const hl7 =
+      "MSH|^~\\&|A|B|C|D|20240101120000||ADT^A01|1|P|2.5\rEVN|A01|20240101120000\rPID|1||X^^^H^MR||DOE^JANE||19800101|F\r";
+    for (const [name, declared, extra] of [
+      ["parse", { content: hl7 }, { bogus: 1 }],
+      // `convert` declares no `format`: one sent anyway changes nothing.
+      ["convert", { content: hl7 }, { format: "fhir" }],
+    ] as const) {
+      const def = TOOL_DEFS.find((t) => t.name === name);
+      expect(def?.inputSchema.additionalProperties, name).toBe(false);
+      for (const key of Object.keys(extra)) {
+        expect(Object.keys(def?.inputSchema.properties ?? {}), name).not.toContain(key);
+      }
+      const plain = await client.callTool({ name, arguments: declared });
+      const withExtra = await client.callTool({ name, arguments: { ...declared, ...extra } });
+      expect(withExtra.isError, name).toBeFalsy();
+      expect(withExtra.structuredContent, name).toMatchObject({ ok: true, status: "success" });
+      // A converted Bundle mints a fresh `urn:uuid:` per entry on every call, so those are masked.
+      const masked = (v: unknown): string =>
+        JSON.stringify(v).replace(/urn:uuid:[0-9a-f-]{36}/g, "urn:uuid:*");
+      expect(masked(withExtra.structuredContent), name).toBe(masked(plain.structuredContent));
+    }
+  });
+
   it("a tools/call with no arguments object is a value-free usage error, not a crash", async () => {
     const res = await client.callTool({ name: "parse" });
     expect(res.isError).toBe(true);
