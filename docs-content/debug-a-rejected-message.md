@@ -62,7 +62,7 @@ If the excerpt does not show the problem, look at the raw bytes, where a control
 separator that is not the one you expect shows up:
 
 ```bash
-head -c 64 broken.json | od -c | head -4
+head -c 64 broken.json | od -c
 ```
 
 ## Reference
