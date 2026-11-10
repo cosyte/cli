@@ -172,13 +172,15 @@ const TELECOM_HEADER_BYTES = 56;
 /**
  * NCPDP Telecom vD.0: a pharmacy claim request (`B1` billing, `B2` reversal, `B3` rebill, ...) opens
  * with the fixed 56-byte Transaction Header: a six-digit BIN, the `D0` version stamp at offset 6, and
- * the two-character transaction code at offset 8. Conservative: the header must start the input (it
- * is positional, so no leading whitespace is skipped) **and** the body after it must carry at least
- * one Telecom separator (FS `0x1C`, GS `0x1D` or RS `0x1E`), so a line that merely begins with six
- * digits and `D0` is not claimed. Disjoint from every other lead: no other signature starts with a
- * digit.
+ * the two-character transaction code at offset 8. Conservative: the header must start the raw input
+ * (it is positional, so neither leading whitespace nor a byte-order mark is skipped; the sniffed
+ * prefix has its BOM removed, so a raw first byte of `0xEF` rules the input out) **and** the body
+ * after it must carry at least one Telecom separator (FS `0x1C`, GS `0x1D` or RS `0x1E`), so a line
+ * that merely begins with six digits and `D0` is not claimed. Disjoint from every other lead: no
+ * other signature starts with a digit.
  */
-function looksLikeNcpdpTelecom(prefix: string): boolean {
+function looksLikeNcpdpTelecom(prefix: string, bytes: Uint8Array): boolean {
+  if (bytes[0] === 0xef) return false;
   if (!/^\d{6}D0[A-Z0-9]{2}/.test(prefix)) return false;
   return /[\x1c\x1d\x1e]/.test(prefix.slice(TELECOM_HEADER_BYTES));
 }
@@ -187,8 +189,8 @@ function looksLikeNcpdpTelecom(prefix: string): boolean {
  * NCPDP: one format name, two standards the wrapped library reads. SCRIPT is XML ePrescribing;
  * Telecom is the fixed-header, separator-framed pharmacy claim. Either signature claims `ncpdp`.
  */
-function looksLikeNcpdp(prefix: string): boolean {
-  return looksLikeNcpdpScript(prefix) || looksLikeNcpdpTelecom(prefix);
+function looksLikeNcpdp(prefix: string, bytes: Uint8Array): boolean {
+  return looksLikeNcpdpScript(prefix) || looksLikeNcpdpTelecom(prefix, bytes);
 }
 
 /** DICOM Part 10: the `DICM` magic sits at byte offset 128, after the 128-byte preamble. */
@@ -207,7 +209,7 @@ const SIGNATURES: readonly Signature[] = [
   { format: "x12", match: (prefix) => looksLikeX12(prefix) },
   { format: "astm", match: (prefix) => looksLikeAstm(prefix) },
   { format: "ccda", match: (prefix) => looksLikeCcda(prefix) },
-  { format: "ncpdp", match: (prefix) => looksLikeNcpdp(prefix) },
+  { format: "ncpdp", match: (prefix, bytes) => looksLikeNcpdp(prefix, bytes) },
   { format: "dicom", match: (prefix, bytes) => looksLikeDicom(prefix, bytes) },
 ];
 

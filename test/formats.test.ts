@@ -282,6 +282,53 @@ describe("ncpdp: parse / inspect / fmt / validate (Telecom vD.0, a B1 billing cl
     expect(text.stdout).toContain("transaction:  (unknown)");
   });
 
+  it("reads SCRIPT behind long leading whitespace as SCRIPT, never as Telecom", async () => {
+    const pad = (n: number, unit = " "): Uint8Array =>
+      new Uint8Array([...enc.encode(unit.repeat(n)), ...NCPDP]);
+    // 100 spaces, then 400 mixed whitespace bytes: both past the old 64-byte routing window and
+    // still detected (the SCRIPT signature searches the 512-byte detection window). Then a BOM and
+    // 600 spaces, past the detection window too, which only --format ncpdp reaches.
+    const cases: { input: Uint8Array; extra: string[] }[] = [
+      { input: pad(100), extra: [] },
+      { input: pad(100, " \t\r\n"), extra: [] },
+      { input: new Uint8Array([0xef, 0xbb, 0xbf, ...pad(600)]), extra: ["--format", "ncpdp"] },
+    ];
+    for (const { input, extra } of cases) {
+      for (const op of ["parse", "inspect", "fmt", "validate"]) {
+        const json = op === "fmt" ? [] : ["--json"];
+        const r = await run([op, "rx.xml", ...extra, ...json], bytesDeps(input));
+        const label = `${op} on ${String(input.length)} bytes`;
+        expect(r.exit, label).toBe(EXIT.OK);
+        expect(r.stderr, label).not.toContain("NCPDP_TELECOM_");
+        if (op === "inspect") {
+          const s = JSON.parse(r.stdout) as { standard: string; messageType: string };
+          expect(s.standard).toBe("SCRIPT");
+          expect(s.messageType).toBe("NewRx");
+        }
+        if (op === "fmt") expect(r.stdout).toContain("<Message");
+      }
+    }
+  });
+
+  it("an input of only a BOM and whitespace under --format ncpdp is a Telecom parse failure", async () => {
+    const blank = new Uint8Array([0xef, 0xbb, 0xbf, 0x20, 0x0a, 0x09]);
+    const r = await run(["parse", "f", "--format", "ncpdp"], bytesDeps(blank));
+    expect(r.exit).toBe(EXIT.DATAERR);
+    expect(r.stdout).toBe("");
+    expect(r.stderr).toContain("NCPDP_TELECOM_");
+  });
+
+  it("does not detect a Telecom claim behind a UTF-8 BOM: nothing is skipped before its header", async () => {
+    const bom = new Uint8Array([0xef, 0xbb, 0xbf, ...TELECOM]);
+    for (const op of ["parse", "inspect", "fmt", "validate"]) {
+      const r = await run([op, "b1.ncpdp"], bytesDeps(bom));
+      expect(r.exit, op).toBe(EXIT.DATAERR);
+      expect(r.stdout, op).toBe("");
+      expect(r.stderr, op).toContain("CLI_FORMAT_UNDETECTED");
+      expect(r.stderr, op).not.toContain("999999");
+    }
+  });
+
   it("inspect counts a segment with no segment id under (none)", async () => {
     const wire = enc.encode(`${"999999D0B1".padEnd(56, " ")}C41\x1cC52`);
     const r = await run(["inspect", "f", "--json"], bytesDeps(wire));

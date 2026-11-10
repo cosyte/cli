@@ -117,6 +117,14 @@ describe("detectFormat: NCPDP Telecom vD.0 requests", () => {
     ).toBe("none");
   });
 
+  it("does NOT claim a Telecom header behind a UTF-8 BOM or leading whitespace", () => {
+    const claim = FIX("b1-claim.ncpdp");
+    for (const lead of [[0xef, 0xbb, 0xbf], [0x20], [0x0a]]) {
+      const r = detectFormat(new Uint8Array([...lead, ...claim]));
+      expect(r.confidence, String(lead)).toBe("none");
+    }
+  });
+
   it("leaves every other format's fixture detected as it was", () => {
     const expected: Record<string, string> = {
       "adt-a01.hl7": "hl7",

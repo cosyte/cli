@@ -869,14 +869,23 @@ function decode(bytes: Uint8Array): string {
   return new TextDecoder("utf-8", { fatal: false }).decode(bytes);
 }
 
+/** Bytes skipped before the SCRIPT check: tab, LF, VT, FF, CR and space. */
+const LEADING_WHITESPACE = new Set([0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x20]);
+
 /**
- * Which NCPDP standard an `ncpdp` input is: SCRIPT when its first character past any BOM and
- * whitespace (`trimStart` drops both) is `<`, so it is XML; Telecom otherwise. One format name covers
- * both, so `--format ncpdp` routes a forced input the same way detection would. A Telecom message is
- * positional and opens with its header, never with `<`, so the two cannot be confused.
+ * Which NCPDP standard an `ncpdp` input is: SCRIPT when its first byte past any UTF-8 BOMs and ASCII
+ * whitespace is `<`, so it is XML; Telecom otherwise. The scan covers the whole input, not a window,
+ * so no amount of leading whitespace sends a SCRIPT message to the Telecom parser. One format name
+ * covers both, so `--format ncpdp` routes a forced input the same way detection would. A Telecom
+ * message is positional and opens with its header, never with `<`, so the two cannot be confused.
  */
 function isNcpdpScript(bytes: Uint8Array): boolean {
-  return decode(bytes.subarray(0, 64)).trimStart().startsWith("<");
+  let i = 0;
+  for (;;) {
+    if (bytes[i] === 0xef && bytes[i + 1] === 0xbb && bytes[i + 2] === 0xbf) i += 3;
+    else if (LEADING_WHITESPACE.has(bytes[i] ?? -1)) i += 1;
+    else return bytes[i] === 0x3c;
+  }
 }
 
 /** Build one value-free {@link Finding}; a FHIR `constraint` (a public spec id) is appended if present. */
