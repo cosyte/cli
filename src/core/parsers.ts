@@ -121,7 +121,7 @@ export interface DicomSummary {
 }
 
 /** Value-free structural summary of an NCPDP SCRIPT message. */
-export interface NcpdpSummary {
+export interface NcpdpScriptSummary {
   readonly format: "ncpdp";
   readonly standard: "SCRIPT";
   /** The SCRIPT message type (e.g. `NewRx`, `CancelRx`: a value-free classification). */
@@ -130,6 +130,31 @@ export interface NcpdpSummary {
   readonly version: string | null;
   readonly warningCount: number;
 }
+
+/**
+ * Value-free structural summary of an NCPDP Telecom transmission: classification codes and counts
+ * only. The BIN, the processor control number, the service provider id and every field value stay out.
+ */
+export interface NcpdpTelecomSummary {
+  readonly format: "ncpdp";
+  readonly standard: "Telecom";
+  /** Whether the transmission is a request (a claim) or a response (an adjudication). */
+  readonly kind: "request" | "response";
+  /** The transaction code (e.g. `B1` billing, `B2` reversal: a value-free classification). */
+  readonly transactionCode: string | null;
+  /** The version stamp (`D0`, or `F6` for a header the library recognizes but does not decode). */
+  readonly version: string;
+  /** How many transactions decoded (not the header's declared count). */
+  readonly transactionCount: number;
+  /** How many segments decoded, across every transaction. */
+  readonly segmentCount: number;
+  /** Decoded segments per Segment Identification code (e.g. `07` claim: value-free). */
+  readonly segmentIds: Readonly<Record<string, number>>;
+  readonly warningCount: number;
+}
+
+/** Value-free structural summary of an NCPDP message, SCRIPT or Telecom. */
+export type NcpdpSummary = NcpdpScriptSummary | NcpdpTelecomSummary;
 
 /** Value-free structural summary of an MLLP stream (frame count only; the payloads are HL7). */
 export interface MllpSummary {
@@ -416,8 +441,13 @@ export async function parseFormat(format: CosyteFormat, bytes: Uint8Array): Prom
       };
     }
     case "ncpdp": {
-      const { parseScript } = await loadOptional("ncpdp", () => import("@cosyte/ncpdp"));
-      const msg = parseScript(decode(bytes));
+      const { parseScript, parseTelecom } = await loadOptional(
+        "ncpdp",
+        () => import("@cosyte/ncpdp"),
+      );
+      const msg = isNcpdpScript(bytes)
+        ? parseScript(decode(bytes))
+        : parseTelecom(Buffer.from(bytes));
       return {
         model: msg,
         warnings: msg.warnings.map((w) => ({ code: w.code, position: w.position })),
@@ -558,7 +588,33 @@ export async function inspectFormat(
       };
     }
     case "ncpdp": {
-      const { parseScript } = await loadOptional("ncpdp", () => import("@cosyte/ncpdp"));
+      const { parseScript, parseTelecom } = await loadOptional(
+        "ncpdp",
+        () => import("@cosyte/ncpdp"),
+      );
+      if (!isNcpdpScript(bytes)) {
+        const tx = parseTelecom(Buffer.from(bytes));
+        const segmentIds: Record<string, number> = {};
+        let segmentCount = 0;
+        for (const t of tx.transactions) {
+          for (const seg of t.segments) {
+            segmentCount += 1;
+            const id = seg.segmentId === "" ? "(none)" : seg.segmentId;
+            segmentIds[id] = (segmentIds[id] ?? 0) + 1;
+          }
+        }
+        return {
+          format: "ncpdp",
+          standard: "Telecom",
+          kind: tx.kind,
+          transactionCode: tx.header.transactionCode === "" ? null : tx.header.transactionCode,
+          version: tx.header.versionRelease,
+          transactionCount: tx.decodedTransactionCount,
+          segmentCount,
+          segmentIds,
+          warningCount: tx.warnings.length,
+        };
+      }
       const msg = parseScript(decode(bytes));
       return {
         format: "ncpdp",
@@ -626,10 +682,14 @@ export async function fmtFormat(format: CosyteFormat, bytes: Uint8Array): Promis
       return { output: serializeCcda(doc), warningCount: doc.warnings.length };
     }
     case "ncpdp": {
-      const { parseScript, serializeScript } = await loadOptional(
+      const { parseScript, serializeScript, parseTelecom, serializeTelecom } = await loadOptional(
         "ncpdp",
         () => import("@cosyte/ncpdp"),
       );
+      if (!isNcpdpScript(bytes)) {
+        const tx = parseTelecom(Buffer.from(bytes));
+        return { output: serializeTelecom(tx), warningCount: tx.warnings.length };
+      }
       const msg = parseScript(decode(bytes));
       return { output: serializeScript(msg), warningCount: msg.warnings.length };
     }
@@ -713,8 +773,13 @@ export async function validateFormat(format: CosyteFormat, bytes: Uint8Array): P
       return { findings, valid: !anyError(findings) };
     }
     case "ncpdp": {
-      const { parseScript } = await loadOptional("ncpdp", () => import("@cosyte/ncpdp"));
-      const msg = parseScript(decode(bytes));
+      const { parseScript, parseTelecom } = await loadOptional(
+        "ncpdp",
+        () => import("@cosyte/ncpdp"),
+      );
+      const msg = isNcpdpScript(bytes)
+        ? parseScript(decode(bytes))
+        : parseTelecom(Buffer.from(bytes));
       const findings = msg.warnings.map((w) =>
         finding(w.code, "warning", valueFreeLocator(w.position)),
       );
@@ -802,6 +867,25 @@ export function truncatedMllpError(): CliError {
 /** Decode input bytes as tolerant UTF-8 (the text parsers accept a string). */
 function decode(bytes: Uint8Array): string {
   return new TextDecoder("utf-8", { fatal: false }).decode(bytes);
+}
+
+/** Bytes skipped before the SCRIPT check: tab, LF, VT, FF, CR and space. */
+const LEADING_WHITESPACE = new Set([0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x20]);
+
+/**
+ * Which NCPDP standard an `ncpdp` input is: SCRIPT when its first byte past any UTF-8 BOMs and ASCII
+ * whitespace is `<`, so it is XML; Telecom otherwise. The scan covers the whole input, not a window,
+ * so no amount of leading whitespace sends a SCRIPT message to the Telecom parser. One format name
+ * covers both, so `--format ncpdp` routes a forced input the same way detection would. A Telecom
+ * message is positional and opens with its header, never with `<`, so the two cannot be confused.
+ */
+function isNcpdpScript(bytes: Uint8Array): boolean {
+  let i = 0;
+  for (;;) {
+    if (bytes[i] === 0xef && bytes[i + 1] === 0xbb && bytes[i + 2] === 0xbf) i += 3;
+    else if (LEADING_WHITESPACE.has(bytes[i] ?? -1)) i += 1;
+    else return bytes[i] === 0x3c;
+  }
 }
 
 /** Build one value-free {@link Finding}; a FHIR `constraint` (a public spec id) is appended if present. */

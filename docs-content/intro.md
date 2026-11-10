@@ -19,7 +19,7 @@ cosyte parse message.hl7
 
 ## Who it is for
 
-Developers who work with HL7 v2, FHIR R4, X12, ASTM, NCPDP SCRIPT, C-CDA, DICOM, or MLLP and want
+Developers who work with HL7 v2, FHIR R4, X12, ASTM, NCPDP SCRIPT or Telecom, C-CDA, DICOM, or MLLP and want
 to look inside a message, check it in CI, or hand it to an agent without writing code first.
 
 ## What it does

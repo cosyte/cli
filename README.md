@@ -36,7 +36,7 @@ diagnostic** posture.
 
 The 0.1 line. While the package is below 1.0, a breaking change ships in a minor version
 and is called out in the changelog. The `cosyte` command wraps **all eight
-Cosyte formats** (**HL7 v2**, **FHIR R4**, **X12**, **ASTM**, **NCPDP SCRIPT**, **C-CDA**, **DICOM**,
+Cosyte formats** (**HL7 v2**, **FHIR R4**, **X12**, **ASTM**, **NCPDP SCRIPT and Telecom**, **C-CDA**, **DICOM**,
 and **MLLP**) plus the `@cosyte/transform` and `@cosyte/terminology` higher-layer libraries, with
 conservative content-format autodetection and a documented exit-code contract:
 

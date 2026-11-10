@@ -26,6 +26,10 @@ table is exported as [`OP_SUPPORT`](./api/src.md#op_support).
 
 - `ccda` has no `parse`: `fmt` writes the document back as XML instead.
 - `dicom` has no `parse` or `fmt`: its model and its serialized form are binary, and stdout is text.
+- `ncpdp` covers both standards `@cosyte/ncpdp` reads: SCRIPT, the XML ePrescribing message, and
+  Telecom vD.0, the pharmacy claim. An input whose first character past spaces and line breaks is
+  `<` is read as SCRIPT, anything else as Telecom, with or without `--format ncpdp`. Detection
+  recognizes a Telecom request; a Telecom response needs `--format ncpdp`.
 - `mllp` is a transport, not a document format. `parse` takes each frame's HL7 v2 message and
   parses it as `hl7`, one JSON line per frame; `inspect` counts the frames.
 - For `hl7`, `x12`, `astm`, `ccda`, `dicom`, and `ncpdp`, `validate` passes a message that parses;
@@ -38,7 +42,7 @@ table is exported as [`OP_SUPPORT`](./api/src.md#op_support).
 | --- | --- |
 | `convert` | `hl7` in, FHIR R4 out. Any other detected format is `CLI_FORMAT_UNSUPPORTED`. |
 | `map-codes` | A FHIR R4 `ConceptMap` in JSON; no detection runs. |
-| `redact` | `ccda`, `fhir`, `hl7`, `x12`. `astm`, `mllp`, and `ncpdp` are `CLI_NOT_IMPLEMENTED` (exit `69`): `@cosyte/deid` has no adapter for them as this CLI reads them (its NCPDP adapter is for Telecom, and this CLI reads SCRIPT). `dicom` is `CLI_FORMAT_UNSUPPORTED` (exit `65`): its de-identified form is binary. |
+| `redact` | `ccda`, `fhir`, `hl7`, `x12`. `astm`, `mllp`, and `ncpdp` are `CLI_NOT_IMPLEMENTED` (exit `69`): `@cosyte/deid` has no adapter for them as this CLI reads them (this CLI does not hand NCPDP to its Telecom adapter). `dicom` is `CLI_FORMAT_UNSUPPORTED` (exit `65`): its de-identified form is binary. |
 
 The `redact` coverage is exported as [`DEID_COVERAGE`](./api/src.md#deid_coverage).
 
@@ -57,7 +61,7 @@ and leading spaces, tabs, and line breaks first. The formats are listed in the o
 | `x12` | Starts with `ISA` followed by a punctuation character, the element separator. |
 | `astm` | Starts with `H` followed by four punctuation characters, the delimiters. |
 | `ccda` | Has a `<ClinicalDocument` element. |
-| `ncpdp` | Has a `<Message` element and the text `ncpdp`, in any case. |
+| `ncpdp` | SCRIPT: has a `<Message` element and the text `ncpdp`, in any case. Telecom: starts with six digits and `D0` (a vD.0 request header), and a field, group, or segment separator (`0x1C`, `0x1D`, `0x1E`) follows the 56-byte header. Nothing is skipped before a Telecom header. |
 | `dicom` | Has `DICM` at byte 128. |
 
 No match is `CLI_FORMAT_UNDETECTED`; more than one is `CLI_FORMAT_AMBIGUOUS`. Either way, exit `65`,
@@ -94,5 +98,5 @@ JSON object with a `format` property.
 | `astm` | message kind, records, count of each record type, warnings |
 | `ccda` | document type, sections, section codes, warnings |
 | `dicom` | SOP class UID, transfer syntax UID, elements, warnings |
-| `ncpdp` | standard (SCRIPT), message type, version, warnings |
+| `ncpdp` | SCRIPT: standard, message type, version, warnings. Telecom: standard, request or response, transaction code, version, transactions, segments, count of each segment ID, warnings |
 | `mllp` | frames, warnings |

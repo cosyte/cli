@@ -226,6 +226,7 @@ describe("redact over a format the de-identifier has no adapter for: 69, nothing
   const cases: { name: string; argv: string[]; bytes: Uint8Array }[] = [
     { name: "astm", argv: ["redact", "r.astm"], bytes: FIX("patient.astm") },
     { name: "ncpdp (SCRIPT)", argv: ["redact", "rx.xml"], bytes: FIX("newrx.xml") },
+    { name: "ncpdp (Telecom)", argv: ["redact", "b1.ncpdp"], bytes: FIX("b1-claim.ncpdp") },
     { name: "mllp", argv: ["redact", "s.mllp", "--format", "mllp"], bytes: MLLP },
   ];
 

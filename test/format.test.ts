@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+
 import { describe, expect, it } from "vitest";
 import fc from "fast-check";
 
@@ -12,6 +15,8 @@ import {
 import { OP_SUPPORT } from "../src/core/parsers.js";
 
 const enc = (s: string): Uint8Array => new TextEncoder().encode(s);
+const FIX = (name: string): Uint8Array =>
+  readFileSync(fileURLToPath(new URL(`./__fixtures__/${name}`, import.meta.url)));
 
 describe("detectFormat: confident matches route right", () => {
   it("detects HL7 from an MSH-framed message", () => {
@@ -80,6 +85,68 @@ describe("detectFormat: the six CLI-6 breadth formats (conservative, disjoint)",
 
   it("does NOT claim a generic <Message> without the ncpdp namespace", () => {
     expect(detectFormat(enc("<Message><foo/></Message>")).confidence).toBe("none");
+  });
+});
+
+describe("detectFormat: NCPDP Telecom vD.0 requests", () => {
+  const FS = "\x1c";
+  const RS = "\x1e";
+  /** A 56-byte vD.0 request header: BIN, `D0`, the transaction code, then padding. */
+  const header = (bin: string, code: string): string => `${bin}D0${code}`.padEnd(56, " ");
+
+  it("detects a synthetic B1 billing claim as ncpdp", () => {
+    const r = detectFormat(FIX("b1-claim.ncpdp"));
+    expect(r).toStrictEqual({ format: "ncpdp", confidence: "certain", candidates: ["ncpdp"] });
+  });
+
+  it("detects the B2 and B3 transaction codes too", () => {
+    for (const code of ["B2", "B3"]) {
+      const wire = `${header("999999", code)}AM04${FS}C2X${RS}AM07${FS}D21`;
+      expect(detectFormat(enc(wire)).format).toBe("ncpdp");
+    }
+  });
+
+  it("does NOT claim a header with no framed body", () => {
+    expect(detectFormat(enc(header("999999", "B1"))).confidence).toBe("none");
+  });
+
+  it("does NOT claim a non-numeric BIN or a missing D0 stamp", () => {
+    expect(detectFormat(enc(`${header("99999X", "B1")}AM01${FS}C41`)).confidence).toBe("none");
+    expect(
+      detectFormat(enc(`${header("999999", "B1").replace("D0", "D1")}AM01${FS}C41`)).confidence,
+    ).toBe("none");
+  });
+
+  it("does NOT claim a Telecom header behind a UTF-8 BOM or leading whitespace", () => {
+    const claim = FIX("b1-claim.ncpdp");
+    for (const lead of [[0xef, 0xbb, 0xbf], [0x20], [0x0a]]) {
+      const r = detectFormat(new Uint8Array([...lead, ...claim]));
+      expect(r.confidence, String(lead)).toBe("none");
+    }
+  });
+
+  it("leaves every other format's fixture detected as it was", () => {
+    const expected: Record<string, string> = {
+      "adt-a01.hl7": "hl7",
+      "adt-a01-no-visit.hl7": "hl7",
+      "834.edi": "x12",
+      "834-enrollee.edi": "x12",
+      "834-blocked.edi": "x12",
+      "minimal.astm": "astm",
+      "patient.astm": "astm",
+      "ccd.xml": "ccda",
+      "newrx.xml": "ncpdp",
+      "patient.fhir.json": "fhir",
+      "gender.conceptmap.json": "fhir",
+      "sample.dcm": "dicom",
+    };
+    for (const [name, format] of Object.entries(expected)) {
+      expect(detectFormat(FIX(name)), name).toStrictEqual({
+        format,
+        confidence: "certain",
+        candidates: [format],
+      });
+    }
   });
 });
 
