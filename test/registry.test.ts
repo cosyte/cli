@@ -86,6 +86,10 @@ describe("deframeMllp: transport de-framing", () => {
       0x1c,
     ]);
     await expect(deframeMllp(unclosed)).rejects.toMatchObject({ code: "CLI_PARSE_FAILED" });
+    // a stray FS that closes no frame is the reader's framing error, not a truncated frame
+    for (const stray of [new Uint8Array([...f("MSH|^~\\&|A"), 0x1c]), new Uint8Array([0x1c])]) {
+      await expect(deframeMllp(stray)).rejects.toMatchObject({ code: "MLLP_MISSING_LEADING_VT" });
+    }
     // a lone unterminated frame likewise
     await expect(deframeMllp(new Uint8Array([0x0b, 0x4d, 0x53, 0x48]))).rejects.toBeInstanceOf(
       CliError,

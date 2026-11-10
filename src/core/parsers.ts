@@ -739,8 +739,9 @@ export async function validateFormat(format: CosyteFormat, bytes: Uint8Array): P
  * *no* callback, so feeding a whole file and reading only `onFrame` would silently lose the partial
  * message with a green exit. We therefore detect an open trailing frame at the byte level (the last
  * VT sits after the last FS: MLLP payloads are HL7 v2 text and never carry the `0x0B`/`0x1C` framing
- * bytes), or a final frame whose FS is the last byte (the reader is still waiting for its CR), and
- * reject the whole stream as a value-free `CLI_PARSE_FAILED` data error.
+ * bytes), or, once the reader has accepted every byte, a final frame whose FS is the last byte (the
+ * reader is still waiting for its CR), and reject the whole stream as a value-free
+ * `CLI_PARSE_FAILED` data error. A stray FS that closes no frame is the reader's framing error.
  *
  * @throws {CliError} `CLI_PARSER_UNAVAILABLE` if `@cosyte/mllp` is absent; `CLI_PARSE_FAILED` (exit
  *   `65`) on a truncated stream; a hard framing error propagates for the caller's value-free boundary.
@@ -755,12 +756,10 @@ export async function validateFormat(format: CosyteFormat, bytes: Uint8Array): P
 export async function deframeMllp(
   bytes: Uint8Array,
 ): Promise<{ payloads: Buffer[]; warningCount: number }> {
-  // Reject an unterminated trailing frame BEFORE de-framing: a VT after the last FS is an open frame,
-  // and an FS as the very last byte is a frame still waiting for its CR. The streaming reader buffers
-  // both and delivers neither. (MLLP payloads never contain 0x0B/0x1C.)
-  if (bytes.lastIndexOf(0x0b) > bytes.lastIndexOf(0x1c) || bytes.at(-1) === 0x1c) {
-    throw truncatedMllpError();
-  }
+  // Reject an open trailing frame BEFORE de-framing: a VT after the last FS is a frame no FS closed,
+  // which the streaming reader buffers and delivers to no callback. (MLLP payloads never contain
+  // 0x0B/0x1C.)
+  if (bytes.lastIndexOf(0x0b) > bytes.lastIndexOf(0x1c)) throw truncatedMllpError();
   const { FrameReader } = await loadOptional("mllp", () => import("@cosyte/mllp"));
   const payloads: Buffer[] = [];
   let warningCount = 0;
@@ -769,6 +768,10 @@ export async function deframeMllp(
     onWarning: () => (warningCount += 1),
   });
   reader.push(Buffer.from(bytes));
+  // Only AFTER the reader has run does a final FS mean a frame still waiting for its CR: a stray FS
+  // that closes no frame was already refused by the reader as a framing error, the same order
+  // `mllpFrames` checks in, so `parse` and `inspect` name the same fault for the same bytes.
+  if (bytes.at(-1) === 0x1c) throw truncatedMllpError();
   return { payloads, warningCount };
 }
 
