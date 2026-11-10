@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.8
+
+### Patch Changes
+
+- 239a75d: Correct doc comments that ship in the type declarations: the package overview now gives the `npx --package @cosyte/cli cosyte` form that works, the de-identification module comment uses bold lines in place of headings, the `CliError` summary no longer renders a broken link, and the `unsafeInputSuffix` example shows the exact suffix. No behavior changes.
+- 919b665: `dispatchTool` no longer hands a caller's `writeStdout` sink to the command it runs. A `parse` of an MLLP stream with injected deps that carried a sink sent its records to that sink and came back as a `failed` call with exit `0` and no data; the records now come back in the tool result, as they do without injected deps.
+- 919b665: An MLLP stream that ends on a frame's FS byte, before the CR that closes it, is now refused as a truncated stream (`CLI_PARSE_FAILED`, exit `65`) by `parse`, `inspect` and `deframeMllp`. Before, that last frame was dropped without a word: `parse` printed the records before it and `inspect` counted the frames before it, both with exit `0`.
+
 ## 0.1.7
 
 ### Patch Changes
