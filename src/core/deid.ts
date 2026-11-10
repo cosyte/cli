@@ -4,7 +4,7 @@
  * here, and it is deliberately little: which formats the delegate covers, how to reach it, and how to
  * turn its result into the CLI's own value-free shapes.
  *
- * ## The CLI ships no redactor of its own (the boundary decision)
+ * **The CLI ships no redactor of its own (the boundary decision).**
  *
  * A "minimal built-in Safe-Harbor pass over the obvious PHI loci" (the HL7 `PID` segment,
  * `Patient.name`/`Patient.address` in FHIR) is **deliberately rejected**. Real messages carry PHI far
@@ -14,7 +14,7 @@
  * under-redacts is worse than no `redact`. So the CLI adds no policy, no locus map, no transform and
  * no fallback scrub: it delegates, or it refuses.
  *
- * ## What "covered" means, per format
+ * **What "covered" means, per format.**
  *
  * A format is covered when the delegate ships an adapter for the standard this CLI actually resolves
  * **and** the CLI can carry the de-identified result on its text data channel. Both halves bite:
@@ -26,7 +26,7 @@
  *   unsupported (format, operation) cell rather than blamed on the delegate.
  * - `astm`, `mllp`: no adapter at all.
  *
- * ## The key context, and why it is ephemeral
+ * **The key context, and why it is ephemeral.**
  *
  * The delegate's default policy removes MRN / account / member identifiers rather than replacing
  * them with a keyed surrogate, so a default run needs no key. The CLI binds a key context anyway,

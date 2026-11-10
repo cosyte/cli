@@ -1,0 +1,16 @@
+{
+  "resourceType": "ConceptMap",
+  "url": "https://cosyte.example/fhir/ConceptMap/synthetic-gender",
+  "version": "1.0.0",
+  "status": "active",
+  "group": [
+    {
+      "source": "http://hl7.org/fhir/administrative-gender",
+      "target": "http://terminology.hl7.org/CodeSystem/v2-0001",
+      "element": [
+        { "code": "male", "target": [{ "code": "M", "equivalence": "equivalent" }] },
+        { "code": "female", "target": [{ "code": "F", "equivalence": "equivalent" }] }
+      ]
+    }
+  ]
+}

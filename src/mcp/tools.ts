@@ -196,7 +196,7 @@ function outputSchema(data: Readonly<Record<string, unknown>>): McpToolOutputSch
  * The tools this server exposes: the read/convert operations that share the `core` cleanly and whose
  * results are safe to hand an agent. `redact`/`deid` (gated on `@cosyte/deid`)
  * and `map-codes` are deliberately **not** exposed yet; they land when the terminal command's ground
- * layer and the tool's PHI/So shape are settled.
+ * layer and the tool's PHI shape are settled.
  */
 export const TOOL_DEFS: readonly McpToolDef[] = [
   {

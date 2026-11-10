@@ -1,85 +1,84 @@
 ---
 id: installation
 title: Installation
-sidebar_position: 1
-description: "Install the cosyte command globally, with npx, or as a dependency, and see what a default install includes and which Node.js versions it supports."
+sidebar_label: Installation
+description: "Install the cosyte command globally, run it with npx, or add it as a dependency, and see what a default install includes and which Node.js versions it supports."
 ---
 
 # Installation
 
-`@cosyte/cli` ships the `cosyte` command as a Node.js executable, alongside `cosyte-mcp`. A global
-install is the simplest route; `npx` works too, with one flag noted under [Run it](#run-it).
-
-> **Status:** `0.1`, published to npm, and the install commands below are live. While the package is
-> below 1.0, a breaking change ships in a minor version and is called out in the changelog. `0.0.1`
-> and `0.0.2` are on npm and cannot be installed: see
-> [If you are on 0.0.1 or 0.0.2](#if-you-are-on-001-or-002). Every later version installs.
-
-## If you are on 0.0.1 or 0.0.2
-
-Both are on npm, and `npm install @cosyte/cli` fails on either with an `ENOENT`:
-
-```
-npm error code ENOENT
-npm error path node_modules/@cosyte/cli/vendor/cosyte-fhir-0.0.0.tgz
-npm error enoent ENOENT: no such file or directory
-```
-
-`npx` and `npm install -g` fail identically. There is no consumer-side workaround, and nothing is
-wrong with your environment.
-
-Those manifests declared the ten `@cosyte/*` sibling packages as local file paths
-(`file:vendor/*.tgz`) instead of npm version ranges. The tarballs are not part of the published
-package, so npm resolved the paths against a directory that is not there. A published version is
-immutable, so both stay broken. **Every later version installs**: `npm install -g @cosyte/cli`
-installs the current one.
-
-## What a default install includes
-
-The siblings the CLI wraps are real npm ranges. HL7 v2 (`@cosyte/hl7`) and `map-codes`
-(`@cosyte/terminology`) run on the two hard dependencies. The six breadth formats X12, C-CDA, DICOM,
-NCPDP, ASTM, and MLLP, FHIR (`@cosyte/fhir`), `@cosyte/transform`, `@cosyte/deid`, and the MCP SDK
-(`@modelcontextprotocol/sdk`) are optional dependencies, so a default install has every one of them,
-whether it is `npm install`, `pnpm add`, or `npm install --legacy-peer-deps`.
-
-An install with `--omit=optional` leaves all of them out. It still works for HL7 v2 and `map-codes`,
-and the commands that need a missing library report `CLI_PARSER_UNAVAILABLE`, naming the package to
-install, and exit `69`; `cosyte-mcp` and `cosyte mcp` do the same without the MCP SDK. They do not
-guess, and they do not fail as though your input were bad.
+`@cosyte/cli` installs two commands, `cosyte` and `cosyte-mcp`.
 
 ## Prerequisites
 
-- **Node.js 22 or later, tested on 22, 24, and 26** (the whole `@cosyte/*` suite targets ES2023).
-  We claim only the release lines our CI runs: those three are tested on every change, and a later
-  line is one nobody has exercised here yet.
-- A package manager: `pnpm`, `npm`, or `yarn`.
+- **Node.js 22 or later, tested on 22, 24, and 26.** We claim only the release lines our CI runs:
+  those three are tested on every change, and a later line is one nobody has run here yet.
+- A package manager: npm, pnpm, or Yarn.
 
-## Run it
+## Install it
 
-Install globally to put `cosyte` on your `PATH`:
+Install it globally to put `cosyte` on your `PATH`:
 
-```bash
+```bash no-run it installs the package from npm
 npm install -g @cosyte/cli
-cosyte --help
+cosyte --version
 ```
 
-Or run it without installing, naming the executable explicitly:
+Or run it without installing, naming the command:
+
+```bash no-run it downloads the package from npm
+npx --package @cosyte/cli cosyte --version
+```
+
+The shorter `npx @cosyte/cli` does not work. It fails with `could not determine executable to run`:
+when a package has more than one command, `npx` looks for the one named after the last part of the
+package name, `cli`, and this package has `cosyte` and `cosyte-mcp`. We do not add a `cli` alias,
+because a global install would then put a command called `cli` on your `PATH`.
+
+To use it from a project's scripts, add it as a development dependency:
+
+```bash no-run it installs the package from npm
+npm install --save-dev @cosyte/cli
+npx cosyte --version
+```
+
+## What a default install includes
+
+`@cosyte/hl7` and `@cosyte/terminology` are dependencies, so HL7 v2 and `map-codes` always work.
+Everything else is an optional dependency: the X12, C-CDA, DICOM, NCPDP, ASTM, and MLLP parsers,
+`@cosyte/fhir`, `@cosyte/transform`, `@cosyte/deid`, and the MCP SDK
+(`@modelcontextprotocol/sdk`). A default install has every one of them, whether it is
+`npm install`, `pnpm add`, or `npm install --legacy-peer-deps`.
+
+An install with `--omit=optional` leaves them all out. HL7 v2 and `map-codes` still work. A command
+that needs a missing library prints `CLI_PARSER_UNAVAILABLE`, naming the package to install, and
+exits `69`; `cosyte-mcp` and `cosyte mcp` do the same without the MCP SDK. See
+[`CLI_PARSER_UNAVAILABLE`](./diagnostic-codes.md#cli_parser_unavailable).
+
+With `npx`, name a missing library as a second package:
+
+```bash no-run it downloads packages from npm
+npx --package @cosyte/cli --package @cosyte/fhir cosyte validate patient.json
+```
+
+## Turn on shell completion
+
+`cosyte completion` prints a completion script for bash, zsh, or fish. Load it in the current bash
+session:
 
 ```bash
-npx --package @cosyte/cli cosyte parse message.hl7
+source <(cosyte completion bash)
 ```
 
-> **The short form `npx @cosyte/cli …` does not work**, and it is a separate matter from the
-> packaging defect above: it fails with `could not determine executable to run`. When a package ships
-> more than one executable, `npx` runs the one whose name matches the package name's last segment,
-> which would be `cli`; this package ships `cosyte` and `cosyte-mcp`. Use `--package` as above. A
-> `cli` alias is deliberately not added, because `npm install -g` would then claim a command called
-> `cli` on your `PATH`.
+To keep it, add that line to your `~/.bashrc`. For zsh, use `source <(cosyte completion zsh)` in
+`~/.zshrc`; for fish, save the output of `cosyte completion fish` to
+`~/.config/fish/completions/cosyte.fish`.
 
-## Programmatic API
+## Check the programmatic entry point
 
-The same `core` the CLI uses is available as a small library (the `.` subpath): the format
-autodetector, the exit-code contract, and the value-free diagnostic types:
+The package also exports the code the command runs on (see
+[Use the programmatic API](./use-the-programmatic-api.md)). If this resolves and shows the release
+you installed, the install is good:
 
 ```ts runnable
 import { VERSION } from "@cosyte/cli";
@@ -87,13 +86,25 @@ import { VERSION } from "@cosyte/cli";
 VERSION; // => "0.1.7"
 ```
 
-If that resolves and prints the release you installed, the install is good: head to the
-[Quickstart](./quickstart).
+The release tooling rewrites that value at each release, and the test suite compares it with the
+package manifest.
 
-> **`VERSION` was wrong in `0.0.1` and `0.0.2`.** Both shipped exporting `0.0.0`, and `cosyte
-> --version` printed that too. This page asserted only `typeof VERSION` back then, which is true of
-> every wrong value, so it stayed green across both. The constant is now kept in lockstep with the
-> manifest by the release tooling and compared against it in the test suite, and the literal above is
-> rewritten by that same step. A published version is never re-published, so those two copies stay
-> wrong on the registry; if you have one, read the manifest instead, which was always correct:
-> `node -p "require('@cosyte/cli/package.json').version"`.
+## If you are on 0.0.1 or 0.0.2
+
+Both versions are on npm and neither installs. `npm install @cosyte/cli@0.0.2` fails with:
+
+```text
+npm error code ENOENT
+npm error path node_modules/@cosyte/cli/vendor/cosyte-fhir-0.0.0.tgz
+npm error enoent ENOENT: no such file or directory
+```
+
+`npx` and `npm install -g` fail the same way, and nothing is wrong with your environment. Those
+manifests named the sibling `@cosyte/*` packages as local files (`file:vendor/*.tgz`) instead of
+npm version ranges, and the files were not in the published package. A published version cannot
+be changed, so both stay broken. Every later version installs. Both also reported their version as
+`0.0.0`; to read the real one, run `node -p "require('@cosyte/cli/package.json').version"`.
+
+## Next
+
+[Quickstart](./quickstart.md): parse, inspect, and validate a synthetic message.

@@ -1,24 +1,21 @@
 ---
 id: mcp
-title: MCP server (agent front door)
-sidebar_position: 5
-description: "Register the cosyte-mcp server with an MCP client, and see the tools it exposes, the result contract, and its PHI posture."
+title: Connect an agent with the MCP server
+sidebar_label: Connect an agent (MCP)
+description: "Register the cosyte-mcp server with an MCP client so an agent can parse, validate, inspect, and convert healthcare messages, and read its results."
 ---
 
-# The Cosyte MCP server
+# Connect an agent with the MCP server
 
-`@cosyte/cli` ships a second front door over the **same** core as the `cosyte` command: a
-[Model Context Protocol](https://modelcontextprotocol.io) server that lets an LLM/agent parse, validate,
-inspect, and convert healthcare messages as **callable tools**. The terminal and the agent share one
-codebase, one PHI posture, and one set of results: the MCP `parse` tool returns exactly what
-`cosyte parse` returns.
+`cosyte-mcp` is a [Model Context Protocol](https://modelcontextprotocol.io) server that gives an
+agent four tools: `parse`, `validate`, `inspect`, and `convert`. Each tool runs the same code as the
+`cosyte` command of the same name, so the `parse` tool returns what `cosyte parse --json` prints. The
+server runs on your machine as a subprocess of the client, over stdio; it is not a network service,
+and it keeps nothing between calls.
 
-> The server is a **local stdio subprocess**, implicitly trusted by whoever launches it, not a hosted
-> network endpoint. It is stateless per call.
+## Register the server
 
-## Register it
-
-Add the server to your MCP client's configuration (Claude Desktop, an IDE agent, etc.):
+Add the server to your MCP client's configuration. Most clients read a JSON file in this shape:
 
 ```json
 {
@@ -28,90 +25,58 @@ Add the server to your MCP client's configuration (Claude Desktop, an IDE agent,
 }
 ```
 
-> **`--package` is required here, and the shorter `["-y", "@cosyte/cli", "mcp"]` does not work.** It
-> fails with `could not determine executable to run`, because `npx` picks the executable whose name
-> matches the package name's last segment (`cli`) and this package ships `cosyte` and `cosyte-mcp`.
-> Naming `cosyte-mcp` explicitly is the supported form.
->
-> This registration also requires a version that can be installed at all: `0.0.1` and `0.0.2` cannot
-> be. See [If you are on 0.0.1 or 0.0.2](./installation#if-you-are-on-001-or-002).
+`--package` is required: `["-y", "@cosyte/cli"]` fails with `could not determine executable to run`,
+because the package has no command named `cli` (see [Installation](./installation.md#install-it)).
 
-`cosyte mcp` starts the stdio server; the standalone `cosyte-mcp` bin is equivalent.
-
-```bash
-cosyte mcp        # start the server on stdio (also: cosyte-mcp)
-```
-
-## The tools
-
-| Tool       | What it does                                                                  |
-| ---------- | ----------------------------------------------------------------------------- |
-| `parse`    | Parse an HL7 v2 / FHIR R4 message to typed JSON (format autodetected).         |
-| `validate` | Validate a message; the result carries the verdict (valid / invalid findings).|
-| `inspect`  | Return a value-free structural summary (type + segment/entry counts).         |
-| `convert`  | Convert an HL7 v2 message to a FHIR R4 `Bundle` via `@cosyte/transform`.       |
-
-Every tool takes a `content` string (the raw message); `parse`/`validate`/`inspect` accept an optional
-`format` override.
-
-## The result contract
-
-**Every tool publishes an `outputSchema`**, so a client validates a result against a declared contract
-instead of pattern-matching a text blob to work out what it is holding. `tools/list` carries that
-schema next to each tool's input schema and title; every reply from that tool conforms to it.
-
-The structured result has the same three outcome properties for every tool, plus that tool's own
-payload:
-
-| Property | Type      | What it says                                                                      |
-| -------- | --------- | --------------------------------------------------------------------------------- |
-| `ok`     | boolean   | Whether the call produced data. A negative verdict about the message is still `true`. |
-| `status` | string    | `success`, `verdict`, or `failed`: the one property to branch on.                  |
-| `exit`   | integer   | The exit code from the documented [exit-code contract](./reference-commands#exit-codes). |
-| `code`   | string    | On a failed call, the stable diagnostic code. Absent when data was produced.       |
-| `data`   | object    | The tool's own payload. Absent on a failed call, which produced none.              |
-
-`status` is the distinction a text blob could never make reliably:
-
-- **`success`** the operation completed cleanly.
-- **`verdict`** the tool ran and reports a negative finding _about the message_: a resource that
-  parsed but is not conformant, or a conversion with an error-severity issue. The payload is present
-  and the call is not an error.
-- **`failed`** the call produced no data: a usage mistake, unparseable input, an unavailable parser,
-  or an internal error. `code` says which, `data` is absent.
-
-`data` is the payload the terminal command puts on stdout: `parse` gives `format` + `model` +
-`warnings` (or `records`, one entry per record, for a multi-record input), `validate` gives `format` +
-`valid` + `findings`, `inspect` gives the value-free structural summary, and `convert` gives `format` +
-`bundle` + `findings`.
+If you installed the package globally, point the client at the command instead:
 
 ```json
 {
-  "ok": true,
-  "status": "verdict",
-  "exit": 1,
-  "data": { "format": "fhir", "valid": false, "findings": [{ "code": "value-not-in-set", "severity": "error", "location": "Patient.gender" }] }
+  "mcpServers": {
+    "cosyte": { "command": "cosyte-mcp" }
+  }
 }
 ```
 
-**The text content block carries the serialized JSON of that same structured result**, so a client that
-reads only text sees exactly the value a schema-aware client validates. There is one value, serialized
-once: the two channels cannot disagree.
+`cosyte mcp` starts the same server, if your client runs one command with arguments.
 
-## PHI posture on the agent surface
+## Check that it starts
 
-The value-free discipline is **hardened** for agents: there is **no `--unsafe-show-values` door** over
-MCP. A tool _result_ carries the requested data (the parsed model, the converted Bundle: the explicit
-request). A tool _error_ carries only a value-free diagnostic: a stable code and a position, never a
-name, DOB, MRN, or field value. A parsed-but-invalid `validate` is a **successful** call reporting the
-verdict (not a tool error); only a hard failure (unparseable input, a usage mistake) is flagged as an
-error.
+Run the command in a terminal. It waits for a client on stdin; stop it with Ctrl+C:
 
-## Isolation
+```bash no-run it starts a server that waits for a client
+cosyte-mcp
+```
 
-The MCP SDK (`@modelcontextprotocol/sdk`) is the CLI's only third-party runtime dependency. It is
-declared **optional**: the programmatic core (the `.` subpath) and every `cosyte` command other than
-`cosyte mcp` run with the SDK absent, as after `npm install --omit=optional`. Without it, `cosyte-mcp`
-and `cosyte mcp` exit `69` with `CLI_PARSER_UNAVAILABLE`, naming the package to install, instead of
-starting. The server surface is also importable programmatically via the `@cosyte/cli/mcp` subpath,
-which needs the SDK installed.
+If the MCP SDK is missing, it prints `CLI_PARSER_UNAVAILABLE`, naming `@modelcontextprotocol/sdk`,
+and exits `69` instead. The SDK is an optional dependency, so a default install has it; an install
+with `--omit=optional` does not.
+
+## Read a tool's result
+
+Each tool takes the message as text in `content`, and the read tools take an optional `format`.
+Each result carries three properties to branch on, `ok`, `status`, and `exit`, and the tool's
+payload in `data`. A client that reads only the text of a result sees the same object, serialized.
+
+`status` separates the two kinds of bad news:
+
+- `verdict`: the tool ran and found something wrong with the message, such as an invalid resource.
+  `ok` is `true` and the payload is there.
+- `failed`: the call produced nothing, such as input in no format it can detect. `ok` is `false`,
+  `code` names the diagnostic, and the result is marked as an error.
+
+A failed result carries no value from the message. There is no `--unsafe-show-values` for the
+server. [MCP tools](./mcp-tools.md) lists each tool's input and payload.
+
+## What the server does not offer
+
+`redact` and `map-codes` are not tools: use the `cosyte` command for them. The server also does not
+read files; an agent passes the message text.
+
+## Reference
+
+- [MCP tools](./mcp-tools.md): each tool's input, payload, and result properties.
+- [`createMcpServer`](./api/src/mcp.md#createmcpserver),
+  [`startStdioServer`](./api/src/mcp.md#startstdioserver), and
+  [`dispatchTool`](./api/src/mcp.md#dispatchtool) in the API reference.
+- [Exit codes](./reference-commands.md#exit-codes) and [diagnostic codes](./diagnostic-codes.md).

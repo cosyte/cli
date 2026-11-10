@@ -1,50 +1,64 @@
 ---
 id: intro
-title: Getting started
-sidebar_position: 1
-description: "What @cosyte/cli is: the cosyte command and the cosyte-mcp server over the Cosyte libraries, with typed JSON out and value-free diagnostics."
+title: "@cosyte/cli"
+sidebar_label: Overview
+description: "The cosyte command and the cosyte-mcp server: read a healthcare message from a file or a pipe, get typed JSON back, and branch on the exit code."
 ---
 
 # @cosyte/cli
 
-`cosyte` is a **PHI-safe developer CLI** over the `@cosyte/*` healthcare parsers. Pipe a raw message
-from a hospital feed into the terminal and get typed, structured JSON back in one line, without
-writing code and without reading the spec.
+`@cosyte/cli` is the `cosyte` command and the `cosyte-mcp` server. Point `cosyte` at a healthcare
+message, in a file or on a pipe, and it detects the format from the content, parses it with the
+Cosyte library for that format, and prints typed JSON on stdout. Diagnostics on stderr carry a
+stable code and a position, never a value from the message, and the exit code says how the run
+ended, so a script or a CI job can branch on it.
 
-```bash
-cat adt.hl7 | cosyte parse -
+```bash no-run it reads a file you supply
+cosyte parse message.hl7
 ```
 
-`@cosyte/cli` is a **`bin` package**, not a library: its primary artifact is the `cosyte` command on
-your `PATH`. It is a thin, honest skin over libraries that already own correctness: it routes, reads,
-shapes output, and owns two disciplines of its own: a documented **exit-code contract** and a
-**value-free diagnostic** posture (never a field value on stderr).
+## Who it is for
 
-> **Status:** `0.1`, published to npm. While the package is below 1.0, a breaking change ships in a
-> minor version and is called out in the changelog. `0.0.1` and `0.0.2` cannot be installed; every
-> later version installs: see [Installation](./installation). `parse`, `validate`, `inspect`, and `fmt`
-> are wired for **HL7 v2** and **FHIR R4**; `convert` and `map-codes` wrap the higher-layer libraries.
-> A **`cosyte-mcp` MCP server** exposes the same core to an LLM/agent. All eight Cosyte formats are
-> wired, with support honest per (format, operation) and NDJSON streaming for MLLP and `--ndjson`.
+Developers who work with HL7 v2, FHIR R4, X12, ASTM, NCPDP SCRIPT, C-CDA, DICOM, or MLLP and want
+to look inside a message, check it in CI, or hand it to an agent without writing code first.
 
-## Parse a message
+## What it does
 
-`parse` reads a file (or stdin via `-`), **autodetects the format by content**, and prints the parsed
-model as typed JSON on stdout:
+| Command | What it does |
+| --- | --- |
+| `parse` | Parse a message to typed JSON on stdout; an MLLP stream or an `--ndjson` input becomes one JSON line per record. |
+| `validate` | Run the library's own validation; the exit code carries the verdict. |
+| `inspect` | Print a structural summary: the message or resource type and its counts, never a field value. |
+| `fmt` | Write the message back out through the library's serializer. |
+| `convert` | Convert an HL7 v2 message to a FHIR R4 `Bundle` with `@cosyte/transform`. |
+| `map-codes` | Translate one code through a FHIR `ConceptMap` you supply, with `@cosyte/terminology`. |
+| `redact` (alias `deid`) | De-identify a message with `@cosyte/deid`, or refuse and print nothing. |
+| `completion` | Print a completion script for bash, zsh, or fish. |
+| `mcp` | Start the MCP server, the same as the `cosyte-mcp` command. |
 
-```bash
-cosyte parse message.hl7            # autodetected → HL7 v2
-cosyte parse patient.json           # autodetected → FHIR
-cat message.hl7 | cosyte parse -    # from a pipeline
-cosyte parse --format hl7 msg.txt   # override autodetection
-```
+Not every command supports every format; [Format support](./format-support.md) has the table.
 
-The exit code carries the outcome (`0` success, `65` unparseable/undetected, `66` missing file) so
-`cosyte parse` is safe to branch on in CI. See [Quickstart](./quickstart).
+## What it is not
 
-## Next
+- **Not a parser of its own.** Each wire format is parsed by its Cosyte library. A wrong value in
+  the output is that library's to fix; a wrong exit code, a wrong route, or a value on stderr is
+  this package's.
+- **Not an integration engine.** It runs one command over one input and exits. It has no
+  listeners, channels, schedules, or stored state.
+- **Not a place to keep data.** It writes no file of its own and makes no network call: it reads
+  the input you name and writes to stdout and stderr.
 
-- [Installation](./installation): `npx`, global install, prerequisites.
-- [Quickstart](./quickstart): the one-line parse, stdin, and the programmatic API.
-- [MCP server](./mcp): expose the same parse/validate/convert core to an LLM/agent.
-- **API Reference**: every programmatic export, generated from source.
+## Status
+
+The 0.1 line is published to npm. Below 1.0, a breaking change ships in a minor version and is
+called out in the changelog. Two early versions cannot be installed at all: see
+[If you are on 0.0.1 or 0.0.2](./installation.md#if-you-are-on-001-or-002).
+
+## Where to go next
+
+- [Installation](./installation.md): install the command, and what a default install includes.
+- [Quickstart](./quickstart.md): parse, inspect, and validate a synthetic message in a few minutes.
+- [Check a folder of messages in CI](./check-messages-in-ci.md): a tutorial that builds a CI gate.
+- [How the CLI works](./concepts-archetype.md): detection, the exit-code contract, and what reaches
+  stderr.
+- [Command reference](./reference-commands.md) and [diagnostic codes](./diagnostic-codes.md).

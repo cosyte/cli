@@ -1,104 +1,108 @@
 ---
 id: guides-overview
-title: Guides
-sidebar_position: 1
-description: "Task guides: parse from a pipeline, branch on the outcome in CI, force a format, debug a rejected message, convert HL7 v2 to FHIR, and map codes."
+title: Parse messages in a pipeline
+sidebar_label: Parse in a pipeline
+description: "Read a message from stdin, pick a field out of the JSON, force a format, and stream an MLLP capture or an NDJSON file one record at a time."
 ---
 
-# Guides
+# Parse messages in a pipeline
 
-Task-oriented recipes for the `cosyte` command. Each is a short, copy-pasteable answer to one real
-question.
+`cosyte parse` reads one input, from a file or from stdin, and writes JSON to stdout. These steps
+cover the shapes it takes in a pipeline. The examples use the file names `message.hl7`,
+`stream.mllp`, and `bulk.ndjson`; use your own.
 
-> **Status:** `0.1`, published to npm. While the package is below 1.0, a breaking change ships in a
-> minor version and is called out in the changelog. `0.0.1` and `0.0.2` cannot be installed; every
-> later version installs: see [Installation](./installation). The `cosyte` command wraps **all eight
-> Cosyte formats** (HL7 v2, FHIR R4, X12, ASTM, NCPDP SCRIPT, C-CDA, DICOM, MLLP) plus the
-> `@cosyte/transform` and `@cosyte/terminology` higher-layer libraries: `parse` (autodetect → typed JSON,
-> with NDJSON streaming for MLLP frames and `--ndjson`), `validate` (verdict in the exit code), `inspect`
-> (a value-free structural summary), `fmt` (canonical re-serialization), `convert` (HL7 v2 → FHIR R4 via
-> `@cosyte/transform`), `map-codes` (ConceptMap `$translate` via `@cosyte/terminology`), `redact`/`deid`
-> (de-identification delegated whole to `@cosyte/deid`, covering `ccda`, `fhir`, `hl7`, `x12` and
-> refusing every other format rather than approximating it), and `completion` (a shell completion
-> script). Support is honest **per (format, operation)**: a parser that does not faithfully support a
-> command (DICOM `parse`/`fmt`, C-CDA `parse`, MLLP `fmt`/`validate`) is a value-free
-> `CLI_FORMAT_UNSUPPORTED`, never a fake. PHI discipline runs throughout: value-free by default, the
-> opt-in `--unsafe-show-values`, never a PHI temp file. A `cosyte-mcp` MCP server exposes the same core
-> to an LLM/agent. A command is only documented here once its behavior ships and its example passes the
-> doc/code-agreement check.
+## Read from stdin
 
-## Parse from a pipeline and select a field
-
-`parse` is pipeline-first. Use `--json` for compact output and pipe it to `jq`:
+Pass `-` in place of a file name:
 
 ```bash
-cat adt.hl7 | cosyte parse - --json | jq '.model.segments[0]'
+cat message.hl7 | cosyte parse -
 ```
 
-## Branch on the outcome in CI
+## Pick a field out of the JSON
 
-The exit code is the contract, no need to grep stdout:
+`--json` prints the result on one line. The `model` is the parsed message as the format's library
+builds it; for HL7 v2, `@cosyte/hl7` keeps each segment's fields in order, with `fields[3]` holding
+PID-3:
 
 ```bash
-if cosyte parse "$file" > /dev/null 2> err.log; then
-  echo "parsed OK"
-else
-  code=$?   # 65 = unparseable/undetected, 66 = missing file, 2 = usage
-  echo "parse failed with exit $code"; cat err.log   # err.log is value-free
-fi
+cat message.hl7 | cosyte parse - --json \
+  | jq -r '.model.segments[] | select(.name == "PID") | .fields[3].repetitions[0].components[0].subcomponents[0]'
 ```
 
-## Force a format when autodetection can't
+```text
+MRN-000123
+```
 
-A `.txt` that is really HL7, or an ambiguous input, takes an explicit `--format`:
+The output is the message's own data, so send it only where you would send the message.
+
+## Force a format
+
+Detection reads the content, not the file name, so a `.txt` that holds an HL7 v2 message parses as
+HL7 v2. When detection cannot decide, name the format with `--format`:
 
 ```bash
-cosyte parse --format hl7 weird-extension.txt
+cosyte parse --format hl7 message.hl7 --json > /dev/null; echo "exit $?"
 ```
 
-## Debug a rejected message (and mind the PHI)
+```text
+exit 0
+```
 
-A `CLI_PARSE_FAILED` line is value-free by default: a code and position, never the bytes. When you
-are working locally and need to see what the parser choked on, add the loud, opt-in
-`--unsafe-show-values` (it is **PHI-exposing**, never on stderr you will share):
+A format that does not match the content is refused, not guessed around:
 
 ```bash
-cosyte parse broken.hl7 --format hl7                       # value-free diagnostic
-cosyte parse broken.hl7 --format hl7 --unsafe-show-values  # appends a bounded input excerpt
+cosyte parse --format fhir message.hl7; echo "exit $?"
 ```
 
-## Convert an HL7 v2 feed to FHIR in a pipeline
+```text
+cosyte: CLI_PARSE_FAILED: the fhir parser rejected the input (MALFORMED_JSON)
+exit 65
+```
 
-`convert` wraps `@cosyte/transform`: the FHIR `Bundle` is on stdout, the value-free conversion issues
-on stderr, and an error-severity issue sets a non-zero exit:
+## Stream an MLLP capture
+
+A file of MLLP frames is parsed one frame at a time. Each frame's HL7 v2 message becomes one line of
+JSON, written as soon as it is parsed. `--quiet` drops the summary line on stderr:
 
 ```bash
-cat adt.hl7 | cosyte convert - --to fhir | jq '.entry[].resource.resourceType'
+cosyte parse stream.mllp --quiet | jq -c '{record, format, segments: (.model.segments | length)}'
 ```
 
-## Translate a code through a bring-your-own ConceptMap
+```text
+{"record":0,"format":"hl7","segments":2}
+{"record":1,"format":"hl7","segments":2}
+```
 
-`map-codes` wraps `@cosyte/terminology`. A code and a ConceptMap are reference data (not PHI), so the
-target coding lands on stdout; an unmapped code is a value-free signal and a non-zero exit:
+## Stream an NDJSON file
+
+`--ndjson` treats each non-empty line as one record, the shape of a FHIR bulk data export. A record
+that fails becomes a line with a stable code in `error`, and the stream goes on; the run then exits
+`65`:
 
 ```bash
-cosyte map-codes gender.conceptmap.json \
-  --system http://hl7.org/fhir/administrative-gender --code male --json
+cosyte parse bulk.ndjson --ndjson --quiet | jq -c '{record, error, resourceType: .model.resourceType}'
+echo "exit ${PIPESTATUS[0]}"
 ```
 
-## Use the programmatic core
-
-The same autodetection and exit-code contract are importable, useful when embedding the routing logic:
-
-```ts runnable
-import { detectFormat, EXIT } from "@cosyte/cli";
-
-const enc = new TextEncoder();
-const detected = detectFormat(enc.encode('{"resourceType":"Bundle"}'));
-detected.format; // => "fhir"
-detected.confidence; // => "certain"
-EXIT.USAGE; // => 2
+```text
+{"record":0,"error":null,"resourceType":"Patient"}
+{"record":1,"error":"MALFORMED_JSON","resourceType":null}
+{"record":2,"error":null,"resourceType":"Observation"}
+exit 65
 ```
 
-Until more commands ship, the [Quickstart](./quickstart) covers the one-line parse and the **API
-Reference** documents every export.
+If the reader on the other end of the pipe stops early (`head`, a pager you quit), the run ends with
+`CLI_OUTPUT_WRITE_FAILED` and exit `74`, never `0`.
+
+## Mind the size limit
+
+One invocation reads at most 64 MiB of input. Split a larger capture into files and parse each one.
+
+## Reference
+
+- [`parse`](./reference-commands.md#parse) and its options.
+- [Format support](./format-support.md): which formats `parse` takes, and how each is detected.
+- [`CLI_PARSE_FAILED`](./diagnostic-codes.md#cli_parse_failed),
+  [`CLI_INPUT_TOO_LARGE`](./diagnostic-codes.md#cli_input_too_large), and
+  [`CLI_OUTPUT_WRITE_FAILED`](./diagnostic-codes.md#cli_output_write_failed).
