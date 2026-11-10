@@ -208,6 +208,26 @@ describe("dispatchTool: success paths (shared core, value-free)", () => {
     }
   });
 
+  it("injected deps with an output sink still return the record stream in the result", async () => {
+    // A caller may hand dispatchTool the same RunDeps it gives the terminal, sink included. The tool
+    // result is the only channel an MCP client reads, so the records belong there: before, they went
+    // to the sink and the call came back as `failed` with exit 0 and no data.
+    const sunk: string[] = [];
+    const enc = new TextEncoder();
+    const deps: RunDeps = {
+      readStdin: () => Promise.resolve(enc.encode(MLLP_TWO_FRAMES)),
+      readFile: () => Promise.reject(new Error("not read")),
+      writeStdout: (chunk) => sunk.push(chunk),
+    };
+    const r = await dispatchTool("parse", { content: "", format: "mllp" }, deps);
+    expect(r.isError).toBe(false);
+    expect(r.structuredContent.status).toBe("success");
+    expect(r.structuredContent.exit).toBe(EXIT.OK);
+    expect(recordsOf(r.structuredContent.data)).toHaveLength(2);
+    expect(sunk).toStrictEqual([]);
+    assertPublishedContract("parse", r, "parse/injected-sink");
+  });
+
   it("validate carries a VALID verdict as a successful call (exit 0)", async () => {
     const r = await dispatchTool("validate", { content: FHIR_PATIENT });
     expect(r.isError).toBe(false);
