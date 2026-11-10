@@ -13,10 +13,12 @@
  * (a leading `0x0B` VT frame byte: an MLLP-framed stream, de-framed to its enclosed HL7), **fhir** (a
  * JSON object declaring `resourceType`), **x12** (a leading `ISA` interchange header), **astm** (a
  * leading `H` record whose second byte is the field delimiter), **ccda** (a `<ClinicalDocument>` root),
- * **ncpdp** (a `<Message>` root in the NCPDP SCRIPT namespace), and **dicom** (the `DICM` magic at byte
- * 128). The signatures are **conservative and, on realistic inputs, mutually exclusive**: the
- * distinctive-lead formats (`MSH`, `ISA`, `H`+delimiter, `<ClinicalDocument>`, `<Message>`+ncpdp, the
- * `DICM` magic, `0x0B` VT, `{…"resourceType"`) don't overlap on a real message of any one type. They
+ * **ncpdp** (a `<Message>` root in the NCPDP SCRIPT namespace, or an NCPDP Telecom vD.0 request
+ * header: six-digit BIN then `D0`, with a separator-framed body), and **dicom** (the `DICM` magic at
+ * byte 128). The signatures are **conservative and, on realistic inputs, mutually exclusive**: the
+ * distinctive-lead formats (`MSH`, `ISA`, `H`+delimiter, `<ClinicalDocument>`, `<Message>`+ncpdp, a
+ * digit-led `D0` Telecom header, the `DICM` magic, `0x0B` VT, `{…"resourceType"`) don't overlap on a
+ * real message of any one type. They
  * are **not** disjoint in the absolute sense: a pathological input could satisfy two (an MLLP frame
  * enclosing a `<ClinicalDocument>` payload matches both `mllp` and `ccda`; a text file whose byte 128
  * is `DICM` matches both), which is exactly why the **`ambiguous` branch is load-bearing, not dead
@@ -160,8 +162,33 @@ function looksLikeCcda(prefix: string): boolean {
  * Requires **both** the `<Message>` root and the `ncpdp` namespace marker so a generic `<Message>`
  * XML is not mis-claimed (conservative: disjoint from C-CDA's `<ClinicalDocument>`).
  */
-function looksLikeNcpdp(prefix: string): boolean {
+function looksLikeNcpdpScript(prefix: string): boolean {
   return /<Message[\s>]/.test(prefix) && /ncpdp/i.test(prefix);
+}
+
+/** Byte length of the fixed NCPDP Telecom vD.0 request Transaction Header. */
+const TELECOM_HEADER_BYTES = 56;
+
+/**
+ * NCPDP Telecom vD.0: a pharmacy claim request (`B1` billing, `B2` reversal, `B3` rebill, ...) opens
+ * with the fixed 56-byte Transaction Header: a six-digit BIN, the `D0` version stamp at offset 6, and
+ * the two-character transaction code at offset 8. Conservative: the header must start the input (it
+ * is positional, so no leading whitespace is skipped) **and** the body after it must carry at least
+ * one Telecom separator (FS `0x1C`, GS `0x1D` or RS `0x1E`), so a line that merely begins with six
+ * digits and `D0` is not claimed. Disjoint from every other lead: no other signature starts with a
+ * digit.
+ */
+function looksLikeNcpdpTelecom(prefix: string): boolean {
+  if (!/^\d{6}D0[A-Z0-9]{2}/.test(prefix)) return false;
+  return /[\x1c\x1d\x1e]/.test(prefix.slice(TELECOM_HEADER_BYTES));
+}
+
+/**
+ * NCPDP: one format name, two standards the wrapped library reads. SCRIPT is XML ePrescribing;
+ * Telecom is the fixed-header, separator-framed pharmacy claim. Either signature claims `ncpdp`.
+ */
+function looksLikeNcpdp(prefix: string): boolean {
+  return looksLikeNcpdpScript(prefix) || looksLikeNcpdpTelecom(prefix);
 }
 
 /** DICOM Part 10: the `DICM` magic sits at byte offset 128, after the 128-byte preamble. */

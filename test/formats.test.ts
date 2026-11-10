@@ -26,6 +26,7 @@ const bytesDeps = (file: Uint8Array, stdin: Uint8Array = new Uint8Array()): RunD
 const X12 = FIX("834.edi");
 const ASTM = FIX("minimal.astm");
 const NCPDP = FIX("newrx.xml");
+const TELECOM = FIX("b1-claim.ncpdp");
 const DICOM = FIX("sample.dcm");
 const CCDA = enc.encode(
   `<?xml version="1.0"?><ClinicalDocument xmlns="urn:hl7-org:v3">` +
@@ -177,6 +178,133 @@ describe("ncpdp: parse / inspect / fmt / validate (SCRIPT)", () => {
   });
 });
 
+describe("ncpdp: parse / inspect / fmt / validate (Telecom vD.0, a B1 billing claim)", () => {
+  it("parse emits the Telecom model, detected without --format", async () => {
+    const r = await run(["parse", "b1.ncpdp"], bytesDeps(TELECOM));
+    expect(r.exit).toBe(EXIT.OK);
+    expect(r.stderr).toBe("");
+    const env = JSON.parse(r.stdout) as {
+      format: string;
+      model: { kind: string; header: { transactionCode: string }; transactions: unknown[] };
+      warnings: unknown[];
+    };
+    expect(env.format).toBe("ncpdp");
+    expect(env.model.kind).toBe("request");
+    expect(env.model.header.transactionCode).toBe("B1");
+    expect(env.model.transactions).toHaveLength(1);
+    expect(env.warnings).toStrictEqual([]);
+  });
+
+  it("inspect reports the Telecom transaction code and counts value-free", async () => {
+    const r = await run(["inspect", "b1.ncpdp", "--json"], bytesDeps(TELECOM));
+    expect(r.exit).toBe(EXIT.OK);
+    expect(JSON.parse(r.stdout)).toStrictEqual({
+      format: "ncpdp",
+      standard: "Telecom",
+      kind: "request",
+      transactionCode: "B1",
+      version: "D0",
+      transactionCount: 1,
+      segmentCount: 4,
+      segmentIds: { "01": 1, "03": 1, "04": 1, "07": 1 },
+      warningCount: 0,
+    });
+  });
+
+  it("inspect never leaks a patient or cardholder name, an id or the BIN", async () => {
+    for (const argv of [
+      ["inspect", "b1.ncpdp"],
+      ["inspect", "b1.ncpdp", "--json"],
+    ]) {
+      const r = await run(argv, bytesDeps(TELECOM));
+      expect(r.exit).toBe(EXIT.OK);
+      for (const value of ["Reprodo", "Deterwood", "Exampla", "Testerson", "MBR", "999999"]) {
+        expect(r.stdout).not.toContain(value);
+        expect(r.stderr).not.toContain(value);
+      }
+      expect(r.stdout).toContain("B1");
+    }
+  });
+
+  it("fmt re-serializes through the Telecom serializer (canonical input round-trips)", async () => {
+    const r = await run(["fmt", "b1.ncpdp"], bytesDeps(TELECOM));
+    expect(r.exit).toBe(EXIT.OK);
+    // The fixture is the library's own canonical emit, so fmt reproduces it plus the trailing newline.
+    expect(r.stdout).toBe(`${Buffer.from(TELECOM).toString("latin1")}\n`);
+  });
+
+  it("validate returns a clean verdict", async () => {
+    const r = await run(["validate", "b1.ncpdp", "--json"], bytesDeps(TELECOM));
+    expect(r.exit).toBe(EXIT.OK);
+    const v = JSON.parse(r.stdout) as { format: string; valid: boolean; findings: unknown[] };
+    expect(v.format).toBe("ncpdp");
+    expect(v.valid).toBe(true);
+    expect(v.findings).toStrictEqual([]);
+  });
+
+  it("--format ncpdp handles Telecom and SCRIPT alike, on every op", async () => {
+    for (const op of ["parse", "inspect", "fmt", "validate"]) {
+      const telecom = await run([op, "f", "--format", "ncpdp"], bytesDeps(TELECOM));
+      expect(telecom.exit, op).toBe(EXIT.OK);
+      expect(telecom.stderr, op).not.toContain("NCPDP_SCRIPT_NOT_XML");
+      const script = await run([op, "f", "--format", "ncpdp"], bytesDeps(NCPDP));
+      expect(script.exit, op).toBe(EXIT.OK);
+    }
+  });
+
+  it("an unparseable non-XML input under --format ncpdp is a value-free Telecom parse failure", async () => {
+    const r = await run(
+      ["parse", "f", "--format", "ncpdp"],
+      bytesDeps(enc.encode("999999D0B1 short")),
+    );
+    expect(r.exit).toBe(EXIT.DATAERR);
+    expect(r.stdout).toBe("");
+    expect(r.stderr).toContain("CLI_PARSE_FAILED");
+    expect(r.stderr).toContain("NCPDP_TELECOM_");
+    expect(r.stderr).not.toContain("999999");
+  });
+
+  it("inspect names an undecoded F6 header's transaction code (unknown), never a guess", async () => {
+    const f6 = enc.encode("999999F6B1".padEnd(56, " "));
+    const json = await run(["inspect", "f", "--format", "ncpdp", "--json"], bytesDeps(f6));
+    expect(json.exit).toBe(EXIT.OK);
+    const s = JSON.parse(json.stdout) as {
+      standard: string;
+      transactionCode: string | null;
+      version: string;
+      warningCount: number;
+    };
+    expect(s.standard).toBe("Telecom");
+    expect(s.transactionCode).toBeNull();
+    expect(s.version).toBe("F6");
+    expect(s.warningCount).toBe(1);
+    const text = await run(["inspect", "f", "--format", "ncpdp"], bytesDeps(f6));
+    expect(text.stdout).toContain("transaction:  (unknown)");
+  });
+
+  it("inspect counts a segment with no segment id under (none)", async () => {
+    const wire = enc.encode(`${"999999D0B1".padEnd(56, " ")}C41\x1cC52`);
+    const r = await run(["inspect", "f", "--json"], bytesDeps(wire));
+    expect(r.exit).toBe(EXIT.OK);
+    const s = JSON.parse(r.stdout) as { segmentIds: Record<string, number>; warningCount: number };
+    expect(s.segmentIds).toStrictEqual({ "(none)": 1 });
+    expect(s.warningCount).toBeGreaterThan(0);
+  });
+
+  it("redact and convert refuse a Telecom claim the same way they refuse SCRIPT", async () => {
+    for (const argv of [
+      ["redact", "f"],
+      ["convert", "f", "--to", "fhir"],
+    ]) {
+      const telecom = await run(argv, bytesDeps(TELECOM));
+      const script = await run(argv, bytesDeps(NCPDP));
+      expect(telecom.exit, argv[0]).toBe(script.exit);
+      expect(telecom.stdout).toBe("");
+      expect(telecom.stderr.split(":")[1]).toBe(script.stderr.split(":")[1]);
+    }
+  });
+});
+
 describe("mllp: de-framed to HL7, multi-frame is the streaming surface", () => {
   it("parse de-frames every frame → NDJSON records (one per frame)", async () => {
     const r = await run(["parse", "s.mllp"], bytesDeps(MLLP));
@@ -256,6 +384,11 @@ describe("inspect: the human (non-JSON) render for every breadth format", () => 
     },
     { name: "dicom", bytes: DICOM, needles: ["format:", "sop class uid:", "elements:"] },
     { name: "ncpdp", bytes: NCPDP, needles: ["format:", "SCRIPT", "message type:", "NewRx"] },
+    {
+      name: "ncpdp telecom",
+      bytes: TELECOM,
+      needles: ["format:", "Telecom", "transaction:", "B1", "segments:", "07: 1"],
+    },
     { name: "mllp", bytes: MLLP, needles: ["format:", "frames:"] },
   ];
   for (const c of cases) {

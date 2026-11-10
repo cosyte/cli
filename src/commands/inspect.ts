@@ -161,6 +161,17 @@ export function renderSummary(summary: InspectSummary): string {
       break;
     case "ncpdp":
       lines.push(`format:       ncpdp`);
+      if (summary.standard === "Telecom") {
+        lines.push(`standard:     Telecom`);
+        lines.push(`kind:         ${summary.kind}`);
+        lines.push(`transaction:  ${summary.transactionCode ?? "(unknown)"}`);
+        lines.push(`version:      ${summary.version}`);
+        lines.push(`transactions: ${String(summary.transactionCount)}`);
+        lines.push(`segments:     ${String(summary.segmentCount)}`);
+        countLines("", summary.segmentIds);
+        lines.push(`warnings:     ${String(summary.warningCount)}`);
+        break;
+      }
       lines.push(`standard:     SCRIPT`);
       lines.push(`message type: ${summary.messageType ?? "(unknown)"}`);
       lines.push(`version:      ${summary.version ?? "(unknown)"}`);

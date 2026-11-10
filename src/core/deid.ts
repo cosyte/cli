@@ -19,8 +19,9 @@
  * A format is covered when the delegate ships an adapter for the standard this CLI actually resolves
  * **and** the CLI can carry the de-identified result on its text data channel. Both halves bite:
  *
- * - `ncpdp`: the delegate's adapter is NCPDP **Telecom**, while this CLI resolves NCPDP **SCRIPT**.
- *   The subpath exists; the coverage does not.
+ * - `ncpdp`: the delegate's adapter is NCPDP **Telecom**, while this CLI resolves NCPDP **SCRIPT** and
+ *   Telecom under one format name. Coverage is per format, and SCRIPT has no adapter, so `ncpdp` stays
+ *   refused rather than covered for one of its two standards.
  * - `dicom`: the delegate covers it, but its result is a Part 10 **byte** stream and this CLI's data
  *   channel is a `string`. That is the CLI's own limit, so it is reported as the CLI's own
  *   unsupported (format, operation) cell rather than blamed on the delegate.
@@ -88,7 +89,7 @@ export const DEID_COVERAGE: Readonly<Record<CosyteFormat, DeidCoverage>> = {
   fhir: "covered",
   x12: "covered",
   ccda: "covered",
-  // The delegate's NCPDP adapter is Telecom; this CLI resolves SCRIPT.
+  // The delegate's NCPDP adapter is Telecom only; this CLI's ncpdp is SCRIPT and Telecom.
   ncpdp: "no-adapter",
   astm: "no-adapter",
   mllp: "no-adapter",
