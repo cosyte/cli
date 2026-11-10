@@ -267,6 +267,34 @@ describe("a fatal condition part way through never resolves to OK", () => {
     expect(r.stderr).not.toContain("MSH");
   });
 
+  it("a stream that ends on a frame's FS, before its CR, is truncated, never a dropped record", async () => {
+    const lines: string[] = [];
+    async function* source(): AsyncGenerator<Uint8Array> {
+      await Promise.resolve();
+      yield new Uint8Array(frame(HL7_MSG));
+      yield new Uint8Array([0x0b, ...enc.encode(HL7_MSG), 0x1c]);
+      yield new Uint8Array(); // an empty chunk at the end does not hide where the stream stopped
+    }
+    const r = await run(["parse", "-"], chunkDeps(source, (chunk) => lines.push(chunk)));
+
+    expect(lines).toHaveLength(1);
+    expect(r.exit).toBe(EXIT.DATAERR);
+    expect(r.stderr).toContain("truncated MLLP stream");
+  });
+
+  it("an FS at the end of one chunk with its CR in the next is a complete frame", async () => {
+    const lines: string[] = [];
+    async function* source(): AsyncGenerator<Uint8Array> {
+      await Promise.resolve();
+      yield new Uint8Array([0x0b, ...enc.encode(HL7_MSG), 0x1c]);
+      yield new Uint8Array([0x0d]);
+    }
+    const r = await run(["parse", "-"], chunkDeps(source, (chunk) => lines.push(chunk)));
+
+    expect(r.exit).toBe(EXIT.OK);
+    expect(lines).toHaveLength(1);
+  });
+
   it("a downstream consumer closing the pipe ends the stream with a value-free write failure", async () => {
     const lines: string[] = [];
     async function* source(): AsyncGenerator<Uint8Array> {

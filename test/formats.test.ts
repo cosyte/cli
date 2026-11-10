@@ -308,6 +308,30 @@ describe("streaming, per-record isolation + quiet on multi-record", () => {
     expect(r.stderr).toContain("CLI_PARSE_FAILED");
   });
 
+  it("a final frame closed by FS with no CR is truncated too, never a dropped message", async () => {
+    // The end-of-block pair is FS then CR. A stream that stops right after the FS leaves the reader
+    // waiting for the CR, and it delivers that frame to no callback. Before this was caught, `parse`
+    // printed only the first record and `inspect` counted one frame, both with exit 0.
+    const unclosed = new Uint8Array([...frame(HL7_MSG), 0x0b, ...enc.encode(HL7_MSG), 0x1c]);
+    const parsed = await run(["parse", "s.mllp"], bytesDeps(unclosed));
+    expect(parsed.exit).toBe(EXIT.DATAERR);
+    expect(parsed.stderr).toContain("CLI_PARSE_FAILED");
+    expect(parsed.stderr).toContain("truncated MLLP stream");
+    expect(parsed.stdout.trim().split("\n")).toHaveLength(1); // the one complete frame, and no more
+    expect(parsed.stderr).not.toContain("MSH");
+
+    const inspected = await run(["inspect", "s.mllp"], bytesDeps(unclosed));
+    expect(inspected.exit).toBe(EXIT.DATAERR);
+    expect(inspected.stderr).toContain("truncated MLLP stream");
+    expect(inspected.stdout).toBe("");
+  });
+
+  it("a lone frame closed by FS with no CR is reported as truncated, not as no frame at all", async () => {
+    const r = await run(["parse", "-", "--format", "mllp"], bytesDeps(new Uint8Array(), new Uint8Array([0x0b, 0x1c])));
+    expect(r.exit).toBe(EXIT.DATAERR);
+    expect(r.stderr).toContain("truncated MLLP stream");
+  });
+
   it("a malformed MLLP frame (FS without CR) is a value-free data error, no partial emit", async () => {
     // VT + MSH + FS but no trailing CR → the de-framer rejects the stream (strict framing).
     const bad = new Uint8Array([0x0b, 0x4d, 0x53, 0x48, 0x1c, 0x0b, 0x4d, 0x53, 0x48, 0x1c, 0x0d]);

@@ -165,8 +165,8 @@ export async function* ndjsonRecords(chunks: ByteChunks): AsyncGenerator<Uint8Ar
  * complete one.
  *
  * **Truncation is a data error, never a silent drop.** An unterminated trailing frame (a start-of-block
- * byte after the last end-of-block byte) is delivered by no callback, so it would otherwise vanish
- * with a green exit. It is detected at end of stream and raised, after the frames that did complete
+ * byte after the last end-of-block byte, or an end-of-block byte that ends the stream before its
+ * carriage return) is delivered by no callback, so it would otherwise vanish with a green exit. It is detected at end of stream and raised, after the frames that did complete
  * have already been yielded: their output stands, and the invocation still resolves to the data error.
  *
  * @param chunks - The input chunk stream.
@@ -201,6 +201,8 @@ export async function* mllpFrames(chunks: ByteChunks): AsyncGenerator<Uint8Array
   let lastStart = -1;
   let lastEnd = -1;
   let offset = 0;
+  // The stream's final byte: an end-of-block byte there is a frame still waiting for its CR.
+  let finalByte: number | undefined;
 
   for await (const chunk of chunks) {
     const buf = asBuffer(chunk);
@@ -209,6 +211,7 @@ export async function* mllpFrames(chunks: ByteChunks): AsyncGenerator<Uint8Array
     const end = buf.lastIndexOf(FILE_SEPARATOR);
     if (end >= 0) lastEnd = offset + end;
     offset += buf.length;
+    if (buf.length > 0) finalByte = buf[buf.length - 1];
 
     reader.push(buf);
     while (ready.length > 0) {
@@ -217,5 +220,5 @@ export async function* mllpFrames(chunks: ByteChunks): AsyncGenerator<Uint8Array
     }
   }
 
-  if (lastStart > lastEnd) throw truncatedMllpError();
+  if (lastStart > lastEnd || finalByte === FILE_SEPARATOR) throw truncatedMllpError();
 }

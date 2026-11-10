@@ -737,7 +737,8 @@ export async function validateFormat(format: CosyteFormat, bytes: Uint8Array): P
  * *no* callback, so feeding a whole file and reading only `onFrame` would silently lose the partial
  * message with a green exit. We therefore detect an open trailing frame at the byte level (the last
  * VT sits after the last FS: MLLP payloads are HL7 v2 text and never carry the `0x0B`/`0x1C` framing
- * bytes) and reject the whole stream as a value-free `CLI_PARSE_FAILED` data error.
+ * bytes), or a final frame whose FS is the last byte (the reader is still waiting for its CR), and
+ * reject the whole stream as a value-free `CLI_PARSE_FAILED` data error.
  *
  * @throws {CliError} `CLI_PARSER_UNAVAILABLE` if `@cosyte/mllp` is absent; `CLI_PARSE_FAILED` (exit
  *   `65`) on a truncated stream; a hard framing error propagates for the caller's value-free boundary.
@@ -752,9 +753,10 @@ export async function validateFormat(format: CosyteFormat, bytes: Uint8Array): P
 export async function deframeMllp(
   bytes: Uint8Array,
 ): Promise<{ payloads: Buffer[]; warningCount: number }> {
-  // Reject an unterminated trailing frame BEFORE de-framing: a VT after the last FS is an open frame
-  // the streaming reader would buffer and silently drop. (MLLP payloads never contain 0x0B/0x1C.)
-  if (bytes.lastIndexOf(0x0b) > bytes.lastIndexOf(0x1c)) {
+  // Reject an unterminated trailing frame BEFORE de-framing: a VT after the last FS is an open frame,
+  // and an FS as the very last byte is a frame still waiting for its CR. The streaming reader buffers
+  // both and delivers neither. (MLLP payloads never contain 0x0B/0x1C.)
+  if (bytes.lastIndexOf(0x0b) > bytes.lastIndexOf(0x1c) || bytes.at(-1) === 0x1c) {
     throw truncatedMllpError();
   }
   const { FrameReader } = await loadOptional("mllp", () => import("@cosyte/mllp"));
@@ -769,8 +771,8 @@ export async function deframeMllp(
 }
 
 /**
- * The value-free data error for a **truncated MLLP stream**: a frame opened and never closed, which
- * the streaming reader buffers and delivers to no callback. Built here so the whole-buffer de-framer
+ * The value-free data error for a **truncated MLLP stream**: a frame opened and never closed (no FS,
+ * or an FS with no CR after it), which the streaming reader buffers and delivers to no callback. Built here so the whole-buffer de-framer
  * above and the chunk-by-chunk one in `core/records.ts` refuse the same input with the same code and
  * the same words.
  *
