@@ -205,11 +205,12 @@ function probe(
 
 describe("explore", () => {
   for (const [inputs, size] of [
-    [4, 500],
-    [3, 600],
-    [2, 700],
-    [4, 400],
-    [3, 500],
+    [3, 400],
+    [2, 400],
+    [2, 450],
+    [4, 350],
+    [2, 350],
+    [1, 500],
   ] as const) {
     it(`validate ${String(inputs)} x ${String(size)}`, () => {
       const o = singleMessage();
@@ -220,7 +221,7 @@ describe("explore", () => {
       );
     });
   }
-  for (const lines of [320, 400, 480, 560, 640]) {
+  for (const lines of [800, 960, 1200]) {
     it(`ndjson ${String(lines)}`, () => {
       const o = ndjsonRecords();
       probe(
