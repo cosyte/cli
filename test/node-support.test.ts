@@ -50,8 +50,9 @@ import { describe, expect, it } from "vitest";
  *     change that refreshes it adds the line to the matrix and to every support line together.
  *
  * Node 26 joined the matrix before its context joined the ruleset, because that ruleset is a GitHub
- * setting no commit here can change: `ci / verify (26, ubuntu-latest)` runs on every pull request
- * and is not yet required.
+ * setting no commit here can change. The organization's `library-required-checks` ruleset now
+ * requires all five `ci / *` contexts, so `ci / verify (26, ubuntu-latest)` is required on every
+ * pull request like the 22 and 24 legs.
  *
  * ASSERT THE PREMISE, NOT ONLY THE REMEDY. Two vacuity traps have already sprung in this
  * repository's suite, so a green here is worth nothing unless a reader can see that the checker
