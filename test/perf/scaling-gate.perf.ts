@@ -30,6 +30,7 @@ import {
   assertScalingGateFires,
   scalingGate,
   type ScalingGateOptions,
+  type ScalingGateReport,
 } from "@cosyte/test-utils/perf";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
@@ -117,13 +118,27 @@ function rebuildQuadratic(input: Uint8Array, terminator: number): Uint8Array {
     let start = 0;
     let seen = 0;
     while (seen < p) if (input[start++] === terminator) seen++;
-    let end = start;
-    while (input[end] !== terminator) end++;
+    // The end is found the same way, from the first byte, as a splitter that keeps no offsets does.
+    let end = 0;
+    let ended = 0;
+    while (ended <= p) if (input[end++] === terminator) ended++;
+    end--;
     out.set(input.subarray(start, end + 1), written);
     written += end + 1 - start;
   }
   out.set(input.subarray(written), written);
   return out;
+}
+
+/** Print each axis's ratio to stderr, so the CI log records how far from the ceiling a green run was. */
+function noteRatios(name: string, report: ScalingGateReport): void {
+  for (const [axis, r] of [
+    ["count", report.count],
+    ["size", report.size],
+  ] as const) {
+    const ratio = /ratio:\s+([0-9.]+)/.exec(r.diagnostic ?? "")?.[1] ?? "none";
+    process.stderr.write(`scaling gate ratio, ${name}, ${axis} axis: ${ratio}\n`);
+  }
 }
 
 const CR = 0x0d;
@@ -156,9 +171,14 @@ function singleMessage(): ScalingGateOptions<Uint8Array, SyncResult> {
     parse: (bytes) => cli.call(["validate", "--json", "message.hl7"], bytes),
     weigh,
     count: { n: 100, generate: (i) => encoder.encode(adtMessage(i)) },
-    // Four inputs: on a GitHub-hosted runner two of them made a base phase of 3.9 ms, under the
-    // gate's 4 ms floor.
-    size: { inputs: 4, size: 500, generate: (i, size) => oruMessage(i, size) },
+    // Eight inputs: on a GitHub-hosted runner two of them made a base phase of 3.9 ms and four of
+    // them 3.4 ms, under the gate's 4 ms floor; eight make about 7 ms. 300 result lines, so 1200
+    // at the scaled size: this command reads a long message at a little over 4 times the cost for 4
+    // times the size, and the excess grows with the message. On the runner the ratio read 8.02 for
+    // 4 inputs of 500 (the ceiling is 8) and between 5.3 and 7.9 from 350 to 450, while 8 inputs of
+    // 300 read 3.7. The self-check margin stays above 1.5 here (1.64) because `rebuildQuadratic`
+    // finds both ends of a segment by scanning from the first byte.
+    size: { inputs: 8, size: 300, generate: (i, size) => oruMessage(i, size) },
   };
 }
 
@@ -169,16 +189,18 @@ function ndjsonRecords(): ScalingGateOptions<Uint8Array, SyncResult> {
     parse: (bytes) => cli.call(["parse", "--ndjson", "patients.ndjson"], bytes),
     weigh,
     count: { n: 50, generate: (i) => patientNdjson(i, 4) },
-    // 320 lines. On GitHub-hosted runners the planted quadratic cleared the ceiling by a margin of
+    // 640 lines. On GitHub-hosted runners the planted quadratic cleared the ceiling by a margin of
     // 1.12 at 150 lines and fell short of it (signal 5.9) at 200: the quadratic must outweigh the
-    // linear parse of each line, which it does only from a few hundred lines.
-    size: { inputs: 1, size: 320, generate: (i, size) => patientNdjson(i, size) },
+    // linear parse of each line, which it does only from a few hundred lines. The margin read 1.47
+    // at 320 lines, 1.63 at 480 and 1.69 at 640, while the real ratio stayed at 4.0 throughout.
+    size: { inputs: 1, size: 640, generate: (i, size) => patientNdjson(i, size) },
   };
 }
 
 describe("the scaling gate: cosyte validate, one message", () => {
   it("has not acquired a complexity regression on either axis", () => {
     const report = scalingGate(singleMessage());
+    noteRatios("validate", report);
     // A skip is not a pass: a gate that could not measure says so here, rather than reading green.
     expect(report.count.status, report.count.diagnostic).toBe("measured");
     expect(report.size.status, report.size.diagnostic).toBe("measured");
@@ -197,6 +219,7 @@ describe("the scaling gate: cosyte validate, one message", () => {
 describe("the scaling gate: cosyte parse --ndjson", () => {
   it("has not acquired a complexity regression on either axis", () => {
     const report = scalingGate(ndjsonRecords());
+    noteRatios("parse --ndjson", report);
     expect(report.count.status, report.count.diagnostic).toBe("measured");
     expect(report.size.status, report.size.diagnostic).toBe("measured");
   });
