@@ -23,4 +23,4 @@
  * console.log(`cosyte ${VERSION}`);
  * ```
  */
-export const VERSION: string = "0.1.9";
+export const VERSION: string = "0.1.10";
