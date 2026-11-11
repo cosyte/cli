@@ -171,13 +171,14 @@ function singleMessage(): ScalingGateOptions<Uint8Array, SyncResult> {
     parse: (bytes) => cli.call(["validate", "--json", "message.hl7"], bytes),
     weigh,
     count: { n: 100, generate: (i) => encoder.encode(adtMessage(i)) },
-    // Four inputs: on a GitHub-hosted runner two of them made a base phase of 3.9 ms, under the
-    // gate's 4 ms floor. 300 result lines, so 1200 at the scaled size: this command reads a long
-    // message at a little over 4 times the cost for 4 times the size, and the excess grows with the
-    // message. On the runner the ratio read 8.02 at 500 (the ceiling is 8) and between 5.3 and 7.9
-    // from 350 to 450, while 300 read 3.76. The self-check margin stays above 1.5 here because
-    // `rebuildQuadratic` finds both ends of a segment by scanning from the first byte.
-    size: { inputs: 4, size: 300, generate: (i, size) => oruMessage(i, size) },
+    // Eight inputs: on a GitHub-hosted runner two of them made a base phase of 3.9 ms and four of
+    // them 3.4 ms, under the gate's 4 ms floor; eight make about 7 ms. 300 result lines, so 1200
+    // at the scaled size: this command reads a long message at a little over 4 times the cost for 4
+    // times the size, and the excess grows with the message. On the runner the ratio read 8.02 for
+    // 4 inputs of 500 (the ceiling is 8) and between 5.3 and 7.9 from 350 to 450, while 8 inputs of
+    // 300 read 3.7. The self-check margin stays above 1.5 here (1.64) because `rebuildQuadratic`
+    // finds both ends of a segment by scanning from the first byte.
+    size: { inputs: 8, size: 300, generate: (i, size) => oruMessage(i, size) },
   };
 }
 
