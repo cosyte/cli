@@ -156,7 +156,7 @@
     "@cosyte/fhir": "^0.1.11",
     "@cosyte/mllp": "^0.1.9",
     "@cosyte/ncpdp": "^0.1.7",
-    "@cosyte/transform": "^0.2.1",
+    "@cosyte/transform": "^0.2.2",
     "@cosyte/x12": "^0.1.12",
     "@modelcontextprotocol/sdk": "^1.32.2"
   }

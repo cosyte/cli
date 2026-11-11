@@ -86,6 +86,7 @@ describe("a blocked locus is a refusal, never a de-identified copy", () => {
       "COLUMBUS",
       "POLICY-0001",
       "OTHERGRP-1",
+      "GOLD PPO",
     ]) {
       expect(X12.toString("utf8")).toContain(value); // the input really carries it
       expect(r.stderr).not.toContain(value); // the diagnostic never does
@@ -100,6 +101,52 @@ describe("a blocked locus is a refusal, never a de-identified copy", () => {
     expect(r.stderr).not.toContain("CLI_DEID_INCOMPLETE");
     expect(r.stderr).toContain("0 blocked");
   });
+});
+
+describe("an X12 value the delegate cannot place is blocked, so the run is refused", () => {
+  // The clean 834 (it redacts with exit 0), changed in one place each. The delegate decides every
+  // X12 element it outputs, so a value at a position no rule names, or a code it does not recognise,
+  // is blocked rather than passed through, and the whole run is refused.
+  const CLEAN = readFileSync(join(FIXTURES, "834-enrollee.edi"), "latin1");
+  const variant = (from: string, to: string): Buffer => {
+    expect(CLEAN).toContain(from);
+    return Buffer.from(CLEAN.replace(from, to), "latin1");
+  };
+  /** Every value the 834 carries that could identify the member, plus each case's own planted value. */
+  const VALUES = ["ZZSENTINELLAST", "ZZSENTINELFIRST", "MRN-000123", "19800101", "ZZEXTRA"];
+
+  const CASES = [
+    {
+      name: "a REF-03 after the member's REF-02 (a position no rule names)",
+      bytes: variant("REF*0F*MRN-000123~", "REF*0F*MRN-000123*ZZEXTRA~"),
+    },
+    {
+      name: "an NM1-01 entity code the delegate does not recognise (lower case 'il')",
+      bytes: variant("NM1*IL*", "NM1*il*"),
+    },
+  ];
+
+  it("the clean 834 these cases start from still redacts with exit 0", async () => {
+    const r = await run(["redact", "e.edi"], deps(Buffer.from(CLEAN, "latin1")));
+    expect(r.exit).toBe(EXIT.OK);
+  });
+
+  for (const c of CASES) {
+    it(`${c.name}: exits 1, emits nothing, and echoes no value from the document`, async () => {
+      const r = await run(["redact", "e.edi"], deps(c.bytes));
+      expect(r.exit).toBe(EXIT.INVALID);
+      expect(r.exit).toBe(1);
+      expect(r.stdout).toBe("");
+      expect(r.stderr).toContain("CLI_DEID_INCOMPLETE");
+      expect(r.stderr).toContain("DEID_LOCUS_BLOCKED");
+      expect(r.stderr).toContain("no output was emitted");
+      const text = c.bytes.toString("latin1");
+      for (const value of VALUES.filter((v) => text.includes(v))) {
+        expect(r.stdout).not.toContain(value);
+        expect(r.stderr).not.toContain(value);
+      }
+    });
+  }
 });
 
 describe("an HL7 visit number is blocked by the delegate, so the run is refused", () => {

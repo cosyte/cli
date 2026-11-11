@@ -98,8 +98,8 @@ importers:
         specifier: ^0.1.7
         version: 0.1.7
       '@cosyte/transform':
-        specifier: ^0.2.1
-        version: 0.2.1(@cosyte/fhir@0.1.11(fast-check@4.10.2))(@cosyte/hl7@0.1.10(fast-check@4.10.2))
+        specifier: ^0.2.2
+        version: 0.2.2(@cosyte/fhir@0.1.11(fast-check@4.10.2))(@cosyte/hl7@0.1.10(fast-check@4.10.2))
       '@cosyte/x12':
         specifier: ^0.1.12
         version: 0.1.12(fast-check@4.10.2)
@@ -346,8 +346,8 @@ packages:
     peerDependencies:
       fast-check: ^3.0.0 || ^4.0.0
 
-  '@cosyte/transform@0.2.1':
-    resolution: {integrity: sha512-BpnRoAojE9EzEtdOoEq+4zAGyD6lJTOiObdlSAm79yjU/KabiAulC/R+4oWRZpNJa6N3KBCQAffWRW1ilm4lrA==}
+  '@cosyte/transform@0.2.2':
+    resolution: {integrity: sha512-GbASCWPbDeTXIslG+sPqegLrWVm6giG9FvPZbFlz9qH7tBwy+V+0CbxEqrOiiUDmMsmRm8GgUs2P0eAl1WLBQg==}
     engines: {node: '>=22.0.0'}
     peerDependencies:
       '@cosyte/fhir': ^0.1.8
@@ -2813,7 +2813,7 @@ snapshots:
     dependencies:
       fast-check: 4.10.2
 
-  '@cosyte/transform@0.2.1(@cosyte/fhir@0.1.11(fast-check@4.10.2))(@cosyte/hl7@0.1.10(fast-check@4.10.2))':
+  '@cosyte/transform@0.2.2(@cosyte/fhir@0.1.11(fast-check@4.10.2))(@cosyte/hl7@0.1.10(fast-check@4.10.2))':
     dependencies:
       '@cosyte/fhir': 0.1.11(fast-check@4.10.2)
       '@cosyte/hl7': 0.1.10(fast-check@4.10.2)

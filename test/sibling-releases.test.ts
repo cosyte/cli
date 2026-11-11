@@ -21,7 +21,7 @@ const FLOORS: Readonly<Record<string, string>> = {
   "@cosyte/mllp": "0.1.9",
   "@cosyte/ncpdp": "0.1.7",
   "@cosyte/x12": "0.1.12",
-  "@cosyte/transform": "0.2.1",
+  "@cosyte/transform": "0.2.2",
   "@cosyte/deid": "0.2.4",
 };
 

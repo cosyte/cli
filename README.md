@@ -327,6 +327,15 @@ passes it no policy of its own:
   message exits with `CLI_DEID_INCOMPLETE` (exit `1`) and nothing on stdout, and stderr names each
   blocked locus with the library's `DEID_LOCUS_BLOCKED` code. Many real ADT messages carry `PV1-19`,
   so check the exit code before you use `clean.hl7`.
+- **X12: a value the library cannot place is blocked, so the whole run is refused.** The library
+  decides every X12 element it outputs. A code it does not recognise at a code position (`NM1*il*`
+  rather than `NM1*IL*`), a value of the wrong shape at a code, date or amount position, a value at a
+  position no rule names (`REF-03` and later, `NM1-10` and later), free text such as an 834 `HD-04`
+  plan coverage description, a segment it has no shape for (such as `PLB`), and a segment outside
+  every transaction set are each blocked. The run exits with `CLI_DEID_INCOMPLETE` (exit `1`) and
+  nothing on stdout. Correct or remove the value before you redact, or call `@cosyte/deid` from code
+  with a policy of your own. The full list is in the
+  [`@cosyte/deid` changelog](https://github.com/cosyte/deid/blob/main/CHANGELOG.md).
 
 The CLI still keys every run with a **per-invocation ephemeral key** and says so on stderr: any
 identifier surrogate is consistent within one output and deliberately not stable across runs.
