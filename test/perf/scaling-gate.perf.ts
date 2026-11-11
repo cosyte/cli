@@ -169,9 +169,10 @@ function ndjsonRecords(): ScalingGateOptions<Uint8Array, SyncResult> {
     parse: (bytes) => cli.call(["parse", "--ndjson", "patients.ndjson"], bytes),
     weigh,
     count: { n: 50, generate: (i) => patientNdjson(i, 4) },
-    // 200 lines: at 150 the planted quadratic cleared the ceiling on a GitHub-hosted runner by a
-    // margin of 1.12 only.
-    size: { inputs: 1, size: 200, generate: (i, size) => patientNdjson(i, size) },
+    // 320 lines. On GitHub-hosted runners the planted quadratic cleared the ceiling by a margin of
+    // 1.12 at 150 lines and fell short of it (signal 5.9) at 200: the quadratic must outweigh the
+    // linear parse of each line, which it does only from a few hundred lines.
+    size: { inputs: 1, size: 320, generate: (i, size) => patientNdjson(i, size) },
   };
 }
 
