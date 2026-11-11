@@ -130,14 +130,31 @@ function rebuildQuadratic(input: Uint8Array, terminator: number): Uint8Array {
   return out;
 }
 
-/** Print each axis's ratio to stderr, so the CI log records how far from the ceiling a green run was. */
+/**
+ * Print each axis's ratio and both phase times to stderr, so the CI log records how far from the
+ * ceiling a green run was and how far the base phase was above the floor.
+ */
 function noteRatios(name: string, report: ScalingGateReport): void {
   for (const [axis, r] of [
     ["count", report.count],
     ["size", report.size],
   ] as const) {
     const ratio = /ratio:\s+([0-9.]+)/.exec(r.diagnostic ?? "")?.[1] ?? "none";
-    process.stderr.write(`scaling gate ratio, ${name}, ${axis} axis: ${ratio}\n`);
+    process.stderr.write(
+      `scaling gate, ${name}, ${axis} axis: ratio ${ratio}, ` +
+        `base min ${String(r.base?.min)} ms median ${String(r.base?.median)} ms, ` +
+        `scaled min ${String(r.scaled?.min)} ms median ${String(r.scaled?.median)} ms\n`,
+    );
+  }
+}
+
+/** The gate's own floor is 4 ms; this file asks twice that of every base phase, for headroom. */
+const WANTED_BASE_MS = 8;
+
+/** Every axis of a gate must keep its base phase well clear of the gate's floor. */
+function expectBaseClearOfFloor(report: ScalingGateReport): void {
+  for (const r of [report.count, report.size]) {
+    expect(r.base?.min ?? 0, r.diagnostic).toBeGreaterThanOrEqual(WANTED_BASE_MS);
   }
 }
 
@@ -170,15 +187,18 @@ function singleMessage(): ScalingGateOptions<Uint8Array, SyncResult> {
     name: "cosyte validate, one HL7 v2 message",
     parse: (bytes) => cli.call(["validate", "--json", "message.hl7"], bytes),
     weigh,
-    count: { n: 100, generate: (i) => encoder.encode(adtMessage(i)) },
+    // 400 inputs: 100 made a base phase of about 3.8 ms on a GitHub-hosted runner, under the gate's
+    // 4 ms floor, so the gate skipped. 400 made a base phase of about 31 ms on the runner, and 1600 at the scaled size.
+    count: { n: 400, generate: (i) => encoder.encode(adtMessage(i)) },
     // Eight inputs: on a GitHub-hosted runner two of them made a base phase of 3.9 ms and four of
-    // them 3.4 ms, under the gate's 4 ms floor; eight make about 7 ms. 300 result lines, so 1200
+    // them 3.4 ms, under the gate's 4 ms floor; eight made about 7 ms, still short of the 8 ms this file asks of every
+    // base phase, and twelve made about 15 ms. 300 result lines, so 1200
     // at the scaled size: this command reads a long message at a little over 4 times the cost for 4
     // times the size, and the excess grows with the message. On the runner the ratio read 8.02 for
     // 4 inputs of 500 (the ceiling is 8) and between 5.3 and 7.9 from 350 to 450, while 8 inputs of
-    // 300 read 3.7. The self-check margin stays above 1.5 here (1.64) because `rebuildQuadratic`
+    // 300 read 3.7. The self-check margin stays above 1.5 here (1.63 with 12 inputs, signal 13.0) because `rebuildQuadratic`
     // finds both ends of a segment by scanning from the first byte.
-    size: { inputs: 8, size: 300, generate: (i, size) => oruMessage(i, size) },
+    size: { inputs: 12, size: 300, generate: (i, size) => oruMessage(i, size) },
   };
 }
 
@@ -204,6 +224,7 @@ describe("the scaling gate: cosyte validate, one message", () => {
     // A skip is not a pass: a gate that could not measure says so here, rather than reading green.
     expect(report.count.status, report.count.diagnostic).toBe("measured");
     expect(report.size.status, report.size.diagnostic).toBe("measured");
+    expectBaseClearOfFloor(report);
   });
 
   it("has fixtures large enough for that gate to fail", () => {
@@ -222,6 +243,7 @@ describe("the scaling gate: cosyte parse --ndjson", () => {
     noteRatios("parse --ndjson", report);
     expect(report.count.status, report.count.diagnostic).toBe("measured");
     expect(report.size.status, report.size.diagnostic).toBe("measured");
+    expectBaseClearOfFloor(report);
   });
 
   it("has fixtures large enough for that gate to fail", () => {
