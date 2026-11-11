@@ -19,6 +19,12 @@ export const JSON_CHUNK_CHARS = 64 * 1024;
 /** What {@link flatText} allows a member for its key, its punctuation and a non-string value. */
 const FLAT_MEMBER_CHARS = 48;
 
+/**
+ * How deep the walk goes before it looks for a cycle. A cycle makes the walk descend for ever, so it
+ * always reaches this depth; a tree as deep as this is rare, and is only checked, never refused.
+ */
+const CYCLE_CHECK_DEPTH = 128;
+
 /** One open array or object on the way down. */
 interface Frame {
   /** The array or object being written. */
@@ -29,16 +35,19 @@ interface Frame {
   index: number;
   /** Whether a member has been written yet (an object can skip every key it has). */
   wrote: boolean;
-  /** The indentation of the line the container opened on. */
-  readonly indent: string;
+  /** How deep the container is: 0 for the value itself. */
+  readonly depth: number;
 }
 
-/** The value `JSON.stringify` writes for `holder[key]`: `toJSON` applied, boxed primitives opened. */
-function prepare(value: unknown, key: string): unknown {
+/**
+ * The value `JSON.stringify` writes for `holder[key]`: `toJSON` applied, boxed primitives opened.
+ * The key is passed as `toJSON` receives it, a string, and made one only when `toJSON` is called.
+ */
+function prepare(value: unknown, key: string | number): unknown {
   let v = value;
   if (v !== null && (typeof v === "object" || typeof v === "bigint")) {
     const toJSON = (v as { toJSON?: unknown }).toJSON;
-    if (typeof toJSON === "function") v = (toJSON as (k: string) => unknown).call(v, key);
+    if (typeof toJSON === "function") v = (toJSON as (k: string) => unknown).call(v, String(key));
   }
   if (v instanceof Number) return Number(v);
   if (v instanceof String) return String(v);
@@ -51,27 +60,39 @@ function isAbsent(v: unknown): boolean {
   return v === undefined || typeof v === "function" || typeof v === "symbol";
 }
 
+/** True for a value `JSON.stringify` writes as it is, with nothing to call, open or drop. */
+function isPlainScalar(v: unknown): boolean {
+  return v === null || typeof v === "string" || typeof v === "number" || typeof v === "boolean";
+}
+
 /**
  * The text of a **flat** container, written by `JSON.stringify` itself: a plain array or object whose
- * every value is a string, a finite or non-finite number, a boolean or `null`, and whose text is
- * at most about `size` characters (its strings, plus a generous allowance a member for the rest). Such a container has nothing for `toJSON` to change and nothing
- * to drop, so the native writer's text is the text, and it is much faster than a walk. Anything else
- * (a nested container, a value to drop, a class instance, a long string) returns `undefined` and is
- * walked.
+ * every value is a string, a number, a boolean or `null`, and whose text is at most about `size`
+ * characters (its strings, plus a generous allowance a member for the rest). Such a container has
+ * nothing for `toJSON` to change and nothing to drop, so the native writer's text is the text, and
+ * it is much faster than a walk. Anything else (a nested container, a value to drop, a class
+ * instance, a long string) returns `undefined` and is walked.
  */
-function flatText(obj: object, isArray: boolean, gap: string, size: number): string | undefined {
+function flatText(
+  obj: object,
+  keys: readonly string[] | null,
+  gap: string,
+  size: number,
+): string | undefined {
   const proto: unknown = Object.getPrototypeOf(obj);
-  if (proto !== (isArray ? Array.prototype : Object.prototype)) return undefined;
-  const values: readonly unknown[] = isArray ? (obj as readonly unknown[]) : Object.values(obj);
-  let chars = 0;
-  for (let i = 0; i < values.length; i++) {
-    const v = values[i];
+  if (proto !== (keys === null ? Array.prototype : Object.prototype)) return undefined;
+  const n = keys === null ? (obj as readonly unknown[]).length : keys.length;
+  let chars = n * FLAT_MEMBER_CHARS;
+  for (let i = 0; i < n; i++) {
+    const v =
+      keys === null
+        ? (obj as readonly unknown[])[i]
+        : (obj as Record<string, unknown>)[keys[i] as string];
+    if (!isPlainScalar(v)) return undefined;
     if (typeof v === "string") chars += v.length;
-    else if (v !== null && typeof v !== "number" && typeof v !== "boolean") return undefined;
+    if (chars > size) return undefined;
   }
-  return chars + values.length * FLAT_MEMBER_CHARS > size
-    ? undefined
-    : JSON.stringify(obj, null, gap);
+  return JSON.stringify(obj, null, gap);
 }
 
 /** True for the first half of a surrogate pair. */
@@ -111,10 +132,29 @@ export function* jsonChunks(
   const gap = " ".repeat(Math.max(0, Math.min(10, Math.floor(space ?? 0))));
   const colon = gap === "" ? ":" : ": ";
   const stack: Frame[] = [];
-  const open = new Set<object>();
   let out = "";
   // A long string can fill several pieces at once; they wait here for the generator to hand them out.
   const pieces: string[] = [];
+  // The line break and indentation in front of a member at each depth, made once per depth.
+  const leads: string[] = [];
+  const leadAt = (depth: number): string => {
+    let lead = leads[depth];
+    if (lead === undefined) {
+      lead = gap === "" ? "" : `\n${gap.repeat(depth)}`;
+      leads[depth] = lead;
+    }
+    return lead;
+  };
+  // Each key's quoted form and colon, made once per distinct key: a model repeats its keys.
+  const quoted = new Map<string, string>();
+  const keyText = (key: string): string => {
+    let text = quoted.get(key);
+    if (text === undefined) {
+      text = JSON.stringify(key) + colon;
+      quoted.set(key, text);
+    }
+    return text;
+  };
 
   /** Write a string's JSON form, in slices when it is longer than a piece. */
   const writeString = (s: string): void => {
@@ -140,7 +180,7 @@ export function* jsonChunks(
   };
 
   /** Write one value that is not absent: a scalar in place, or the opening of a container. */
-  const writeValue = (v: unknown, indent: string): void => {
+  const writeValue = (v: unknown, depth: number): void => {
     if (v === null) out += "null";
     else if (typeof v === "string") writeString(v);
     else if (typeof v === "number") out += Number.isFinite(v) ? String(v) : "null";
@@ -148,29 +188,24 @@ export function* jsonChunks(
     else if (typeof v === "bigint") throw new TypeError("Do not know how to serialize a BigInt");
     else {
       const obj = v as object;
-      const isArray = Array.isArray(obj);
-      const flat = flatText(obj, isArray, gap, size);
+      const keys = Array.isArray(obj) ? null : Object.keys(obj);
+      const flat = flatText(obj, keys, gap, size);
       if (flat !== undefined) {
         // The native writer indents from column zero; each of its line breaks moves to this depth.
-        out += gap === "" || indent === "" ? flat : flat.replaceAll("\n", `\n${indent}`);
+        out += depth === 0 || gap === "" ? flat : flat.replaceAll("\n", leadAt(depth));
         return;
       }
-      if (open.has(obj)) throw new TypeError("Converting circular structure to JSON");
-      open.add(obj);
-      out += isArray ? "[" : "{";
-      stack.push({
-        value: obj,
-        keys: isArray ? null : Object.keys(obj),
-        index: 0,
-        wrote: false,
-        indent,
-      });
+      if (depth >= CYCLE_CHECK_DEPTH && stack.some((f) => f.value === obj)) {
+        throw new TypeError("Converting circular structure to JSON");
+      }
+      out += keys === null ? "[" : "{";
+      stack.push({ value: obj, keys, index: 0, wrote: false, depth });
     }
   };
 
   const top = prepare(value, "");
   if (isAbsent(top)) return;
-  writeValue(top, "");
+  writeValue(top, 0);
 
   for (;;) {
     for (const piece of pieces) yield piece;
@@ -182,35 +217,35 @@ export function* jsonChunks(
 
     const frame = stack[stack.length - 1];
     if (frame === undefined) break;
-    const inner = frame.indent + gap;
-    const lead = gap === "" ? "" : `\n${inner}`;
+    const inner = frame.depth + 1;
 
     if (frame.keys === null) {
       const arr = frame.value as readonly unknown[];
       if (frame.index < arr.length) {
         const i = frame.index;
         frame.index += 1;
-        out += (i > 0 ? "," : "") + lead;
-        const v = prepare(arr[i], String(i));
+        if (i > 0) out += ",";
+        out += leadAt(inner);
+        const v = prepare(arr[i], i);
         if (isAbsent(v)) out += "null";
         else writeValue(v, inner);
         continue;
       }
-      out += arr.length > 0 && gap !== "" ? `\n${frame.indent}]` : "]";
+      out += arr.length > 0 ? `${leadAt(frame.depth)}]` : "]";
     } else {
       if (frame.index < frame.keys.length) {
         const key = frame.keys[frame.index] as string;
         frame.index += 1;
         const v = prepare((frame.value as Record<string, unknown>)[key], key);
         if (isAbsent(v)) continue;
-        out += (frame.wrote ? "," : "") + lead + JSON.stringify(key) + colon;
+        if (frame.wrote) out += ",";
+        out += leadAt(inner) + keyText(key);
         frame.wrote = true;
         writeValue(v, inner);
         continue;
       }
-      out += frame.wrote && gap !== "" ? `\n${frame.indent}}` : "}";
+      out += frame.wrote ? `${leadAt(frame.depth)}}` : "}";
     }
-    open.delete(frame.value);
     stack.pop();
   }
 

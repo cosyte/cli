@@ -65,6 +65,7 @@ describe("jsonChunks writes what JSON.stringify writes", () => {
         readonly a = 1;
       })(),
       bare: Object.assign(Object.create(null) as object, { b: 2 }),
+      emptySub: new (class Sub extends Array<number> {})(),
       // eslint-disable-next-line no-sparse-arrays
       holey: [1, , 3],
     };
@@ -84,6 +85,13 @@ describe("jsonChunks writes what JSON.stringify writes", () => {
     cyclic["self"] = cyclic;
     expect(() => join(cyclic)).toThrow(TypeError);
     expect(() => join({ n: 1n })).toThrow(TypeError);
+  });
+
+  it("writes a deep tree that is not a cycle, however deep", () => {
+    let deep: unknown = { leaf: "ZZDEEP" };
+    for (let i = 0; i < 300; i++) deep = i % 2 === 0 ? [deep] : { next: deep };
+    expect(join(deep, 2)).toBe(JSON.stringify(deep, null, 2));
+    expect(join(deep)).toBe(JSON.stringify(deep));
   });
 
   it("writes a shared, non-cyclic object every time it appears", () => {
