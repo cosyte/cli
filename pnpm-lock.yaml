@@ -44,7 +44,7 @@ importers:
         version: 0.1.8
       '@cosyte/synth':
         specifier: ^0.1.5
-        version: 0.1.5(@cosyte/astm@0.1.7)(@cosyte/ccda@0.1.6)(@cosyte/deid@0.1.0(@cosyte/ccda@0.1.6)(@cosyte/dicom@0.1.13)(@cosyte/fhir@0.1.11(fast-check@4.10.2))(@cosyte/hl7@0.1.10(fast-check@4.10.2))(@cosyte/ncpdp@0.1.7)(@cosyte/x12@0.1.12(fast-check@4.10.2)))(@cosyte/fhir@0.1.11(fast-check@4.10.2))(@cosyte/hl7@0.1.10(fast-check@4.10.2))(@cosyte/ncpdp@0.1.7)(@cosyte/x12@0.1.12(fast-check@4.10.2))
+        version: 0.1.5(@cosyte/astm@0.1.7)(@cosyte/ccda@0.1.6)(@cosyte/deid@0.2.4(@cosyte/ccda@0.1.6)(@cosyte/dicom@0.1.13)(@cosyte/fhir@0.1.11(fast-check@4.10.2))(@cosyte/hl7@0.1.10(fast-check@4.10.2))(@cosyte/ncpdp@0.1.7)(@cosyte/x12@0.1.12(fast-check@4.10.2)))(@cosyte/fhir@0.1.11(fast-check@4.10.2))(@cosyte/hl7@0.1.10(fast-check@4.10.2))(@cosyte/ncpdp@0.1.7)(@cosyte/x12@0.1.12(fast-check@4.10.2))
       '@cosyte/test-utils':
         specifier: ^0.1.4
         version: 0.1.4(fast-check@4.10.2)
@@ -83,8 +83,8 @@ importers:
         specifier: ^0.1.6
         version: 0.1.6
       '@cosyte/deid':
-        specifier: ^0.1.0
-        version: 0.1.0(@cosyte/ccda@0.1.6)(@cosyte/dicom@0.1.13)(@cosyte/fhir@0.1.11(fast-check@4.10.2))(@cosyte/hl7@0.1.10(fast-check@4.10.2))(@cosyte/ncpdp@0.1.7)(@cosyte/x12@0.1.12(fast-check@4.10.2))
+        specifier: ^0.2.4
+        version: 0.2.4(@cosyte/ccda@0.1.6)(@cosyte/dicom@0.1.13)(@cosyte/fhir@0.1.11(fast-check@4.10.2))(@cosyte/hl7@0.1.10(fast-check@4.10.2))(@cosyte/ncpdp@0.1.7)(@cosyte/x12@0.1.12(fast-check@4.10.2))
       '@cosyte/dicom':
         specifier: ^0.1.13
         version: 0.1.13
@@ -98,8 +98,8 @@ importers:
         specifier: ^0.1.7
         version: 0.1.7
       '@cosyte/transform':
-        specifier: ^0.1.0
-        version: 0.1.0(@cosyte/fhir@0.1.11(fast-check@4.10.2))(@cosyte/hl7@0.1.10(fast-check@4.10.2))
+        specifier: ^0.2.2
+        version: 0.2.2(@cosyte/fhir@0.1.11(fast-check@4.10.2))(@cosyte/hl7@0.1.10(fast-check@4.10.2))
       '@cosyte/x12':
         specifier: ^0.1.12
         version: 0.1.12(fast-check@4.10.2)
@@ -227,16 +227,16 @@ packages:
     resolution: {integrity: sha512-3ZheOAuUufIVWo5oTdLayb6ClJYV72lWcmg865cPD2IQyh/CtFVcKsb7s3jfbEVxOX7xMCp9DOv7g470vhkMRg==}
     engines: {node: '>=22.0.0'}
 
-  '@cosyte/deid@0.1.0':
-    resolution: {integrity: sha512-dw51kl4rvnegitj/nyOwXhe3PwBpYOYX2vtxdiI7ky6ujMw2wzLNgcUp7hlwA/vjp6ilGyJU7o7IxEzHWOi6Ag==}
+  '@cosyte/deid@0.2.4':
+    resolution: {integrity: sha512-wXmdk2E7dcMAPsfttVvrp25KBqhDdrxwexO0fe400u4h3bfcxmh4hmVCe72PmV6rocFSKg24O3F5VEK8eOdlJg==}
     engines: {node: '>=22.0.0'}
     peerDependencies:
-      '@cosyte/ccda': '>=0.0.0'
-      '@cosyte/dicom': '>=0.0.0'
-      '@cosyte/fhir': '>=0.0.0'
-      '@cosyte/hl7': '>=0.0.0'
-      '@cosyte/ncpdp': '>=0.0.0'
-      '@cosyte/x12': '>=0.0.0'
+      '@cosyte/ccda': ^0.1.0
+      '@cosyte/dicom': ^0.1.0
+      '@cosyte/fhir': ^0.1.0
+      '@cosyte/hl7': ^0.1.0
+      '@cosyte/ncpdp': ^0.1.0
+      '@cosyte/x12': ^0.1.0
     peerDependenciesMeta:
       '@cosyte/ccda':
         optional: true
@@ -346,12 +346,12 @@ packages:
     peerDependencies:
       fast-check: ^3.0.0 || ^4.0.0
 
-  '@cosyte/transform@0.1.0':
-    resolution: {integrity: sha512-rhTFU177s8OnJXDVfdMNrZszsaUV6lIqUdhjQCBKtCJf+3xe94paTcDG+tBmTMnci5xYD7/AJf/B4vEMD0kJFQ==}
+  '@cosyte/transform@0.2.2':
+    resolution: {integrity: sha512-GbASCWPbDeTXIslG+sPqegLrWVm6giG9FvPZbFlz9qH7tBwy+V+0CbxEqrOiiUDmMsmRm8GgUs2P0eAl1WLBQg==}
     engines: {node: '>=22.0.0'}
     peerDependencies:
-      '@cosyte/fhir': '>=0.0.0'
-      '@cosyte/hl7': '>=0.0.0'
+      '@cosyte/fhir': ^0.1.8
+      '@cosyte/hl7': ^0.1.8
 
   '@cosyte/tsconfig@0.1.2':
     resolution: {integrity: sha512-ZTWC9cgdccJwL+EWTEWCtJr/a87TTZWlegTZWHpN7LGW3rALE1glnffOFMVraj4XSUam+DuHVOdGmKF8BhJPlA==}
@@ -2721,7 +2721,7 @@ snapshots:
       '@xmldom/xmldom': 0.9.12
     optional: true
 
-  '@cosyte/deid@0.1.0(@cosyte/ccda@0.1.6)(@cosyte/dicom@0.1.13)(@cosyte/fhir@0.1.11(fast-check@4.10.2))(@cosyte/hl7@0.1.10(fast-check@4.10.2))(@cosyte/ncpdp@0.1.7)(@cosyte/x12@0.1.12(fast-check@4.10.2))':
+  '@cosyte/deid@0.2.4(@cosyte/ccda@0.1.6)(@cosyte/dicom@0.1.13)(@cosyte/fhir@0.1.11(fast-check@4.10.2))(@cosyte/hl7@0.1.10(fast-check@4.10.2))(@cosyte/ncpdp@0.1.7)(@cosyte/x12@0.1.12(fast-check@4.10.2))':
     optionalDependencies:
       '@cosyte/ccda': 0.1.6
       '@cosyte/dicom': 0.1.13
@@ -2797,11 +2797,11 @@ snapshots:
 
   '@cosyte/script-utils@0.1.8': {}
 
-  '@cosyte/synth@0.1.5(@cosyte/astm@0.1.7)(@cosyte/ccda@0.1.6)(@cosyte/deid@0.1.0(@cosyte/ccda@0.1.6)(@cosyte/dicom@0.1.13)(@cosyte/fhir@0.1.11(fast-check@4.10.2))(@cosyte/hl7@0.1.10(fast-check@4.10.2))(@cosyte/ncpdp@0.1.7)(@cosyte/x12@0.1.12(fast-check@4.10.2)))(@cosyte/fhir@0.1.11(fast-check@4.10.2))(@cosyte/hl7@0.1.10(fast-check@4.10.2))(@cosyte/ncpdp@0.1.7)(@cosyte/x12@0.1.12(fast-check@4.10.2))':
+  '@cosyte/synth@0.1.5(@cosyte/astm@0.1.7)(@cosyte/ccda@0.1.6)(@cosyte/deid@0.2.4(@cosyte/ccda@0.1.6)(@cosyte/dicom@0.1.13)(@cosyte/fhir@0.1.11(fast-check@4.10.2))(@cosyte/hl7@0.1.10(fast-check@4.10.2))(@cosyte/ncpdp@0.1.7)(@cosyte/x12@0.1.12(fast-check@4.10.2)))(@cosyte/fhir@0.1.11(fast-check@4.10.2))(@cosyte/hl7@0.1.10(fast-check@4.10.2))(@cosyte/ncpdp@0.1.7)(@cosyte/x12@0.1.12(fast-check@4.10.2))':
     optionalDependencies:
       '@cosyte/astm': 0.1.7
       '@cosyte/ccda': 0.1.6
-      '@cosyte/deid': 0.1.0(@cosyte/ccda@0.1.6)(@cosyte/dicom@0.1.13)(@cosyte/fhir@0.1.11(fast-check@4.10.2))(@cosyte/hl7@0.1.10(fast-check@4.10.2))(@cosyte/ncpdp@0.1.7)(@cosyte/x12@0.1.12(fast-check@4.10.2))
+      '@cosyte/deid': 0.2.4(@cosyte/ccda@0.1.6)(@cosyte/dicom@0.1.13)(@cosyte/fhir@0.1.11(fast-check@4.10.2))(@cosyte/hl7@0.1.10(fast-check@4.10.2))(@cosyte/ncpdp@0.1.7)(@cosyte/x12@0.1.12(fast-check@4.10.2))
       '@cosyte/fhir': 0.1.11(fast-check@4.10.2)
       '@cosyte/hl7': 0.1.10(fast-check@4.10.2)
       '@cosyte/ncpdp': 0.1.7
@@ -2813,7 +2813,7 @@ snapshots:
     dependencies:
       fast-check: 4.10.2
 
-  '@cosyte/transform@0.1.0(@cosyte/fhir@0.1.11(fast-check@4.10.2))(@cosyte/hl7@0.1.10(fast-check@4.10.2))':
+  '@cosyte/transform@0.2.2(@cosyte/fhir@0.1.11(fast-check@4.10.2))(@cosyte/hl7@0.1.10(fast-check@4.10.2))':
     dependencies:
       '@cosyte/fhir': 0.1.11(fast-check@4.10.2)
       '@cosyte/hl7': 0.1.10(fast-check@4.10.2)

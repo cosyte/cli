@@ -24,6 +24,10 @@ import { run } from "../src/core/run.js";
  * The HL7 clean input is `adt-a01-no-visit.hl7`: `adt-a01.hl7` with its PV1-19 visit number left
  * out. Under the delegate's default policy a visit number is blocked, so `adt-a01.hl7` itself is a
  * refusal, pinned in redact-blocked.test.ts.
+ *
+ * The X12 clean input is `834-enrollee.edi`, whose HD segment leaves HD-04 (the plan coverage
+ * description) empty. Since `@cosyte/deid` 0.2.0 every X12 element is decided, and that free-text
+ * value is blocked under the default policy, so an 834 that carries it is a refusal, as `834.edi` is.
  */
 
 const FIXTURES = join(import.meta.dirname, "__fixtures__");

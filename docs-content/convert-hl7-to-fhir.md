@@ -37,6 +37,25 @@ Each finding is a severity, a code from `@cosyte/transform`, and where it applie
 location and, when there is one, the FHIR path it maps to. No finding carries a value from the
 message.
 
+## See the fields the conversion drops
+
+A field that has a value in the message but no place in the `Bundle` is reported as
+`TRANSFORM_ELEMENT_DROPPED` at its own location. That includes the PID fields `@cosyte/transform`
+does not carry into `Patient`: PID-10 race, PID-15 primary language, PID-19 SSN, PID-22 ethnic
+group, PID-29 death date and time, and PID-30 death indicator. A `Patient` converted from a PID that
+records a death has no `deceased[x]`, so read the findings before you treat it as a living patient.
+These findings are `information`, so they do not change the exit code:
+
+```bash
+cosyte convert deceased.hl7 --to fhir 2>&1 >/dev/null | grep PID
+```
+
+```text
+cosyte: convert: information TRANSFORM_ELEMENT_DROPPED at PID.15 → Patient.communication.language
+cosyte: convert: information TRANSFORM_ELEMENT_DROPPED at PID.29 → Patient.deceasedDateTime
+cosyte: convert: information TRANSFORM_ELEMENT_DROPPED at PID.30 → Patient.deceasedBoolean
+```
+
 ## Read the Bundle
 
 The `Bundle` is a FHIR message bundle. `--quiet` drops the findings, and the output pipes into any

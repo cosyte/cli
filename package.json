@@ -151,12 +151,12 @@
   "optionalDependencies": {
     "@cosyte/astm": "^0.1.7",
     "@cosyte/ccda": "^0.1.6",
-    "@cosyte/deid": "^0.1.0",
+    "@cosyte/deid": "^0.2.4",
     "@cosyte/dicom": "^0.1.13",
     "@cosyte/fhir": "^0.1.11",
     "@cosyte/mllp": "^0.1.9",
     "@cosyte/ncpdp": "^0.1.7",
-    "@cosyte/transform": "^0.1.0",
+    "@cosyte/transform": "^0.2.2",
     "@cosyte/x12": "^0.1.12",
     "@modelcontextprotocol/sdk": "^1.32.2"
   }

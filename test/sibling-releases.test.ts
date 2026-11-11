@@ -7,7 +7,9 @@ import { describe, expect, it } from "vitest";
  * first one: a range of `^0.1.0` lets an install keep a parser that is many times slower or heavier
  * than the one we test against. The floors below are the releases this package is tested with. The
  * one with a measured reason is `@cosyte/fhir`: before 0.1.10 its reader took a large base64 string
- * a character at a time, and parsing a FHIR Binary held 33 to 40 times the input in memory.
+ * a character at a time, and parsing a FHIR Binary held 33 to 40 times the input in memory. Before
+ * 0.2.0, `@cosyte/transform` dropped six valued PID fields (race, primary language, SSN, ethnic
+ * group, death date and time, death indicator) with no issue, so `convert` could not report them.
  */
 const FLOORS: Readonly<Record<string, string>> = {
   "@cosyte/hl7": "0.1.10",
@@ -19,6 +21,8 @@ const FLOORS: Readonly<Record<string, string>> = {
   "@cosyte/mllp": "0.1.9",
   "@cosyte/ncpdp": "0.1.7",
   "@cosyte/x12": "0.1.12",
+  "@cosyte/transform": "0.2.2",
+  "@cosyte/deid": "0.2.4",
 };
 
 interface Manifest {

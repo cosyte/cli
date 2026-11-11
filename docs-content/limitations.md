@@ -34,7 +34,11 @@ than it does. For what the current release ships, `cosyte --help` and the
 - **De-identification.** `redact` applies `@cosyte/deid`'s default policy and offers no setting of
   its own; it covers `ccda`, `fhir`, `hl7`, `x12`. Under that policy, an HL7 v2 message with a visit
   number (PV1-19) or an order number is refused, and record, account, and member numbers are removed
-  rather than replaced. See [De-identify a message](./de-identify-a-message.md).
+  rather than replaced. An X12 document is refused when it carries a value the library cannot place:
+  an unrecognised code at a code position such as NM1-01 or REF-01, a value of the wrong shape at a
+  code, date or amount position, a value at a position no rule names (REF-03, NM1-10 and later), free
+  text such as an 834 HD-04 plan description, or a segment it has no shape for. See
+  [De-identify a message](./de-identify-a-message.md).
 
 ## What it does not do
 
