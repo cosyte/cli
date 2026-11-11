@@ -197,8 +197,10 @@ function singleMessage(): ScalingGateOptions<Uint8Array, SyncResult> {
     // times the size, and the excess grows with the message. On the runner the ratio read 8.02 for
     // 4 inputs of 500 (the ceiling is 8) and between 5.3 and 7.9 from 350 to 450, while 8 inputs of
     // 300 read 3.7. The self-check margin stays above 1.5 here (1.63 with 12 inputs, signal 13.0) because `rebuildQuadratic`
-    // finds both ends of a segment by scanning from the first byte.
-    size: { inputs: 12, size: 300, generate: (i, size) => oruMessage(i, size) },
+    // finds both ends of a segment by scanning from the first byte. 96 inputs since @cosyte/hl7
+    // 0.1.10: it validates about ten times faster, and twelve inputs made a base phase of 1.5 ms on
+    // the runner, under the floor, so the gate skipped. The size and its ratio are unchanged.
+    size: { inputs: 96, size: 300, generate: (i, size) => oruMessage(i, size) },
   };
 }
 
@@ -208,7 +210,9 @@ function ndjsonRecords(): ScalingGateOptions<Uint8Array, SyncResult> {
     name: "cosyte parse --ndjson, FHIR Patients",
     parse: (bytes) => cli.call(["parse", "--ndjson", "patients.ndjson"], bytes),
     weigh,
-    count: { n: 50, generate: (i) => patientNdjson(i, 4) },
+    // 120 inputs since @cosyte/fhir 0.1.11: 50 made a base phase of 4.9 ms on the runner, short of
+    // the 8 ms this file asks of every base phase.
+    count: { n: 120, generate: (i) => patientNdjson(i, 4) },
     // 640 lines. On GitHub-hosted runners the planted quadratic cleared the ceiling by a margin of
     // 1.12 at 150 lines and fell short of it (signal 5.9) at 200: the quadratic must outweigh the
     // linear parse of each line, which it does only from a few hundred lines. The margin read 1.47

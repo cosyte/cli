@@ -13,6 +13,7 @@
 import { CLI_CODES, CliError, formatDiagnostic } from "../core/diagnostics.js";
 import { EXIT } from "../core/exit-codes.js";
 import {
+  createOutputSink,
   fileChunks,
   readFileBytes,
   readStreamBytes,
@@ -27,9 +28,8 @@ const serverMode = process.argv[2] === "mcp";
 
 // A consumer that closes the pipe (a pager the user quit, a `head` that has seen enough) makes the
 // next write fail. Node reports that as an 'error' event on the stream, which is fatal if nothing is
-// listening, so the sink below is marked closed instead and the command resolves it as a write
-// failure. A server has no result to resolve: it terminates quietly under the same code.
-let stdoutOpen = true;
+// listening, so the output sink below hears it, marks itself closed, and the command resolves it as a
+// write failure. A server has no result to resolve: it terminates quietly under the same code.
 let stderrOpen = true;
 let reported = false;
 
@@ -66,7 +66,6 @@ function reportOutputClosed(): void {
 }
 
 process.stdout.on("error", () => {
-  stdoutOpen = false;
   if (!serverMode) return;
   // A server whose only channel is gone can answer nothing more. Closing the input ends the stdio
   // transport so the loop drains under the code set here; `process.exit()` would truncate the
@@ -75,42 +74,15 @@ process.stdout.on("error", () => {
   process.stdin.destroy();
 });
 
-// Delivery is one question with one answer, however the output was produced. The `stdoutOpen` flag
-// alone cannot answer it: the platform flips it when it dispatches the closed-stream error, which is
-// asynchronous, so a run whose writes are all enqueued before that error arrives would see an open
-// stream, resolve, and report a success over bytes nobody received. So every chunk bound for stdout
-// goes through `emit` and is owed an acknowledgement from the platform, and the invocation may not
-// resolve until each one has come back.
-let produced = false;
-let delivered = true;
-let queued = 0;
-let onFlushed: (() => void) | undefined;
-
-/** Queue one chunk of the data channel on stdout; it counts as undelivered until acknowledged. */
-function emit(chunk: string): void {
-  produced = true;
-  if (!stdoutOpen) {
-    delivered = false;
-    return;
-  }
-  queued += 1;
-  process.stdout.write(chunk, (err) => {
-    if (err !== null && err !== undefined) delivered = false;
-    queued -= 1;
-    if (queued > 0 || onFlushed === undefined) return;
-    const resume = onFlushed;
-    onFlushed = undefined;
-    resume();
-  });
-}
-
-/** Resolve once every queued write has come back from the platform, acknowledged or failed. */
-function flushed(): Promise<void> {
-  if (queued === 0) return Promise.resolve();
-  return new Promise((resolve) => {
-    onFlushed = resolve;
-  });
-}
+// Delivery is one question with one answer, however the output was produced. A closed-stream flag
+// alone cannot answer it: the platform raises the closed-stream error asynchronously, so a run
+// whose writes are all enqueued before that error arrives would see an open stream, resolve, and
+// report a success over bytes nobody received. So every chunk bound for stdout
+// goes through the sink, which counts each one as undelivered until the platform acknowledges it,
+// and the invocation may not resolve until each one has come back. The sink also waits for `drain`
+// when stdout's buffer is full, so a slow consumer holds the command back instead of the command
+// queueing its whole output in memory. It is made only for a command run: a server owns stdout.
+const sink = serverMode ? undefined : createOutputSink(process.stdout);
 
 const deps: RunDeps = {
   readFile: (path) => readFileBytes(path),
@@ -118,10 +90,11 @@ const deps: RunDeps = {
   openFile: (path) => fileChunks(path),
   openStdin: () => streamChunks(process.stdin),
   writeStdout: (chunk) => {
-    // Fail fast so the rest of a record stream is not parsed into a channel that is already gone;
-    // the acknowledgement in `emit` is what catches a consumer that leaves without a write failing.
-    if (!stdoutOpen) throw new Error("stdout closed");
-    emit(chunk);
+    // Fail fast so the rest of the output is not produced into a channel that is already gone; the
+    // acknowledgement the sink waits for is what catches a consumer that leaves without a write
+    // failing.
+    if (sink === undefined) throw new Error("stdout belongs to the server");
+    return sink.write(chunk);
   },
 };
 
@@ -143,22 +116,29 @@ if (serverMode) {
       process.exitCode = 70;
     });
 } else {
+  const out = sink as NonNullable<typeof sink>;
   run(process.argv.slice(2), deps)
     .then(async (result) => {
       // A single-result command hands its whole payload over here; a record stream has already
-      // written itself, line by line, through `deps.writeStdout`. Both are the same `emit`.
-      if (result.stdout !== "") emit(result.stdout);
+      // written itself through `deps.writeStdout`. Both go through the same sink.
+      if (result.stdout !== "") {
+        try {
+          await out.write(result.stdout);
+        } catch {
+          // stdout had already gone: the sink counts it as undelivered, and it is reported below.
+        }
+      }
       // Fail safe across the window where an acknowledgement is still outstanding: if the process
       // were ever to end without the platform coming back, the code left standing is the
       // output-error one, never a success over bytes nobody has confirmed receiving.
-      if (produced) process.exitCode = EXIT.IOERR;
-      await flushed();
+      if (out.produced) process.exitCode = EXIT.IOERR;
+      await out.flushed();
 
       // Output that reached nobody overrides whatever the command resolved to: the invocation did
       // not finish, so it is never reported as the success (or the data error) it computed, and the
       // summary describing that outcome is withdrawn with it. A command that legitimately produced
       // no output at all is untouched by this: it delivered everything it owed.
-      if (produced && !(delivered && stdoutOpen)) {
+      if (out.produced && !out.delivered) {
         reportOutputClosed();
         return;
       }

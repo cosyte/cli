@@ -45,13 +45,119 @@ export interface RunDeps {
   /** Optional: open stdin as a stream of byte chunks (see {@link streamChunks}). */
   readonly openStdin?: () => AsyncIterable<Uint8Array>;
   /**
-   * Optional: write one piece of the data channel **as it is produced**. When present, a multi-record
-   * `parse` writes each record's NDJSON line through here instead of accumulating them, and the
-   * returned result's `stdout` is empty because the output has already been delivered. May throw (a
-   * consumer that closed the pipe); the caller turns that into a value-free
+   * Optional: write one piece of the data channel **as it is produced**. When present, `parse` writes
+   * its output through here instead of returning it: each record's NDJSON line on a multi-record
+   * input, and a single message's JSON in bounded pieces, and the returned result's `stdout` is empty
+   * because the output has already been delivered.
+   *
+   * Returning a promise says the consumer is behind (the stream's buffer is full): no more output is
+   * produced, and no more input read for it, until the promise settles. {@link createOutputSink}
+   * returns one exactly when the stream asks for a `drain`. Any other return value is ignored, so a
+   * sink written as `(chunk) => lines.push(chunk)` still fits. May throw, or return a promise that
+   * rejects (a consumer that closed the pipe); the caller turns either into a value-free
    * `CLI_OUTPUT_WRITE_FAILED`.
    */
-  readonly writeStdout?: (chunk: string) => void;
+  readonly writeStdout?: (chunk: string) => unknown;
+}
+
+/**
+ * The stdout side of the `cosyte` bin, from {@link createOutputSink}: every chunk of the data channel
+ * goes through {@link OutputSink.write}, which waits for the consumer and keeps count of what it was
+ * owed.
+ */
+export interface OutputSink {
+  /**
+   * Queue `chunk` on the stream. Returns a promise when the stream's buffer is full, which settles
+   * when the stream drains (or closes, or fails): the caller writes nothing more until then.
+   *
+   * @throws {Error} When the stream has already closed or failed: nothing more can be delivered.
+   */
+  write(chunk: string): Promise<void> | undefined;
+  /** Resolve once every queued write has been acknowledged or has failed, or the stream has closed. */
+  flushed(): Promise<void>;
+  /** Whether anything was written (or attempted) at all. */
+  readonly produced: boolean;
+  /** Whether every write was acknowledged without an error and the stream is still open. */
+  readonly delivered: boolean;
+  /** Whether the stream is still open: no error and no close seen. */
+  readonly open: boolean;
+}
+
+/**
+ * Wrap a writable stream (`process.stdout` in the bin) as an {@link OutputSink} that honours
+ * back-pressure: when `stream.write` says its buffer is full, the write hands back a promise that
+ * settles on `drain`, so the producer stops instead of queueing its whole output in memory.
+ *
+ * It also answers the delivery question a closed pipe raises. A consumer that closes the pipe makes
+ * a later write fail, which the stream reports asynchronously, so a run whose writes were all queued
+ * before that report would look delivered. Every chunk is therefore owed an acknowledgement, and
+ * {@link OutputSink.delivered} is true only when each one came back clean.
+ *
+ * @param stream - The stream to write to.
+ * @returns The sink.
+ * @example
+ * ```ts
+ * import { PassThrough } from "node:stream";
+ * import { createOutputSink } from "@cosyte/cli";
+ *
+ * const out = new PassThrough();
+ * const sink = createOutputSink(out);
+ * await sink.write("{}\n");
+ * await sink.flushed();
+ * sink.delivered; // => true
+ * ```
+ */
+export function createOutputSink(stream: NodeJS.WritableStream): OutputSink {
+  let produced = false;
+  let failed = false;
+  let open = true;
+  let queued = 0;
+  let waiters: (() => void)[] = [];
+
+  /** Settle every wait (for a drain or for the queue to empty). */
+  const wake = (): void => {
+    const now = waiters;
+    waiters = [];
+    for (const w of now) w();
+  };
+  const ended = (): void => {
+    open = false;
+    wake();
+  };
+  stream.on("error", ended);
+  stream.on("close", ended);
+  stream.on("drain", wake);
+
+  return {
+    write(chunk) {
+      produced = true;
+      if (!open) {
+        failed = true;
+        throw new Error("the output stream has closed");
+      }
+      queued += 1;
+      const room = stream.write(chunk, (err) => {
+        if (err instanceof Error) failed = true;
+        queued -= 1;
+        if (queued === 0) wake();
+      });
+      if (room) return undefined;
+      return new Promise<void>((resolve) => waiters.push(resolve));
+    },
+    async flushed() {
+      // Woken by every acknowledgement that empties the queue, every drain, and the stream's end.
+      while (queued > 0 && open) await new Promise<void>((resolve) => waiters.push(resolve));
+    },
+    get produced() {
+      return produced;
+    },
+    get delivered() {
+      return !failed && open;
+    },
+    get open() {
+      return open;
+    },
+  };
 }
 
 /** The value-free failure for a file that is missing, a directory, or otherwise unreadable. */

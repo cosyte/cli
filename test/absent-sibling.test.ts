@@ -81,9 +81,14 @@ describe("an absent @cosyte/fhir degrades to a value-free CLI_PARSER_UNAVAILABLE
       optionalDependencies: Record<string, string>;
       devDependencies: Record<string, string>;
     };
-    expect(manifest.optionalDependencies["@cosyte/fhir"]).toBe(
-      manifest.optionalDependencies["@cosyte/transform"],
-    );
+    // The same kind: a caret range on the same minor line, so whatever fhir transform's own peer
+    // range accepts on that line, this one does too. The floors may differ: fhir's is the release
+    // we test against.
+    const kind = (range: string | undefined): string | undefined =>
+      /^\^(\d+\.\d+)\.\d+$/.exec(range ?? "")?.[1];
+    const fhir = manifest.optionalDependencies["@cosyte/fhir"];
+    expect(kind(fhir)).toBeDefined();
+    expect(kind(fhir)).toBe(kind(manifest.optionalDependencies["@cosyte/transform"]));
     expect(manifest.devDependencies["@cosyte/fhir"]).toBeUndefined();
   });
 

@@ -89,8 +89,12 @@ export {
   readStreamBytes,
   fileChunks,
   streamChunks,
+  createOutputSink,
+  type OutputSink,
   type RunDeps,
 } from "./core/io.js";
+
+export { jsonChunks, JSON_CHUNK_CHARS } from "./core/json-text.js";
 
 export {
   VALUE_FREE,

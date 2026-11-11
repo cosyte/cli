@@ -7,7 +7,9 @@ name: Bench
 # gzip size. Then the profile (bench/profile.mjs): the cold import of every package the command
 # loads, the memory of one whole invocation on each large input, throughput from each shape's
 # smallest size to its largest, allocations and a long run of the in-process command, and a CPU and
-# a sampled heap profile of the hottest paths, with the budgets read from them.
+# a sampled heap profile of the hottest paths, with the budgets read from them. On a pull request
+# the profile job also profiles the base build's memory, its long NDJSON line and its output under
+# back-pressure, on the same runner, so a change's before and after are read side by side.
 #
 # On demand, and on a pull request that changes the bench or this file, so a change to what is measured is measured where it will be read. ADVISORY: it fails only
 # when it cannot measure (a suite that does not load, a process that dies, a results file that does
@@ -119,12 +121,41 @@ jobs:
           set -euo pipefail
           pnpm bench:profile --out bench-results/profile
           cat bench-results/profile/profile.md >> "${GITHUB_STEP_SUMMARY}"
+      # On a pull request, the base build is profiled on the same runner too, for the sections a
+      # change to the command's memory moves: so the before and after of a change are read side by
+      # side, from one machine. The base is built from its own lockfile, as it was released.
+      - name: Check out the base
+        if: ${{ github.event_name == 'pull_request' }}
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: base
+          persist-credentials: false
+      - name: Profile the base build
+        if: ${{ github.event_name == 'pull_request' }}
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          pnpm -C base install --frozen-lockfile
+          pnpm -C base build
+          node --expose-gc --enable-source-maps bench/profile.mjs base/dist/index.mjs \
+            --only memory --only ndjson --only backpressure --out bench-results/profile-base
+          {
+            echo ""
+            echo "## The base build, ${BASE_SHA}"
+            echo ""
+            cat bench-results/profile-base/profile.md
+          } >> "${GITHUB_STEP_SUMMARY}"
       - name: Keep the profile
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: bench-profile
-          path: bench-results/profile/
+          path: |
+            bench-results/profile/
+            bench-results/profile-base/
           if-no-files-found: warn
           retention-days: 30
 
