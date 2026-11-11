@@ -73,7 +73,7 @@ describe("an absent @cosyte/fhir degrades to a value-free CLI_PARSER_UNAVAILABLE
     expect(err.message).not.toMatch(/registry/);
   });
 
-  it("is declared as an optional dependency, at the same kind of range as transform", () => {
+  it("is declared as an optional dependency, inside the range transform asks for as its peer", () => {
     // Declared, so an install that skips peers (npm's --legacy-peer-deps) no longer leaves it out.
     const manifest = JSON.parse(
       readFileSync(join(import.meta.dirname, "..", "package.json"), "utf8"),
@@ -81,14 +81,26 @@ describe("an absent @cosyte/fhir degrades to a value-free CLI_PARSER_UNAVAILABLE
       optionalDependencies: Record<string, string>;
       devDependencies: Record<string, string>;
     };
-    // The same kind: a caret range on the same minor line, so whatever fhir transform's own peer
-    // range accepts on that line, this one does too. The floors may differ: fhir's is the release
-    // we test against.
-    const kind = (range: string | undefined): string | undefined =>
-      /^\^(\d+\.\d+)\.\d+$/.exec(range ?? "")?.[1];
-    const fhir = manifest.optionalDependencies["@cosyte/fhir"];
-    expect(kind(fhir)).toBeDefined();
-    expect(kind(fhir)).toBe(kind(manifest.optionalDependencies["@cosyte/transform"]));
+    // transform's own peer range for fhir, as the installed transform declares it.
+    const transform = JSON.parse(
+      readFileSync(
+        join(import.meta.dirname, "..", "node_modules", "@cosyte", "transform", "package.json"),
+        "utf8",
+      ),
+    ) as { peerDependencies: Record<string, string> };
+    // A caret range: its minor line and its floor. Ours must sit on the same minor line as
+    // transform's peer range, at a floor no lower, so whatever we accept, transform accepts too.
+    // The floors may differ: fhir's is the release we test against.
+    const parse = (range: string | undefined): { line: string; floor: number[] } | undefined => {
+      const m = /^\^((\d+)\.(\d+))\.(\d+)$/.exec(range ?? "");
+      return m === null ? undefined : { line: m[1] ?? "", floor: [m[2], m[3], m[4]].map(Number) };
+    };
+    const ours = parse(manifest.optionalDependencies["@cosyte/fhir"]);
+    const peer = parse(transform.peerDependencies["@cosyte/fhir"]);
+    expect(ours).toBeDefined();
+    expect(peer).toBeDefined();
+    expect(ours?.line).toBe(peer?.line);
+    expect((ours?.floor[2] ?? 0) >= (peer?.floor[2] ?? 0)).toBe(true);
     expect(manifest.devDependencies["@cosyte/fhir"]).toBeUndefined();
   });
 

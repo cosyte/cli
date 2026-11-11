@@ -211,7 +211,8 @@ cosyte convert adt.hl7 --to fhir --quiet    # bundle only; the exit code carries
 `--to fhir` is required (the only target today). The CLI adds no mapping of its own. The FHIR is
 `@cosyte/transform`'s, faithfully surfaced. The load-bearing rule mirrors `validate`: an
 **error-severity** conversion issue exits **`1`**, never `0`. A non-HL7 input (e.g. a FHIR document) is
-a data error (`65`), never a fake conversion.
+a data error (`65`), never a fake conversion. A valued field the conversion does not carry, such as
+PID-29 death date and time, is reported as `TRANSFORM_ELEMENT_DROPPED` at its own location.
 
 ### `cosyte map-codes`
 

@@ -158,6 +158,59 @@ describe("convert: HL7 v2 → FHIR via @cosyte/transform", () => {
     expect((JSON.parse(r.stdout) as { resourceType: string }).resourceType).toBe("Bundle");
   });
 
+  describe("PID fields the conversion does not carry into Patient", () => {
+    // A synthetic ADT^A01 whose PID values race (10), primary language (15), SSN (19), ethnic group
+    // (22), death date and time (29) and death indicator (30). `@cosyte/transform` maps none of them
+    // yet; it reports each one as a dropped element, and the command must show that report rather
+    // than hand back a Patient that silently lost them (a death that reads as a living patient).
+    const pid = Array.from({ length: 31 }, () => "");
+    pid[0] = "PID";
+    pid[1] = "1";
+    pid[3] = "ZZMRN-0001^^^ZZHOSP^MR";
+    pid[5] = "ZZSENTINELLAST^ZZSENTINELFIRST";
+    pid[7] = "19800101";
+    pid[8] = "F";
+    pid[10] = "ZZRACE^Synthetic race^ZZSYS";
+    pid[15] = "ZZLANG^Synthetic language^ZZSYS";
+    pid[19] = "ZZSSN-SYNTHETIC";
+    pid[22] = "ZZETH^Synthetic ethnic group^ZZSYS";
+    pid[29] = "20240102120000";
+    pid[30] = "Y";
+    const withDropped = new TextEncoder().encode(
+      "MSH|^~\\&|ZZAPP|ZZFAC|ZZRECV|ZZRFAC|20240101120000||ADT^A01|ZZMSG-0001|P|2.5\r" +
+        "EVN|A01|20240101120000\r" +
+        `${pid.join("|")}\r` +
+        "PV1|1|I|ZZWARD^101^A\r",
+    );
+    const DROPPED = ["PID.10", "PID.15", "PID.19", "PID.22", "PID.29", "PID.30"];
+
+    it("reports each dropped PID field on stderr, value-free, and still exits 0", async () => {
+      const r = await convertCommand(["adt.hl7", "--to", "fhir"], fileDeps(withDropped));
+      expect(r.exit).toBe(EXIT.OK);
+      for (const field of DROPPED) {
+        expect(r.stderr).toMatch(
+          new RegExp(
+            `information TRANSFORM_ELEMENT_DROPPED at ${field.replace(".", "\\.")}( |\\n)`,
+          ),
+        );
+      }
+      expect(r.stderr).toContain("TRANSFORM_ELEMENT_DROPPED at PID.29 → Patient.deceasedDateTime");
+      expect(r.stderr).toContain("TRANSFORM_ELEMENT_DROPPED at PID.30 → Patient.deceasedBoolean");
+      expect(r.stderr).not.toMatch(/ZZRACE|ZZLANG|ZZSSN|ZZETH|20240102120000/);
+      expect((JSON.parse(r.stdout) as { resourceType: string }).resourceType).toBe("Bundle");
+    });
+
+    it("carries the dropped-field findings in --json output", async () => {
+      const r = await convertCommand(["adt.hl7", "--to", "fhir", "--json"], fileDeps(withDropped));
+      expect(r.exit).toBe(EXIT.OK);
+      const body = JSON.parse(r.stdout) as { findings: Finding[] };
+      const dropped = body.findings
+        .filter((f) => f.code === "TRANSFORM_ELEMENT_DROPPED")
+        .map((f) => f.location.split(" ")[0]);
+      expect(dropped).toEqual(expect.arrayContaining(DROPPED));
+    });
+  });
+
   it("propagates an unexpected (non-CliError) read failure for the dispatcher to map", async () => {
     await expect(convertCommand(["x.hl7", "--to", "fhir"], throwingDeps)).rejects.toThrow();
   });
