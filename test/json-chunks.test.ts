@@ -59,6 +59,14 @@ describe("jsonChunks writes what JSON.stringify writes", () => {
       bytes: new Uint8Array([1, 2]),
       map: new Map([["a", 1]]),
       nul: null,
+      // Containers of plain values, which may be written natively, beside ones that may not.
+      flat: { a: "x", b: 2, c: true, d: null, e: [1, "y", false, null] },
+      classy: new (class {
+        readonly a = 1;
+      })(),
+      bare: Object.assign(Object.create(null) as object, { b: 2 }),
+      // eslint-disable-next-line no-sparse-arrays
+      holey: [1, , 3],
     };
     for (const space of [undefined, 0, 2, 4]) {
       expect(join(tricky, space)).toBe(JSON.stringify(tricky, null, space));
@@ -92,6 +100,13 @@ describe("jsonChunks writes in bounded pieces", () => {
     expect(pieces.length).toBeGreaterThan(10);
     for (const p of pieces) expect(p.length).toBeLessThanOrEqual(2 * 1_024);
     expect(pieces.join("")).toBe(JSON.stringify(wide, null, 2));
+  });
+
+  it("a long flat array is walked rather than written whole", () => {
+    const numbers = Array.from({ length: 2_000 }, (_, i) => i * 1.5);
+    const pieces = [...jsonChunks({ numbers }, 2, 1_024)];
+    for (const p of pieces) expect(p.length).toBeLessThanOrEqual(2 * 1_024);
+    expect(pieces.join("")).toBe(JSON.stringify({ numbers }, null, 2));
   });
 
   it("a string longer than the piece size is written in slices, never as one piece", () => {

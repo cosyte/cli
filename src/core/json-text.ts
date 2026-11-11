@@ -16,6 +16,9 @@
 /** The piece size {@link jsonChunks} aims for: 64 Ki characters, a pipe buffer's worth or so. */
 export const JSON_CHUNK_CHARS = 64 * 1024;
 
+/** What {@link flatText} allows a member for its key, its punctuation and a non-string value. */
+const FLAT_MEMBER_CHARS = 48;
+
 /** One open array or object on the way down. */
 interface Frame {
   /** The array or object being written. */
@@ -46,6 +49,29 @@ function prepare(value: unknown, key: string): unknown {
 /** True for what `JSON.stringify` leaves out of an object and writes as `null` in an array. */
 function isAbsent(v: unknown): boolean {
   return v === undefined || typeof v === "function" || typeof v === "symbol";
+}
+
+/**
+ * The text of a **flat** container, written by `JSON.stringify` itself: a plain array or object whose
+ * every value is a string, a finite or non-finite number, a boolean or `null`, and whose text is
+ * at most about `size` characters (its strings, plus a generous allowance a member for the rest). Such a container has nothing for `toJSON` to change and nothing
+ * to drop, so the native writer's text is the text, and it is much faster than a walk. Anything else
+ * (a nested container, a value to drop, a class instance, a long string) returns `undefined` and is
+ * walked.
+ */
+function flatText(obj: object, isArray: boolean, gap: string, size: number): string | undefined {
+  const proto: unknown = Object.getPrototypeOf(obj);
+  if (proto !== (isArray ? Array.prototype : Object.prototype)) return undefined;
+  const values: readonly unknown[] = isArray ? (obj as readonly unknown[]) : Object.values(obj);
+  let chars = 0;
+  for (let i = 0; i < values.length; i++) {
+    const v = values[i];
+    if (typeof v === "string") chars += v.length;
+    else if (v !== null && typeof v !== "number" && typeof v !== "boolean") return undefined;
+  }
+  return chars + values.length * FLAT_MEMBER_CHARS > size
+    ? undefined
+    : JSON.stringify(obj, null, gap);
 }
 
 /** True for the first half of a surrogate pair. */
@@ -122,9 +148,15 @@ export function* jsonChunks(
     else if (typeof v === "bigint") throw new TypeError("Do not know how to serialize a BigInt");
     else {
       const obj = v as object;
+      const isArray = Array.isArray(obj);
+      const flat = flatText(obj, isArray, gap, size);
+      if (flat !== undefined) {
+        // The native writer indents from column zero; each of its line breaks moves to this depth.
+        out += gap === "" || indent === "" ? flat : flat.replaceAll("\n", `\n${indent}`);
+        return;
+      }
       if (open.has(obj)) throw new TypeError("Converting circular structure to JSON");
       open.add(obj);
-      const isArray = Array.isArray(obj);
       out += isArray ? "[" : "{";
       stack.push({
         value: obj,
