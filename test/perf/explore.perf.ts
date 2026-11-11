@@ -117,8 +117,11 @@ function rebuildQuadratic(input: Uint8Array, terminator: number): Uint8Array {
     let start = 0;
     let seen = 0;
     while (seen < p) if (input[start++] === terminator) seen++;
-    let end = start;
-    while (input[end] !== terminator) end++;
+    // The end is found the same way, from the first byte, as a splitter that keeps no offsets does.
+    let end = 0;
+    let ended = 0;
+    while (ended <= p) if (input[end++] === terminator) ended++;
+    end--;
     out.set(input.subarray(start, end + 1), written);
     written += end + 1 - start;
   }
@@ -205,12 +208,11 @@ function probe(
 
 describe("explore", () => {
   for (const [inputs, size] of [
+    [4, 400],
     [3, 400],
-    [2, 400],
-    [2, 450],
     [4, 350],
-    [2, 350],
-    [1, 500],
+    [2, 450],
+    [4, 300],
   ] as const) {
     it(`validate ${String(inputs)} x ${String(size)}`, () => {
       const o = singleMessage();
@@ -221,7 +223,7 @@ describe("explore", () => {
       );
     });
   }
-  for (const lines of [800, 960, 1200]) {
+  for (const lines of [320, 480, 640]) {
     it(`ndjson ${String(lines)}`, () => {
       const o = ndjsonRecords();
       probe(

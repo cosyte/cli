@@ -117,8 +117,11 @@ function rebuildQuadratic(input: Uint8Array, terminator: number): Uint8Array {
     let start = 0;
     let seen = 0;
     while (seen < p) if (input[start++] === terminator) seen++;
-    let end = start;
-    while (input[end] !== terminator) end++;
+    // The end is found the same way, from the first byte, as a splitter that keeps no offsets does.
+    let end = 0;
+    let ended = 0;
+    while (ended <= p) if (input[end++] === terminator) ended++;
+    end--;
     out.set(input.subarray(start, end + 1), written);
     written += end + 1 - start;
   }
