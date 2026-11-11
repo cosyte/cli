@@ -109,9 +109,23 @@ export async function collectChunks(chunks: ByteChunks): Promise<Uint8Array> {
   return Buffer.concat(parts);
 }
 
-/** True iff every byte of `line` is whitespace (so the line carries no record). */
+/** True for the ASCII bytes `String.prototype.trim` removes: tab, LF, VT, FF, CR and space. */
+function isAsciiSpace(byte: number): boolean {
+  return byte === 0x20 || (byte >= 0x09 && byte <= 0x0d);
+}
+
+/**
+ * True iff every character of `line` is whitespace (so the line carries no record). A line that
+ * opens with a printable ASCII byte, as every JSON record does, is decided on that byte without
+ * decoding the line; only a line that is ASCII space up to a non-ASCII byte is decoded, to test the
+ * Unicode spaces `trim` also removes.
+ */
 function isBlank(line: Uint8Array): boolean {
-  return new TextDecoder("utf-8", { fatal: false }).decode(line).trim().length === 0;
+  let i = 0;
+  while (i < line.length && isAsciiSpace(line[i] as number)) i += 1;
+  if (i === line.length) return true;
+  if ((line[i] as number) < 0x80) return false;
+  return new TextDecoder("utf-8", { fatal: false }).decode(line.subarray(i)).trim().length === 0;
 }
 
 /** Drop the `\r` of a CRLF terminator, which belongs to the terminator rather than to the record. */
@@ -140,21 +154,36 @@ function stripCarriageReturn(line: Buffer): Buffer {
  * ```
  */
 export async function* ndjsonRecords(chunks: ByteChunks): AsyncGenerator<Uint8Array> {
-  let carry: Buffer = Buffer.alloc(0);
+  // The start of a line that has not ended yet, in the pieces it arrived in. A line that spans many
+  // chunks is joined once, when its terminator arrives, never once per chunk.
+  let carry: Buffer[] = [];
+  let carried = 0;
+  /** The carried pieces plus `head`, joined: the line that just ended. */
+  const take = (head: Buffer): Buffer => {
+    const line = carried === 0 ? head : Buffer.concat([...carry, head], carried + head.length);
+    carry = [];
+    carried = 0;
+    return line;
+  };
+
   for await (const chunk of chunks) {
-    const buf = carry.length > 0 ? Buffer.concat([carry, asBuffer(chunk)]) : asBuffer(chunk);
+    const buf = asBuffer(chunk);
     let start = 0;
     for (;;) {
       const end = buf.indexOf(LINE_FEED, start);
       if (end < 0) break;
-      const line = stripCarriageReturn(buf.subarray(start, end));
+      const line = stripCarriageReturn(take(buf.subarray(start, end)));
       if (!isBlank(line)) yield line;
       start = end + 1;
     }
-    // Copy the tail so the chunk it came from can be released while we wait for the next one.
-    carry = start === 0 ? asBuffer(buf) : Buffer.from(buf.subarray(start));
+    if (start < buf.length) {
+      // Copy the tail so the chunk it came from can be released while we wait for the next one.
+      const tail = start === 0 ? buf : Buffer.from(buf.subarray(start));
+      carry.push(tail);
+      carried += tail.length;
+    }
   }
-  const last = stripCarriageReturn(carry);
+  const last = stripCarriageReturn(take(Buffer.alloc(0)));
   if (!isBlank(last)) yield last;
 }
 

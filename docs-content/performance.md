@@ -31,13 +31,23 @@ A run starts Node.js, loads the command, reads the input, and calls the library 
 - **Output.** `parse` writes the model as JSON, which is often several times the size of the
   message. Indented output, the default, is larger than `--json`.
 
+## How the output is written
+
+- **`parse` writes as it goes.** The JSON for one message is written in pieces of about 64 KiB as
+  it is produced, never built as one string first, and each record of an MLLP stream or an
+  `--ndjson` file is written as soon as it is parsed.
+- **A slow reader holds the command back.** When the process reading the output falls behind (a
+  pager, a network upload, a slow `jq`), `parse` waits for it before it writes, parses or reads
+  anything more, so the output it has not delivered yet never piles up in memory.
+- **Other commands** write their result in one piece when it is ready.
+
 ## How the input is read
 
 - **One message** is read whole before it is parsed. That is the case for every command except a
   multi-record `parse`.
 - **An MLLP stream or an `--ndjson` file** is read in chunks, and each record is parsed and written
   as soon as it is complete, so the first line reaches the next process before the rest of the
-  file is read.
+  file is read. An NDJSON line that spans many chunks is joined once, when its line ends.
 - **The size limit**, 64 MiB for one run, is checked against the running count as the input
   arrives. It sits well below the largest string Node.js can hold, which leaves room for the JSON
   output to be several times larger than the input.

@@ -140,7 +140,8 @@ line) streams as **NDJSON**, one `{ record, format, model, warnings }` line each
 isolation: a record that fails to parse becomes a value-free `{ record, error }` line and the stream
 continues; the overall exit is a data error (`65`) if any record failed. Each line is written **as
 its record is parsed**, before the rest of the input has been read, so a batch pipes straight into
-the next process.
+the next process. A single message's JSON is written in pieces as it is produced, and when the
+reader falls behind, `parse` waits for it instead of holding the unread output in memory.
 
 **Input size.** `parse` reads at most **67108864 bytes (64 MiB)** per invocation, the number
 `cosyte --help` prints. A larger input is a value-free `CLI_INPUT_TOO_LARGE` refusal naming that

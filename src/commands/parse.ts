@@ -15,6 +15,11 @@
  * convention). Multi-record output is emitted **record by record, as each is parsed**, so the first
  * line reaches the data channel long before the last byte of input has been read.
  *
+ * **Output streams.** Given an output sink, `parse` writes through it and holds no whole output: a
+ * single message's JSON is written in bounded pieces as it is serialized (`core/json-text.ts`), and
+ * each record's line as the record is parsed. When the sink says the consumer is behind, `parse`
+ * waits before it writes, parses or reads anything more.
+ *
  * **The size limit.** One invocation reads at most the documented number of input bytes (see
  * `core/limits.ts`), counted against the running total as the input arrives. A larger input is a
  * value-free `CLI_INPUT_TOO_LARGE` **data error**, never the internal-error code, and never a partial
@@ -34,6 +39,7 @@ import { EXIT } from "../core/exit-codes.js";
 import type { CosyteFormat } from "../core/format.js";
 import { resolveInputStream } from "../core/input.js";
 import type { RunDeps } from "../core/io.js";
+import { jsonChunks } from "../core/json-text.js";
 import { parseFormat, type ParseWarning } from "../core/parsers.js";
 import { VALUE_FREE, type PhiPosture } from "../core/phi.js";
 import { collectChunks, mllpFrames, ndjsonRecords, type ByteChunks } from "../core/records.js";
@@ -146,7 +152,35 @@ export async function parseCommand(
     if (e instanceof CliError) return errorResult(e);
     throw e;
   }
-  return await parseSingle(format, bytes, values.json === true, values.quiet === true, posture);
+  return await parseSingle(
+    format,
+    bytes,
+    values.json === true,
+    values.quiet === true,
+    posture,
+    deps.writeStdout,
+  );
+}
+
+/** The sink `parse` writes through: one piece of output, and a promise when the consumer is behind. */
+type Sink = NonNullable<RunDeps["writeStdout"]>;
+
+/**
+ * Write one piece through `sink`, waiting while the consumer is behind. Resolves to nothing once the
+ * piece is handed over, or to the value-free failure when the consumer went away part way through
+ * (a closed pipe): never an unhandled platform error reaching the terminal.
+ */
+async function deliver(sink: Sink, chunk: string, what: string): Promise<CliError | undefined> {
+  try {
+    await sink(chunk);
+    return undefined;
+  } catch {
+    return new CliError(
+      CLI_CODES.CLI_OUTPUT_WRITE_FAILED,
+      EXIT.IOERR,
+      `could not write to the output stream; it closed before ${what}`,
+    );
+  }
 }
 
 /** Parse a single message → one JSON envelope (pretty, or compact under `--json`). Preserves the
@@ -157,6 +191,7 @@ async function parseSingle(
   json: boolean,
   quiet: boolean,
   posture: PhiPosture,
+  writeStdout: Sink | undefined,
 ): Promise<RunResult> {
   let result: { model: unknown; warnings: readonly ParseWarning[] };
   try {
@@ -166,14 +201,29 @@ async function parseSingle(
     return parseFailureResult(format, bytes, posture, e);
   }
   const envelope: ParseEnvelope = { format, model: result.model, warnings: result.warnings };
-  const stdout = (json ? JSON.stringify(envelope) : JSON.stringify(envelope, null, 2)) + "\n";
+  const space = json ? undefined : 2;
 
   const n = envelope.warnings.length;
   const stderr =
     n > 0 && !quiet
       ? `cosyte: parsed ${format} with ${String(n)} warning(s) (see .warnings in output)\n`
       : "";
-  return { stdout, stderr, exit: EXIT.OK };
+
+  if (writeStdout === undefined) {
+    return { stdout: JSON.stringify(envelope, null, space) + "\n", stderr, exit: EXIT.OK };
+  }
+  // With a sink, the text is written as it is serialized, a piece at a time, so the whole of it is
+  // never held at once; the final newline rides with the last piece (an envelope always has one).
+  const pieces = jsonChunks(envelope, space);
+  let step = pieces.next();
+  while (step.done !== true) {
+    const next = pieces.next();
+    const piece = next.done === true ? `${step.value}\n` : step.value;
+    const failed = await deliver(writeStdout, piece, "the output was delivered");
+    if (failed !== undefined) return errorResult(failed);
+    step = next;
+  }
+  return { stdout: "", stderr, exit: EXIT.OK };
 }
 
 /**
@@ -193,29 +243,21 @@ async function parseMulti(
   chunks: ByteChunks,
   ndjson: boolean,
   quiet: boolean,
-  writeStdout: ((chunk: string) => void) | undefined,
+  writeStdout: Sink | undefined,
 ): Promise<RunResult> {
   // MLLP de-frames to enclosed HL7 payloads; every other multi-record input is one record per line.
   const recordFormat: CosyteFormat = format === "mllp" ? "hl7" : format;
   const records = format === "mllp" ? mllpFrames(chunks) : ndjsonRecords(chunks);
 
   const held: string[] = [];
-  const emit = (line: string): void => {
+  const emit = async (line: string): Promise<void> => {
     if (writeStdout === undefined) {
       held.push(line);
       return;
     }
-    try {
-      writeStdout(line);
-    } catch {
-      // The consumer went away part way through the stream (a closed pipe). Value-free, and never
-      // an unhandled platform error reaching the terminal.
-      throw new CliError(
-        CLI_CODES.CLI_OUTPUT_WRITE_FAILED,
-        EXIT.IOERR,
-        "could not write to the output stream; it closed before the record stream finished",
-      );
-    }
+    // Waits while the consumer is behind: the next record is neither parsed nor read until then.
+    const failed = await deliver(writeStdout, line, "the record stream finished");
+    if (failed !== undefined) throw failed;
   };
   const written = (): string => held.join("");
 
@@ -241,7 +283,7 @@ async function parseMulti(
         };
       }
       total += 1;
-      emit(JSON.stringify(line) + "\n");
+      await emit(JSON.stringify(line) + "\n");
     }
   } catch (e) {
     // Fatal, part way through: the exit code is the failure's own, and the lines already emitted stay.

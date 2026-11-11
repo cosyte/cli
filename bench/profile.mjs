@@ -15,6 +15,9 @@
 //    sends all day.
 // 5. One long NDJSON line against the same bytes as one message, the case where the line splitter
 //    carries a line across read chunks.
+// 5b. The bin's memory when its reader is slow: the same runs as section 2 on the inputs with the
+//    most output, once read as fast as it comes and once read a piece at a time, so what a command
+//    holds while it waits for its consumer is read apart from what it holds to do the work.
 // 6. A CPU profile and a sampled heap profile of the hottest paths, with the top functions of each.
 //    A function in this package is named by its place in dist/ (a CPU profile keeps the URL of the
 //    running code); its name is the one it has in src/.
@@ -214,8 +217,16 @@ function startSection(target, bin, data) {
 
 /* 2. Memory of one whole invocation ----------------------------------------------------------- */
 
-/** Run the bin once with the probe loaded; resolves to its peaks, its wall time and its output bytes. */
-function probeRun(bin, argv, dir) {
+/** How a slow reader reads: up to this many bytes, then this long a pause (about 16 MiB a second). */
+const SLOW_READ_BYTES = 64 * KIB;
+const SLOW_READ_PAUSE_MS = 4;
+
+/**
+ * Run the bin once with the probe loaded; resolves to its peaks, its wall time and its output bytes.
+ * `slow` reads stdout a piece at a time with a pause between, as a pager or a network sink does;
+ * otherwise it is read as fast as it arrives.
+ */
+function probeRun(bin, argv, dir, slow = false) {
   const out = join(dir, `probe-${String(Math.random()).slice(2)}.json`);
   return new Promise((resolvePromise, reject) => {
     const start = performance.now();
@@ -224,11 +235,28 @@ function probeRun(bin, argv, dir) {
       env: { ...process.env, COSYTE_BENCH_PROBE_OUT: out },
     });
     let written = 0;
-    child.stdout.on("data", (chunk) => {
-      written += chunk.length;
-    });
+    let timer;
+    if (slow) {
+      // Paused mode: nothing is read but what this loop takes, so the pipe fills and stays full.
+      const take = () => {
+        let left = SLOW_READ_BYTES;
+        for (let c = child.stdout.read(); c !== null; c = left > 0 ? child.stdout.read() : null) {
+          written += c.length;
+          left -= c.length;
+        }
+        timer = setTimeout(take, SLOW_READ_PAUSE_MS);
+      };
+      child.stdout.pause();
+      timer = setTimeout(take, SLOW_READ_PAUSE_MS);
+    } else {
+      child.stdout.on("data", (chunk) => {
+        written += chunk.length;
+      });
+    }
     child.on("error", reject);
     child.on("close", (code) => {
+      if (timer !== undefined) clearTimeout(timer);
+      for (let c = child.stdout.read(); c !== null; c = child.stdout.read()) written += c.length;
       const wall = performance.now() - start;
       if (code !== 0) {
         reject(new Error(`cosyte exited ${String(code)}`));
@@ -545,6 +573,81 @@ async function ndjsonLineSection(cli, data) {
   return lines;
 }
 
+/* 5b. Output under back-pressure ---------------------------------------------------------------- */
+
+/** The runs with the most output for their input: what a slow reader makes the bin hold, if anything. */
+const BACKPRESSURE = [
+  { argv: ["parse"], shape: "HL7 v2 ORU^R01", size: "1 MiB", build: () => S.oruMessage(0, MIB) },
+  {
+    argv: ["parse"],
+    shape: "MLLP stream of ADT^A01",
+    size: "16,000 frames, 4.4 MiB",
+    build: () => S.mllpStream(16_000),
+  },
+  {
+    argv: ["parse", "--ndjson"],
+    shape: "FHIR R4 NDJSON of Patients",
+    size: "4,000 lines, 5.9 MiB",
+    build: () => S.patientNdjson(4_000),
+  },
+  {
+    argv: ["parse"],
+    shape: "FHIR R4 collection Bundle",
+    size: "4 MiB",
+    build: () => S.bundleResource(0, 4 * MIB),
+  },
+];
+
+async function backpressureSection(bin, data) {
+  const dir = mkdtempSync(join(tmpdir(), "cosyte-cli-backpressure-"));
+  const rows = [];
+  try {
+    for (const c of BACKPRESSURE) {
+      const content = toBytes(c.build());
+      const file = join(dir, "input");
+      writeFileSync(file, content);
+      const fast = await probeRun(bin, [...c.argv, file], dir, false);
+      const slow = await probeRun(bin, [...c.argv, file], dir, true);
+      rows.push({
+        command: `cosyte ${c.argv.join(" ")}`,
+        shape: c.shape,
+        size: c.size,
+        inputBytes: content.length,
+        writtenBytes: slow.written,
+        fast: {
+          peakHeapBytes: fast.peakHeapBytes,
+          peakExternalBytes: fast.peakExternalBytes,
+          peakResidentBytes: fast.peakResidentBytes,
+          wallMs: fast.wallMs,
+        },
+        slow: {
+          peakHeapBytes: slow.peakHeapBytes,
+          peakExternalBytes: slow.peakExternalBytes,
+          peakResidentBytes: slow.peakResidentBytes,
+          wallMs: slow.wallMs,
+        },
+      });
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+  data.backpressure = rows;
+  const lines = [
+    "### Output under back-pressure",
+    "",
+    `The bin run once on the input as in the memory section, its stdout read two ways: as fast as it arrives, and by a slow reader that takes up to ${size(SLOW_READ_BYTES)} and then pauses ${String(SLOW_READ_PAUSE_MS)} ms. A command that waits for its reader holds about the same either way; one that does not queues the output its reader has not taken yet. Peak heap and external memory are read as in the memory section, and resident is the process's whole peak resident set.`,
+    "",
+    "| Command | Shape | Size | Output | Peak heap, fast | Peak heap, slow | External, fast | External, slow | Resident, fast | Resident, slow | Time, slow |",
+    "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+  ];
+  for (const r of rows) {
+    lines.push(
+      `| ${r.command} | ${r.shape} | ${r.size} | ${size(r.writtenBytes)} | ${size(r.fast.peakHeapBytes)} | ${size(r.slow.peakHeapBytes)} | ${size(r.fast.peakExternalBytes)} | ${size(r.slow.peakExternalBytes)} | ${size(r.fast.peakResidentBytes)} | ${size(r.slow.peakResidentBytes)} | ${ms(r.slow.wallMs)} |`,
+    );
+  }
+  return lines;
+}
+
 /* 6. CPU and heap profile --------------------------------------------------------------------- */
 
 /** The profiler's own frames: the root and idle time, which belong to no workload. */
@@ -676,7 +779,15 @@ async function profileSection(cli, data, dir) {
 
 /* main ---------------------------------------------------------------------------------------- */
 
-const SECTIONS = ["start", "memory", "throughput", "allocations", "ndjson", "profile"];
+const SECTIONS = [
+  "start",
+  "memory",
+  "throughput",
+  "allocations",
+  "ndjson",
+  "backpressure",
+  "profile",
+];
 
 async function main() {
   const options = args(process.argv.slice(2));
@@ -705,6 +816,7 @@ async function main() {
   if (want("throughput")) lines.push("", ...(await throughputSection(cli, data, groups)));
   if (want("allocations")) lines.push("", ...(await allocationSection(cli, data)));
   if (want("ndjson")) lines.push("", ...(await ndjsonLineSection(cli, data)));
+  if (want("backpressure")) lines.push("", ...(await backpressureSection(bin, data)));
   if (want("profile")) lines.push("", ...(await profileSection(cli, data, options.dir)));
   const text = `${lines.join("\n")}\n`;
   process.stdout.write(text);
