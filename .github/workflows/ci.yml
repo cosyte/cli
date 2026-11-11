@@ -88,11 +88,26 @@ jobs:
   # than a gate.
   # That has happened here for real once (`prepublish`, 2026-08-05, see the banner above). Dropping
   # a line without removing its context first is the worse direction and bricks the branch.
+  #
+  # THE PERFORMANCE STANDARD'S TWO PULL REQUEST JOBS run beside `verify`, never after it, so a pull
+  # request waits for the slowest job rather than their sum:
+  # - `scaling-gate`: `pnpm test:perf`, the scaling gate in test/perf and its self-check, never under
+  #   coverage. Its context, `ci / scaling-gate`, arrives NOT REQUIRED (see the banner above): adding
+  #   it to `ci-required-checks` is a ruleset change for an organization admin, and a skipped job
+  #   satisfies a required context, so require it only while `run-scaling-gate` stays on.
+  # - `bench-compare` (pull requests only): bench/cli.bench.mjs timed on the base build and the
+  #   head build, interleaved on one runner, the sizes marked `compare` only. Advisory: it never
+  #   fails, so never require it.
+  # The reference also carries the jobs `coverage-ratchet`, `mutation`, `bun` and `deno`, each off by
+  # default and not switched on here, so each is a skipped context that requires nothing.
   ci:
-    uses: cosyte/.github/.github/workflows/ci.yml@810a8affe9de69ef8f788dc96ae15cf042874dc3 # workflows-2026-11-08-810a8affe9de
+    uses: cosyte/.github/.github/workflows/ci.yml@0be6757a773885cbd5165dbfa0f93772d907b3e8 # workflows-2026-11-10-0be6757a7738
     with:
       run-phi-scan: true
       node-versions: '["22", "24", "26"]'
+      run-scaling-gate: true
+      run-bench-compare: true
+      bench-suites: bench/cli.bench.mjs
 
   # The runnable examples under examples/: each one runs the built `cosyte` executable, found
   # through `@cosyte/cli/package.json` resolved by this package's own `exports`, on the synthetic

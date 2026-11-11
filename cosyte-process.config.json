@@ -2,7 +2,8 @@
   "format": {
     "globs": [
       "src/**/*.{ts,md}",
-      "test/**/*.ts",
+      "test/**/*.{ts,mjs}",
+      "bench/**/*.mjs",
       "scripts/**/*.{ts,mjs}",
       "examples/**/*.{ts,js,json,md}",
       "*.{json,md,yml}"
