@@ -45,9 +45,10 @@ const { KIB, MIB } = S;
 
 /**
  * Every shape the command reads, each at the size real traffic has and, where the shape grows, at
- * sizes well past it. `ops` are the commands run on it. `compare: true` puts a size in the pull
- * request comparison, which runs every compared case 24 times in fresh processes inside a 600
- * second budget; a reading measures every size.
+ * sizes well past it. `ops` are the commands run on it. `compare` names the commands whose pull
+ * request comparison runs a size: it runs every compared case 24 times in fresh processes inside a
+ * 600 second budget, so it holds a few small sizes of the common formats; a reading measures every
+ * size.
  */
 export const SHAPES = [
   {
@@ -81,7 +82,6 @@ export const SHAPES = [
         label: "1,000 frames, 279 KiB",
         inputs: 1,
         build: () => S.mllpStream(1_000),
-        compare: ["parse"],
       },
       { label: "16,000 frames, 4.4 MiB", inputs: 1, build: () => S.mllpStream(16_000) },
     ],

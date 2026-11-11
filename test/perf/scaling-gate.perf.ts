@@ -156,7 +156,9 @@ function singleMessage(): ScalingGateOptions<Uint8Array, SyncResult> {
     parse: (bytes) => cli.call(["validate", "--json", "message.hl7"], bytes),
     weigh,
     count: { n: 100, generate: (i) => encoder.encode(adtMessage(i)) },
-    size: { inputs: 2, size: 500, generate: (i, size) => oruMessage(i, size) },
+    // Four inputs: on a GitHub-hosted runner two of them made a base phase of 3.9 ms, under the
+    // gate's 4 ms floor.
+    size: { inputs: 4, size: 500, generate: (i, size) => oruMessage(i, size) },
   };
 }
 
@@ -167,7 +169,9 @@ function ndjsonRecords(): ScalingGateOptions<Uint8Array, SyncResult> {
     parse: (bytes) => cli.call(["parse", "--ndjson", "patients.ndjson"], bytes),
     weigh,
     count: { n: 50, generate: (i) => patientNdjson(i, 4) },
-    size: { inputs: 1, size: 150, generate: (i, size) => patientNdjson(i, size) },
+    // 200 lines: at 150 the planted quadratic cleared the ceiling on a GitHub-hosted runner by a
+    // margin of 1.12 only.
+    size: { inputs: 1, size: 200, generate: (i, size) => patientNdjson(i, size) },
   };
 }
 

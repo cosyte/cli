@@ -16,7 +16,8 @@
 // 5. One long NDJSON line against the same bytes as one message, the case where the line splitter
 //    carries a line across read chunks.
 // 6. A CPU profile and a sampled heap profile of the hottest paths, with the top functions of each.
-//    With --enable-source-maps a function in this package is named by its src/ file.
+//    A function in this package is named by its place in dist/ (a CPU profile keeps the URL of the
+//    running code); its name is the one it has in src/.
 // 7. The budgets, read from the numbers above.
 //
 // `--out <dir>` writes profile.md and profile.json there with every .cpuprofile and .heapprofile, for
