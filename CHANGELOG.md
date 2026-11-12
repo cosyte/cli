@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.13
+
+### Patch Changes
+
+- ffd3a42: The documentation pages are now checked against our docs-content standard on every pull request: each page holds what its kind asks, the one limitations page stays in Reference, and no sample in the README or the pages prints a value that identifies a person. No command, option or exit code changes.
+
 ## 0.1.12
 
 ### Patch Changes
