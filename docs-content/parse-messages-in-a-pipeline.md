@@ -1,7 +1,5 @@
 ---
 id: parse-messages-in-a-pipeline
-redirect_from:
-  - /guides-overview
 title: Parse messages in a pipeline
 sidebar_label: Parse in a pipeline
 description: "Read a message from stdin, pick a field out of the JSON, force a format, and stream an MLLP capture or an NDJSON file one record at a time."

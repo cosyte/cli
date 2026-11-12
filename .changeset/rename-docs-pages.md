@@ -2,4 +2,4 @@
 "@cosyte/cli": patch
 ---
 
-The documentation pages follow the Diataxis kinds: the pipeline guide has a name that says what it is, and the limitations page sits in Reference. The old page addresses redirect. No command, option or exit code changes.
+The documentation pages follow the Diataxis kinds: the pipeline guide is now `parse-messages-in-a-pipeline`, and the limitations page sits in Reference. The pipeline guide moved to its new address and the old `guides-overview` address no longer resolves. No command, option or exit code changes.
