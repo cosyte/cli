@@ -50,7 +50,7 @@ Not every command supports every format; [Format support](./format-support.md) h
 
 ## Status
 
-The 0.1 line is published to npm. Below 1.0, a breaking change ships in a minor version and is
+The 0.1 line is published to npm. Below 1.0, a breaking change can ship in a patch version and is
 called out in the changelog. Two early versions cannot be installed at all: see
 [If you are on 0.0.1 or 0.0.2](./installation.md#if-you-are-on-001-or-002).
 

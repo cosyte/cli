@@ -34,7 +34,7 @@ diagnostic** posture.
 
 ## Status
 
-The 0.1 line. While the package is below 1.0, a breaking change can ship in a minor or a patch
+The 0.1 line. While the package is below 1.0, a breaking change can ship in a patch
 version and is called out in the changelog. The `cosyte` command wraps **all eight
 Cosyte formats** (**HL7 v2**, **FHIR R4**, **X12**, **ASTM**, **NCPDP SCRIPT and Telecom**, **C-CDA**, **DICOM**,
 and **MLLP**) plus the `@cosyte/transform` and `@cosyte/terminology` higher-layer libraries, with

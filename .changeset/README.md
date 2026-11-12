@@ -19,6 +19,6 @@ Add a changeset for every meaningful change:
 pnpm changeset
 ```
 
-While the version is below 1.0, pick **minor** for a breaking change (a renamed or removed command,
-flag, output field, exit code or diagnostic code) and call the break out in the changeset; new
-capability ships in a minor too. Pick **patch** for a fix that changes no output.
+While the version is below 1.0, every release is a **patch**, including a breaking change (a renamed or removed command,
+flag, output field, exit code or diagnostic code) and new capability. Call a break out in the
+changeset: say what changed and what a caller must do.
