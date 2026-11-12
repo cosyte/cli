@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.12
+
+### Patch Changes
+
+- ce97861: The examples in the README and the guides no longer print a message, a parsed model or an input excerpt to the terminal: they write it to a file, or read a field into a variable and print its length. The concepts page gains a "What is safe to log" section, and the README and the installation page say that below 1.0 a break can ship in a patch, so a caret range does not protect a consumer, and show the exact-version install. No command, option or exit code changes.
+- 1acfafa: The documentation pages follow the Diataxis kinds: the pipeline guide is now `parse-messages-in-a-pipeline`, and the limitations page sits in Reference. The pipeline guide moved to its new address and the old `guides-overview` address no longer resolves. No command, option or exit code changes.
+
 ## 0.1.11
 
 ### Patch Changes
