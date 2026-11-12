@@ -23,7 +23,7 @@ a raw message from a hospital feed into the terminal and get typed, structured J
 without writing code and without reading the spec.
 
 ```bash
-cat adt.hl7 | cosyte parse -
+cat adt.hl7 | cosyte parse - --json | jq -c '{format, warnings}'
 ```
 
 It is a thin, honest skin over libraries that already own correctness ([`@cosyte/hl7`](https://github.com/cosyte/hl7),
@@ -34,8 +34,8 @@ diagnostic** posture.
 
 ## Status
 
-The 0.1 line. While the package is below 1.0, a breaking change ships in a minor version
-and is called out in the changelog. The `cosyte` command wraps **all eight
+The 0.1 line. While the package is below 1.0, a breaking change can ship in a minor or a patch
+version and is called out in the changelog. The `cosyte` command wraps **all eight
 Cosyte formats** (**HL7 v2**, **FHIR R4**, **X12**, **ASTM**, **NCPDP SCRIPT and Telecom**, **C-CDA**, **DICOM**,
 and **MLLP**) plus the `@cosyte/transform` and `@cosyte/terminology` higher-layer libraries, with
 conservative content-format autodetection and a documented exit-code contract:
@@ -80,10 +80,17 @@ Requires Node.js 22 or later, tested on 22, 24, and 26.
 Versions `0.0.1` and `0.0.2` are on npm but cannot be installed, because of a packaging defect in
 those releases. Install the 0.1 line.
 
+Below 1.0 a break can ship in a patch release, so a caret range such as `^0.1.0` does not protect a
+consumer. Pin the exact version:
+
+```bash no-run it installs the package from npm
+npm install --save-exact @cosyte/cli
+```
+
 Or without installing, using `npx`:
 
 ```bash
-npx --package @cosyte/cli cosyte parse message.hl7
+npx --package @cosyte/cli cosyte inspect message.hl7
 ```
 
 > **`npx @cosyte/cli …` (the short form) does not work, and this is not the packaging defect above.**
@@ -112,7 +119,7 @@ HL7 v2 message and reads it back. Every command, flag, and exit code is document
 # A synthetic ADT^A01 admit. HL7 v2 ends every segment with a carriage return (\r).
 printf 'MSH|^~\\&|SENDINGAPP|SENDINGFAC|RECEIVINGAPP|RECEIVINGFAC|20240101120000||ADT^A01|MSG00001|P|2.5\rEVN|A01|20240101120000\rPID|1||MRN-000123^^^HOSP^MR||ZZSENTINELLAST^ZZSENTINELFIRST^M||19800101|M\rPV1|1|I|WARD^101^A\r' > message.hl7
 
-cosyte parse message.hl7            # format autodetected → HL7 v2, typed JSON on stdout
+cosyte parse message.hl7 --json | jq -c '{format, warnings}'   # format autodetected → HL7 v2
 cosyte inspect message.hl7          # a value-free summary: type, version, segment counts
 ```
 
@@ -122,12 +129,12 @@ Read a file (or stdin via `-`), autodetect the format by content, and print the 
 JSON on stdout:
 
 ```bash
-cosyte parse message.hl7            # → { "format": "hl7", "model": …, "warnings": [] }
-cat patient.json | cosyte parse -   # from a pipeline
-cosyte parse --json message.hl7 | jq '.model'   # compact machine output
-cosyte parse --format hl7 msg.txt   # override autodetection
-cosyte parse stream.mllp             # MLLP frames → one NDJSON record per frame
-cosyte parse bulk.ndjson --ndjson    # one FHIR resource per line → NDJSON records
+cosyte parse message.hl7 > parsed.json            # → { "format": "hl7", "model": …, "warnings": [] }
+cat patient.json | cosyte parse - > parsed.json   # from a pipeline
+cosyte parse --json message.hl7 | jq '.model.segments | length'   # compact machine output
+cosyte parse --format hl7 msg.txt > parsed.json   # override autodetection
+cosyte parse stream.mllp > records.ndjson   # MLLP frames → one NDJSON record per frame
+cosyte parse bulk.ndjson --ndjson > records.ndjson   # one FHIR resource per line → NDJSON records
 ```
 
 Autodetection is **conservative**: a confident single match parses; ambiguity or no match is a typed
@@ -190,8 +197,8 @@ FHIR canonical JSON, decimals byte-exact). Its stdout **is** the data channel; a
 a data error with **no partial emit**:
 
 ```bash
-cat messy.json | cosyte fmt -   # → canonical FHIR JSON on stdout
-cosyte fmt message.hl7          # → spec-clean HL7
+cat messy.json | cosyte fmt - > clean.json   # → canonical FHIR JSON
+cosyte fmt message.hl7 > clean.hl7           # → spec-clean HL7
 ```
 
 ### `cosyte convert`
@@ -202,10 +209,10 @@ conversion's value-free issues (a v2 index → FHIRPath locator + a stable code,
 to stderr:
 
 ```bash
-cosyte convert adt.hl7 --to fhir            # → a FHIR message Bundle on stdout
+cosyte convert adt.hl7 --to fhir > bundle.json   # → a FHIR message Bundle
 cat oru.hl7 | cosyte convert - --to fhir | jq '.entry[].resource.resourceType'
-cosyte convert adt.hl7 --to fhir --json     # { format, bundle, findings } on stdout
-cosyte convert adt.hl7 --to fhir --quiet    # bundle only; the exit code carries the outcome
+cosyte convert adt.hl7 --to fhir --json > result.json    # { format, bundle, findings }
+cosyte convert adt.hl7 --to fhir --quiet > bundle.json   # bundle only; the exit code carries the outcome
 ```
 
 `--to fhir` is required (the only target today). The CLI adds no mapping of its own. The FHIR is
@@ -257,7 +264,7 @@ Piping into a reader that stops early is ordinary shell usage (a pager you quit,
 seen enough), and it is not an error in your input:
 
 ```bash
-cosyte parse bulk.ndjson --ndjson | head -3   # three lines, then exit 74, and a value-free note
+cosyte parse bulk.ndjson --ndjson | head -3 | wc -l   # three lines, then exit 74, and a value-free note
 ```
 
 The CLI terminates quietly under `74`: no stack trace, no platform error text, and no byte of the
@@ -284,7 +291,7 @@ stdout, never on stderr.
 
 ```bash
 cosyte parse broken.hl7 --format hl7                       # value-free: a code + position only
-cosyte parse broken.hl7 --format hl7 --unsafe-show-values  # appends a bounded input excerpt (PHI!)
+cosyte parse broken.hl7 --format hl7 --unsafe-show-values 2> excerpt.txt  # excerpt.txt holds a bounded input excerpt (PHI!)
 ```
 
 ## `cosyte redact` / `cosyte deid`

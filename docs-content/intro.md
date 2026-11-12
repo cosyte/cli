@@ -14,7 +14,7 @@ stable code and a position, never a value from the message, and the exit code sa
 ended, so a script or a CI job can branch on it.
 
 ```bash no-run it reads a file you supply
-cosyte parse message.hl7
+cosyte parse message.hl7 --json | jq -c '{format, warnings}'
 ```
 
 ## Who it is for

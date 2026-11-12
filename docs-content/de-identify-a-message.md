@@ -18,17 +18,18 @@ rely on it.
 The de-identified message goes to stdout. stderr carries `@cosyte/deid`'s manifest: one line for
 each place it acted on, giving the category, the transform, the location, the count, what happened,
 and the library's code, never the value. HL7 v2 ends segments with a carriage return, so `tr` makes
-the output readable in a terminal:
+the output readable in a terminal. Print only the segment names, not the segments: a result that
+passed the policy still holds whatever the policy kept.
 
 ```bash
-cosyte redact message.hl7 2> manifest.txt | tr '\r' '\n'
+cosyte redact message.hl7 2> manifest.txt | tr '\r' '\n' | cut -d '|' -f 1
 ```
 
 ```text
-MSH|^~\&|SENDINGAPP|SENDINGFAC|RECEIVINGAPP|RECEIVINGFAC|2024||ADT^A01|MSG00001|P|2.5
-EVN|A01|2024
-PID|1||^^^HOSP^MR||||1980|M
-PV1|1|I|WARD^101^A
+MSH
+EVN
+PID
+PV1
 ```
 
 List the manifest entries:

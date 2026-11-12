@@ -84,6 +84,23 @@ you pass it, and every place that could echo a value checks this one flag, which
 "a value reaches stderr only with this flag" a property of one function. `redact` and the MCP server
 ignore it.
 
+## What is safe to log
+
+Log the parts of a run that carry no value from the message: the exit code, a `CLI_*` code, the
+format, a message type, counts, lengths, positions, and the codes and positions in a `warnings`
+array or a conversion finding. Do not log these, which hold the input or part of it:
+
+- the `stdout` of a run, and the `stdout` of a `RunResult` from [`run`](./api/src.md#run). It is the
+  message, or a form of it;
+- the `model` in a `parse` result, and a `Bundle` from `convert`;
+- the `stderr` of a run made with `--unsafe-show-values`, and a `RunResult.stderr` from one. A
+  `CLI_PARSE_FAILED` line then ends with the first bytes of the input;
+- the `message` of an error thrown by a library you call yourself (for example `@cosyte/hl7`), and
+  its `snippet` where it has one: both can quote the input. The CLI keeps only the library's code.
+
+To show what a field holds, read it into a variable or assert on it, and log its length or a
+boolean. The guides do the same.
+
 ## De-identification is delegated
 
 `redact` is the command whose job is to remove identifiers, and it owns no policy. A built-in pass

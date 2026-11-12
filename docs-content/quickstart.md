@@ -23,20 +23,22 @@ The commands below run in an empty directory. They use `jq` in one step; any JSO
 
 ## Write a message and parse it
 
-This writes a synthetic ADT^A01 admit message to `message.hl7`, then parses it and prints its
-summary:
+This writes a synthetic ADT^A01 admit message to `message.hl7`, then parses it and prints the
+format and the warnings:
 
 ```bash
 # A synthetic ADT^A01 admit. HL7 v2 ends every segment with a carriage return (\r).
 printf 'MSH|^~\\&|SENDINGAPP|SENDINGFAC|RECEIVINGAPP|RECEIVINGFAC|20240101120000||ADT^A01|MSG00001|P|2.5\rEVN|A01|20240101120000\rPID|1||MRN-000123^^^HOSP^MR||ZZSENTINELLAST^ZZSENTINELFIRST^M||19800101|M\rPV1|1|I|WARD^101^A\r' > message.hl7
 
-cosyte parse message.hl7            # format autodetected → HL7 v2, typed JSON on stdout
+cosyte parse message.hl7 --json | jq -c '{format, warnings}'   # format autodetected → HL7 v2
 cosyte inspect message.hl7          # a value-free summary: type, version, segment counts
 ```
 
-`cosyte parse` found the format from the content, not the file name, and printed one JSON object
+`cosyte parse` found the format from the content, not the file name, and wrote one JSON object
 with three properties: `format`, `model` (the parsed message, as `@cosyte/hl7` builds it), and
-`warnings` (anything the parser recovered from, as a code and a position).
+`warnings` (anything the parser recovered from, as a code and a position). The `model` holds the
+message's own values, so the command above keeps only `format` and `warnings`; send the whole
+object to a file or a pipe, not to the terminal or a log.
 
 ## Look at the structure
 
