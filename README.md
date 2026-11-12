@@ -403,14 +403,13 @@ The full documentation is on [docs.cosyte.com/cli](https://docs.cosyte.com/cli):
 
 - [Installation](https://docs.cosyte.com/cli/installation), the [quickstart](https://docs.cosyte.com/cli/quickstart), and
   a tutorial: [check a folder of messages in CI](https://docs.cosyte.com/cli/check-messages-in-ci).
-- How-to guides: [parse in a pipeline](https://docs.cosyte.com/cli/guides-overview),
+- How-to guides: [parse in a pipeline](https://docs.cosyte.com/cli/parse-messages-in-a-pipeline),
   [branch on the exit code](https://docs.cosyte.com/cli/branch-on-exit-codes),
   [convert HL7 v2 to FHIR](https://docs.cosyte.com/cli/convert-hl7-to-fhir),
   [de-identify a message](https://docs.cosyte.com/cli/de-identify-a-message), and
   [connect an agent](https://docs.cosyte.com/cli/mcp).
-- Explanation: [how the CLI works](https://docs.cosyte.com/cli/concepts-archetype) and
-  [what it does and does not do](https://docs.cosyte.com/cli/limitations).
-- Reference: [every command](https://docs.cosyte.com/cli/reference-commands),
+- Explanation: [how the CLI works](https://docs.cosyte.com/cli/how-the-cli-works).
+- Reference: [the limitations](https://docs.cosyte.com/cli/limitations), [every command](https://docs.cosyte.com/cli/reference-commands),
   [diagnostic codes](https://docs.cosyte.com/cli/diagnostic-codes),
   [format support](https://docs.cosyte.com/cli/format-support), and the
   [MCP tools](https://docs.cosyte.com/cli/mcp-tools).

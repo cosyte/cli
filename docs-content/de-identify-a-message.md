@@ -123,6 +123,6 @@ it is refused with `CLI_FORMAT_UNSUPPORTED` and exit `65`.
   [`CLI_FORMAT_UNSUPPORTED`](./diagnostic-codes.md#cli_format_unsupported).
 - [`DEID_COVERAGE`](./api/src.md#deid_coverage) and [`redactCommand`](./api/src.md#redactcommand) in the
   API reference.
-- [Why redact delegates](./concepts-archetype.md#de-identification-is-delegated).
+- [Why redact delegates](./how-the-cli-works.md#de-identification-is-delegated).
 - The policy, its categories, and its codes are documented with `@cosyte/deid`, at
   [docs.cosyte.com/deid](https://docs.cosyte.com/deid).

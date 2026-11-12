@@ -1,11 +1,11 @@
 ---
 id: limitations
-title: What the CLI does and does not do
-sidebar_label: Scope and limits
+title: Limitations of the CLI
+sidebar_label: Limitations
 description: "What the cosyte command promises, what it leaves to the libraries it wraps, and what it does not do at all."
 ---
 
-# What the CLI does and does not do
+# Limitations of the CLI
 
 `cosyte` runs on files a developer points it at, which can hold real patient data. This page states
 what it promises, what it leaves to others, and what it does not do, so nobody trusts it for more
@@ -16,7 +16,7 @@ than it does. For what the current release ships, `cosyte --help` and the
 
 - **The libraries' results, unchanged.** Every parsed model, finding, conversion, and translation is
   the wrapped library's. A wrong value is a defect in that library; see
-  [How the CLI works](./concepts-archetype.md#the-wrapper-boundary).
+  [How the CLI works](./how-the-cli-works.md#the-wrapper-boundary).
 - **No guessed format.** A format is detected from the content or named with `--format`; anything
   else is refused.
 - **An exit code that tells the truth.** No run that failed to handle its input, or failed to deliver

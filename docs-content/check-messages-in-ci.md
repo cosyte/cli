@@ -169,5 +169,5 @@ check, and keeps values out of the log. The same pattern works with `cosyte pars
 - [Branch on the exit code in a script](./branch-on-exit-codes.md): the exit codes to handle, in
   more detail.
 - [Debug a rejected message](./debug-a-rejected-message.md): what to do when a file exits `65`.
-- [How the CLI works](./concepts-archetype.md#the-exit-code-contract): why the exit code is the
+- [How the CLI works](./how-the-cli-works.md#the-exit-code-contract): why the exit code is the
   contract.

@@ -59,6 +59,6 @@ called out in the changelog. Two early versions cannot be installed at all: see
 - [Installation](./installation.md): install the command, and what a default install includes.
 - [Quickstart](./quickstart.md): parse, inspect, and validate a synthetic message in a few minutes.
 - [Check a folder of messages in CI](./check-messages-in-ci.md): a tutorial that builds a CI gate.
-- [How the CLI works](./concepts-archetype.md): detection, the exit-code contract, and what reaches
+- [How the CLI works](./how-the-cli-works.md): detection, the exit-code contract, and what reaches
   stderr.
 - [Command reference](./reference-commands.md) and [diagnostic codes](./diagnostic-codes.md).

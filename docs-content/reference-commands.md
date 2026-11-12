@@ -1,5 +1,6 @@
 ---
 id: reference-commands
+held_by: test/docs-content.test.ts
 title: Command reference
 sidebar_label: Commands
 description: "Every cosyte command, its options, what it writes to stdout and stderr, and every exit code."
