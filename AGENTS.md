@@ -37,6 +37,7 @@ pnpm typecheck:examples && pnpm lint:examples && pnpm examples && pnpm phi-scan:
 pnpm check:no-emdash
 pnpm check:no-internal-refs
 pnpm check:readme && pnpm check:claude-card && pnpm check:catalog && pnpm check:process
+pnpm check:docs-content
 ```
 
 A change that reaches the published package adds a changeset (`pnpm changeset`).

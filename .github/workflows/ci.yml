@@ -134,10 +134,14 @@ jobs:
   # The house checks on this repository's documents and its catalog entry, from @cosyte/script-utils
   # (RD1, RD2, PF1): the README against the house skeleton and npm's size limit
   # (`pnpm check:readme`), the CLAUDE.md card against its spec (`pnpm check:claude-card`), and the
-  # package description against the catalog that ships in script-utils (`pnpm check:catalog`), and
+  # package description against the catalog that ships in script-utils (`pnpm check:catalog`),
   # the process wiring against @cosyte/process (`pnpm check:process`: the script bodies, the override
-  # file and the exact vitest pin). `documents` is a required context: the `ci-required-checks`
-  # ruleset in the banner above names it.
+  # file and the exact vitest pin), and docs-content/ against the docs-content standard
+  # (`pnpm check:docs-content`, script-utils' `cosyte-docs-content`: the sidebar, each page's kind,
+  # the one limitations page in Reference, page ids, held at the counts its ratchet records, and,
+  # with cosyte-docs-content.config.json, no README or page sample that prints a value identifying
+  # a person). `documents` is a required context: the `ci-required-checks` ruleset in the banner
+  # above names it.
   documents:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -157,3 +161,5 @@ jobs:
         run: pnpm check:catalog
       - name: The process wiring matches @cosyte/process
         run: pnpm check:process
+      - name: docs-content follows the docs-content standard, and no sample prints an identifying value
+        run: pnpm check:docs-content

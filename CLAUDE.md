@@ -10,15 +10,15 @@ positions. The exit codes and `CLI_*` codes are the stable surface scripts branc
 ## Gate
 
 From the repo root, in the order CI runs them (`ci.yml` calls the shared `ci.yml` and adds the
-examples job; `no-emdash.yml` and `no-internal-refs.yml` run the last two):
+examples and documents jobs; `no-emdash.yml` and `no-internal-refs.yml` run the last two):
 
 ```sh
 pnpm install --frozen-lockfile
 pnpm typecheck && pnpm lint && pnpm format:check && pnpm phi-scan
 pnpm test && pnpm test:coverage && pnpm build && pnpm attw && pnpm smoke
 pnpm typecheck:examples && pnpm lint:examples && pnpm examples && pnpm phi-scan:examples
-pnpm check:no-emdash && pnpm check:no-internal-refs
 pnpm check:readme && pnpm check:claude-card && pnpm check:catalog && pnpm check:process
+pnpm check:docs-content && pnpm check:no-emdash && pnpm check:no-internal-refs
 ```
 
 `pnpm smoke` covers locally what CI's inline ESM/CJS check does on `dist/`. Only CI runs

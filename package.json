@@ -86,6 +86,7 @@
     "check:readme": "cosyte-readme",
     "check:claude-card": "cosyte-claude-card",
     "check:catalog": "cosyte-catalog",
+    "check:docs-content": "cosyte-docs-content",
     "check:process": "cosyte-process check",
     "lint": "cosyte-process lint",
     "lint:fix": "cosyte-process lint --fix",
