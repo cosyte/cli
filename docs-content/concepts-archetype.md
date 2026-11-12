@@ -116,5 +116,5 @@ code, not the output, says whether the run finished.
 - [Branch on the exit code in a script](./branch-on-exit-codes.md)
 - [Debug a rejected message](./debug-a-rejected-message.md)
 - [De-identify a message](./de-identify-a-message.md)
-- [Parse messages in a pipeline](./guides-overview.md)
+- [Parse messages in a pipeline](./parse-messages-in-a-pipeline.md)
 - [Check a folder of messages in CI](./check-messages-in-ci.md)

@@ -20,7 +20,7 @@
       "type": "category",
       "label": "How-to guides",
       "items": [
-        "guides-overview",
+        "parse-messages-in-a-pipeline",
         "branch-on-exit-codes",
         "debug-a-rejected-message",
         "convert-hl7-to-fhir",
@@ -33,12 +33,12 @@
     {
       "type": "category",
       "label": "Explanation",
-      "items": ["concepts-archetype", "limitations"]
+      "items": ["concepts-archetype"]
     },
     {
       "type": "category",
       "label": "Reference",
-      "items": ["reference-commands", "diagnostic-codes", "format-support", "mcp-tools"]
+      "items": ["reference-commands", "diagnostic-codes", "format-support", "mcp-tools", "limitations"]
     },
     {
       "type": "category",

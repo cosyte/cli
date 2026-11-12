@@ -1,11 +1,11 @@
 ---
 id: limitations
-title: What the CLI does and does not do
-sidebar_label: Scope and limits
+title: Limitations of the CLI
+sidebar_label: Limitations
 description: "What the cosyte command promises, what it leaves to the libraries it wraps, and what it does not do at all."
 ---
 
-# What the CLI does and does not do
+# Limitations of the CLI
 
 `cosyte` runs on files a developer points it at, which can hold real patient data. This page states
 what it promises, what it leaves to others, and what it does not do, so nobody trusts it for more

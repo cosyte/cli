@@ -130,6 +130,6 @@ CI job reads.
 
 - [Check a folder of messages in CI](./check-messages-in-ci.md): the tutorial that turns these
   commands into a CI gate.
-- [Parse messages in a pipeline](./guides-overview.md), [convert HL7 v2 to FHIR](./convert-hl7-to-fhir.md),
+- [Parse messages in a pipeline](./parse-messages-in-a-pipeline.md), [convert HL7 v2 to FHIR](./convert-hl7-to-fhir.md),
   [translate a code](./translate-codes.md), and [de-identify a message](./de-identify-a-message.md).
 - [Command reference](./reference-commands.md): every command, option, and exit code.
