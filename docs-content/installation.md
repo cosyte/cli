@@ -87,7 +87,7 @@ you installed, the install is good:
 ```ts runnable
 import { VERSION } from "@cosyte/cli";
 
-VERSION; // => "0.1.12"
+VERSION; // => "0.1.13"
 ```
 
 The release tooling rewrites that value at each release, and the test suite compares it with the
