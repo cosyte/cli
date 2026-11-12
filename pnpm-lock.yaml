@@ -40,8 +40,8 @@ importers:
         specifier: ^0.1.7
         version: 0.1.7(@types/node@22.20.1)(postcss@8.5.32)(tsx@4.23.15)(vite@8.3.6(@types/node@22.20.1)(esbuild@0.28.2)(tsx@4.23.15))
       '@cosyte/script-utils':
-        specifier: ^0.1.8
-        version: 0.1.8
+        specifier: ^0.1.13
+        version: 0.1.13
       '@cosyte/synth':
         specifier: ^0.1.5
         version: 0.1.5(@cosyte/astm@0.1.7)(@cosyte/ccda@0.1.6)(@cosyte/deid@0.2.4(@cosyte/ccda@0.1.6)(@cosyte/dicom@0.1.13)(@cosyte/fhir@0.1.11(fast-check@4.10.2))(@cosyte/hl7@0.1.10(fast-check@4.10.2))(@cosyte/ncpdp@0.1.7)(@cosyte/x12@0.1.12(fast-check@4.10.2)))(@cosyte/fhir@0.1.11(fast-check@4.10.2))(@cosyte/hl7@0.1.10(fast-check@4.10.2))(@cosyte/ncpdp@0.1.7)(@cosyte/x12@0.1.12(fast-check@4.10.2))
@@ -304,8 +304,8 @@ packages:
     engines: {node: '>=22.22.2'}
     hasBin: true
 
-  '@cosyte/script-utils@0.1.8':
-    resolution: {integrity: sha512-d5+N2hVp/MqZ+MCAO91sJjFL1mRQU6gFlJOlMKdEF4iUKHWLNY/Vh1CTNSK6ebk9SxtrU+4GC5LGGCJWKoldbA==}
+  '@cosyte/script-utils@0.1.13':
+    resolution: {integrity: sha512-AXOXYVjCJooBlY2yAlZL2UJKYbnGY1hwC9L7OVavRFfufOMg/3JGSs+8a0REVytvy3cTtRhJZIxm+y05LhxsKw==}
     engines: {node: '>=22.14'}
     hasBin: true
 
@@ -2795,7 +2795,7 @@ snapshots:
       - vite
       - yaml
 
-  '@cosyte/script-utils@0.1.8': {}
+  '@cosyte/script-utils@0.1.13': {}
 
   '@cosyte/synth@0.1.5(@cosyte/astm@0.1.7)(@cosyte/ccda@0.1.6)(@cosyte/deid@0.2.4(@cosyte/ccda@0.1.6)(@cosyte/dicom@0.1.13)(@cosyte/fhir@0.1.11(fast-check@4.10.2))(@cosyte/hl7@0.1.10(fast-check@4.10.2))(@cosyte/ncpdp@0.1.7)(@cosyte/x12@0.1.12(fast-check@4.10.2)))(@cosyte/fhir@0.1.11(fast-check@4.10.2))(@cosyte/hl7@0.1.10(fast-check@4.10.2))(@cosyte/ncpdp@0.1.7)(@cosyte/x12@0.1.12(fast-check@4.10.2))':
     optionalDependencies:

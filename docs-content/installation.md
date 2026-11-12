@@ -38,9 +38,13 @@ because a global install would then put a command called `cli` on your `PATH`.
 To use it from a project's scripts, add it as a development dependency:
 
 ```bash no-run it installs the package from npm
-npm install --save-dev @cosyte/cli
+npm install --save-dev --save-exact @cosyte/cli
 npx cosyte --version
 ```
+
+Below 1.0 a break can ship in a patch release, so a caret range such as `^0.1.0` does not protect
+you. `--save-exact` writes the exact version into `package.json`; raise it yourself after reading
+the changelog.
 
 ## What a default install includes
 

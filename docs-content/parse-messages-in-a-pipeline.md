@@ -16,25 +16,34 @@ cover the shapes it takes in a pipeline. The examples use the file names `messag
 Pass `-` in place of a file name:
 
 ```bash
-cat message.hl7 | cosyte parse -
+cat message.hl7 | cosyte parse - --json | jq -c '{format, warnings}'
 ```
+
+```text
+{"format":"hl7","warnings":[]}
+```
+
+The whole result holds the message's own values. Keep it to a file or a pipe, and print only the
+parts that carry none.
 
 ## Pick a field out of the JSON
 
 `--json` prints the result on one line. The `model` is the parsed message as the format's library
 builds it; for HL7 v2, `@cosyte/hl7` keeps each segment's fields in order, with `fields[3]` holding
-PID-3:
+PID-3. Read the field into a variable, and print only what is safe to log, here its length:
 
 ```bash
-cat message.hl7 | cosyte parse - --json \
-  | jq -r '.model.segments[] | select(.name == "PID") | .fields[3].repetitions[0].components[0].subcomponents[0]'
+id=$(cat message.hl7 | cosyte parse - --json \
+  | jq -r '.model.segments[] | select(.name == "PID") | .fields[3].repetitions[0].components[0].subcomponents[0]')
+echo "PID-3 is ${#id} characters"
 ```
 
 ```text
-MRN-000123
+PID-3 is 10 characters
 ```
 
-The output is the message's own data, so send it only where you would send the message.
+The variable holds the message's own data (the synthetic `MRN-000123` here), so pass it only where
+you would send the message, and never to `echo`, a log or an issue.
 
 ## Force a format
 

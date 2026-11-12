@@ -37,19 +37,21 @@ you expect.
 ## 3. Show the start of the input, on your own machine
 
 `--unsafe-show-values` adds the first 200 bytes of the input to the `CLI_PARSE_FAILED` line, with
-line breaks and tabs turned into spaces:
+line breaks and tabs turned into spaces. Send stderr to a file, so the excerpt is not printed
+here, and count the lines that carry one:
 
 ```bash
-cosyte parse broken.json --unsafe-show-values; echo "exit $?"
+cosyte parse broken.json --unsafe-show-values 2> excerpt.txt; echo "exit $?"
+grep -c 'offending input' excerpt.txt
 ```
 
 ```text
-cosyte: CLI_PARSE_FAILED: the fhir parser rejected the input (MALFORMED_JSON) [unsafe-show-values] offending input (first 200 bytes): {"resourceType":"Patient","id":"example","birthDate":}
 exit 65
+1
 ```
 
-That line can carry patient data. Use the flag only in a terminal on your own machine, with a
-message you are allowed to see, and never in CI or anywhere stderr is kept.
+`excerpt.txt` can carry patient data. Open it only on your own machine, with a message you are
+allowed to see, and never in CI or anywhere stderr is kept. Delete it when you are done.
 
 The flag can go anywhere on the command line. It adds the excerpt only to a `CLI_PARSE_FAILED`
 from `parse` on a single message, `validate`, `inspect`, `fmt`, and `convert`. It changes nothing
