@@ -72,4 +72,4 @@ head -c 64 broken.json | od -c
 - [The global options](./reference-commands.md#global-options), `--unsafe-show-values` among them.
 - [`unsafeInputSuffix`](./api/src.md#unsafeinputsuffix) and
   [`UNSAFE_EXCERPT_MAX`](./api/src.md#unsafe_excerpt_max) in the API reference.
-- [What reaches stderr, and why](./how-the-cli-works.md#data-on-stdout-codes-on-stderr).
+- [What reaches stderr, and why](./concepts-archetype.md#data-on-stdout-codes-on-stderr).

@@ -408,7 +408,7 @@ The full documentation is on [docs.cosyte.com/cli](https://docs.cosyte.com/cli):
   [convert HL7 v2 to FHIR](https://docs.cosyte.com/cli/convert-hl7-to-fhir),
   [de-identify a message](https://docs.cosyte.com/cli/de-identify-a-message), and
   [connect an agent](https://docs.cosyte.com/cli/mcp).
-- Explanation: [how the CLI works](https://docs.cosyte.com/cli/how-the-cli-works).
+- Explanation: [how the CLI works](https://docs.cosyte.com/cli/concepts-archetype).
 - Reference: [the limitations](https://docs.cosyte.com/cli/limitations), [every command](https://docs.cosyte.com/cli/reference-commands),
   [diagnostic codes](https://docs.cosyte.com/cli/diagnostic-codes),
   [format support](https://docs.cosyte.com/cli/format-support), and the

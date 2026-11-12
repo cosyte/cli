@@ -90,4 +90,4 @@ closes it, and the run then ends with its own code.
 - [Exit codes](./reference-commands.md#exit-codes) and [diagnostic codes](./diagnostic-codes.md).
 - [`EXIT`](./api/src.md#exit) and [`CLI_CODES`](./api/src.md#cli_codes) in the API reference, for
   code that branches on the same values.
-- [Why the exit code is the contract](./how-the-cli-works.md#the-exit-code-contract).
+- [Why the exit code is the contract](./concepts-archetype.md#the-exit-code-contract).

@@ -33,7 +33,7 @@
     {
       "type": "category",
       "label": "Explanation",
-      "items": ["how-the-cli-works"]
+      "items": ["concepts-archetype"]
     },
     {
       "type": "category",

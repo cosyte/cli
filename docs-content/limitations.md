@@ -16,7 +16,7 @@ than it does. For what the current release ships, `cosyte --help` and the
 
 - **The libraries' results, unchanged.** Every parsed model, finding, conversion, and translation is
   the wrapped library's. A wrong value is a defect in that library; see
-  [How the CLI works](./how-the-cli-works.md#the-wrapper-boundary).
+  [How the CLI works](./concepts-archetype.md#the-wrapper-boundary).
 - **No guessed format.** A format is detected from the content or named with `--format`; anything
   else is refused.
 - **An exit code that tells the truth.** No run that failed to handle its input, or failed to deliver

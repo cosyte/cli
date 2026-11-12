@@ -1,7 +1,5 @@
 ---
-id: how-the-cli-works
-redirect_from:
-  - /concepts-archetype
+id: concepts-archetype
 title: How the CLI works
 sidebar_label: How the CLI works
 description: "Why cosyte wraps the libraries instead of parsing, never guesses a format, treats the exit code as a contract, and keeps message values off stderr."
